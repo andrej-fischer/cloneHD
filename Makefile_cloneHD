@@ -1,6 +1,7 @@
 CC		= g++-mp-4.7
-CC_FLAGS	= -Wall -O3 -I/Users/af7/local/include -I/opt/local/include/ -DHAVE_INLINE -fopenmp
-LD_FLAGS	= -L/Users/af7/local/lib/ -lm -lgsl -lcblas -fopenmp
+GSL		= /opt/local/lib/libgsl.a /opt/local/lib/libgslcblas.a 
+CC_FLAGS	= -Wall -O3 -DHAVE_INLINE -fopenmp 
+LD_FLAGS	= ${GSL} -fopenmp
 EMISSION	= emission
 FUNCTIONS	= common-functions
 JUMPDIFF	= jump-diffusion
