@@ -1,0 +1,38 @@
+CC		= g++-mp-4.7
+CC_FLAGS	= -Wall -O3 -I/Users/af7/local/include -I/opt/local/include/ -DHAVE_INLINE -fopenmp
+LD_FLAGS	= -L/Users/af7/local/lib/ -lm -lgsl -lcblas -fopenmp
+EMISSION	= emission
+FUNCTIONS	= common-functions
+JUMPDIFF	= jump-diffusion
+FILTER		= filterHD
+MINIMIZE	= minimization
+LOGSPACE	= log-space
+CLONE		= clone
+CHDFUNCTIONS	= cloneHD-functions
+CLONEHD		= cloneHD
+OBJECTS      	= $(EMISSION).o $(FILTER).o $(MINIMIZE).o $(LOGSPACE).o $(JUMPDIFF).o $(CLONE).o $(FUNCTIONS).o $(CHDFUNCTIONS).o $(CLONEHD).o 
+all:	$(OBJECTS)
+	$(CC) $(CC_FLAGS) $(EMISSION).o $(FUNCTIONS).o $(FILTER).o $(MINIMIZE).o $(JUMPDIFF).o -o ./build/$(FILTER) $(LD_FLAGS)
+	$(CC) $(CC_FLAGS) $(EMISSION).o $(FUNCTIONS).o $(MINIMIZE).o $(LOGSPACE).o $(CLONE).o $(CHDFUNCTIONS).o $(CLONEHD).o -o ./build/$(CLONEHD) $(LD_FLAGS)
+	#rm -f ./*.o
+$(FILTER).o: $(FILTER).cpp
+	$(CC) $(CC_FLAGS) -c $(FILTER).cpp
+$(EMISSION).o: $(EMISSION).cpp $(EMISSION).h
+	$(CC) $(CC_FLAGS) -c $(EMISSION).cpp 
+$(JUMPDIFF).o: $(JUMPDIFF).cpp $(JUMPDIFF).h
+	$(CC) $(CC_FLAGS) -c $(JUMPDIFF).cpp 
+$(LOGSPACE).o: $(LOGSPACE).cpp $(LOGSPACE).h
+	$(CC) $(CC_FLAGS) -c $(LOGSPACE).cpp
+$(MINIMIZE).o: $(MINIMIZE).cpp $(MINIMIZE).h
+	$(CC) $(CC_FLAGS) -c $(MINIMIZE).cpp
+$(CLONE).o: $(CLONE).cpp $(CLONE).h
+	$(CC) $(CC_FLAGS) -c $(CLONE).cpp
+$(CHDFUNCTIONS).o: $(CHDFUNCTIONS).cpp $(CHDFUNCTIONS).h
+	$(CC) $(CC_FLAGS) -c $(CHDFUNCTIONS).cpp
+$(FUNCTIONS).o: $(FUNCTIONS).cpp $(FUNCTIONS).h
+	$(CC) $(CC_FLAGS) -c $(FUNCTIONS).cpp
+$(CLONEHD).o: $(CLONEHD).cpp
+	$(CC) $(CC_FLAGS) -c $(CLONEHD).cpp
+clean:
+	rm -f ./*.o
+
