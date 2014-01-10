@@ -10,6 +10,8 @@ In the source directory, you can test filterHD and cloneHD by running
 
 where you can see a typical workflow of analysing read depth and BAF data with a matched normal. To view a complete list of the command line options, type e.g. 
 
+`$ ./build/filterHD --print-options`
+or
 `$ ./build/cloneHD --print-options`.
 
 # Compilation  
