@@ -4,7 +4,7 @@ The current stable release, including pre-compiled executable binaries of filter
 
 # Run test with simulated data
 
-In the source directory, you can test filterHD and cloneHD by running
+If you download cloneHD from the ftp site above, you can test both filterHD and cloneHD by running
 
 `$ sh run-example.sh`
 
