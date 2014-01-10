@@ -74,7 +74,7 @@ int main (int argc, const char * argv[]){
   if (opts.baf_fn != NULL){//BAF DATA
     get_dims( opts.baf_fn, nT, chrs, nSites);
     if (nTimes > 0 && nT != nTimes){
-      cout<<"ERROR-1a in cloneHD main(): incompatible sample sizes in CNV and BAF data.\n";
+      cout<<"ERROR-1a in cloneHD main(): incompatible sample sizes in CNA and BAF data.\n";
       exit(1);
     }
     nTimes = nT;
@@ -94,7 +94,7 @@ int main (int argc, const char * argv[]){
   if (opts.snp_fn != NULL){//SNP DATA
     get_dims( opts.snp_fn, nT, chrs, nSites);
     if (nTimes>0 && nT != nTimes){
-      cout<<"ERROR-1b in cloneHD:main(): incompatible sample sizes CNV and SNP data.\n";
+      cout<<"ERROR-1b in cloneHD:main(): incompatible sample sizes CNA and SNV data.\n";
       exit(1);
     }
     nTimes = nT;
@@ -113,7 +113,7 @@ int main (int argc, const char * argv[]){
   //*** ANNOUNCE ***
   printf("\ncloneHD: probabilistic inference of sub-clonality using...\n\n");
   if (cnvEmit.is_set){
-    printf("CNV data in %s: %i sites in %i chr across %i samples\n", 
+    printf("CNA data in %s: %i sites in %i chr across %i samples\n", 
 	   opts.cnv_fn, cnvEmit.total_loci, cnvEmit.nSamples, nTimes);
   }
   if (bafEmit.is_set){
@@ -130,10 +130,10 @@ int main (int argc, const char * argv[]){
   myClone.allocate( &cnvEmit, &bafEmit, &snpEmit);
   myClone.maxcn = opts.maxcn;
   myClone.bulk_fix = opts.bulk_fix;
-  myClone.snp_err  = opts.snp_err;
-  myClone.baf_pen  = (opts.baf_pen > 0.0) ? opts.baf_pen : 1.0;
-  myClone.snp_pen  = (opts.snp_pen > 0.0) ? opts.snp_pen : (bafEmit.is_set ? 0.01 : 0.5);
-  myClone.snp_fpr  = (opts.snp_fpr > 0.0) ? opts.snp_fpr : 1.0e-4;
+  myClone.snp_err  = (opts.snp_err >= 0.0) ? opts.snp_err : 0.0;
+  myClone.baf_pen  = (opts.baf_pen > 0.0)  ? opts.baf_pen : 1.0;
+  myClone.snp_pen  = (opts.snp_pen > 0.0)  ? opts.snp_pen : (bafEmit.is_set ? 0.01 : 0.5);
+  myClone.snp_fpr  = (opts.snp_fpr > 0.0)  ? opts.snp_fpr : 1.0e-4;
   // *** GET SNP BULK PRIOR ***
   if ( snpEmit.is_set && opts.bulk_fn != NULL ){
     if (opts.bulk_mean)  myClone.allocate_bulk_mean();
@@ -184,8 +184,8 @@ int main (int argc, const char * argv[]){
   if (cnvEmit.is_set && opts.cnv_jumps_fn != NULL){
     cnvEmit.log_space      = 1;
     cnvEmit.coarse_grained = 1;
-    printf("Collapsed CNV data to %5i sites based on potential jump events.\n", cnvEmit.total_events);
-    cout<<"Precomputing for CNV..."<<flush;
+    printf("Collapsed CNA data to %5i sites based on potential jump events.\n", cnvEmit.total_events);
+    cout<<"Precomputing for CNA..."<<flush;
     myClone.get_cnvEmitLog();
     cout<<"done."<<endl;
   }
@@ -256,7 +256,7 @@ int main (int argc, const char * argv[]){
   }
   // print CNV posterior distributions..
   if (cnvEmit.is_set){
-    sprintf( buff, "%s.cnv.posterior.txt", opts.pre);
+    sprintf( buff, "%s.cna.posterior.txt", opts.pre);
     FILE * cnv_fp = fopen( buff, "w");
     print_clonal_header( cnv_fp, &myClone, &cnvEmit, opts);
     sprintf( buff,"%s.copynumber.txt", opts.pre); 
@@ -335,28 +335,7 @@ int main (int argc, const char * argv[]){
       delete [] myClone.gamma_baf;
       delete [] myClone.alpha_baf;
     }
-  }
-  /*else if (bafEmit.is_set){// BAF DATA ONLY
-    sprintf( buff, "%s.baf.posterior.txt", opts.pre);
-    FILE * baf_fp = fopen( buff, "w");
-    print_clonal_header( baf_fp, &myClone, opts);
-    myClone.alpha_baf = new gsl_matrix * [myClone.bafEmit->nSamples];
-    myClone.gamma_baf = new gsl_matrix * [myClone.bafEmit->nSamples];    
-    for (int s=0; s < bafEmit.nSamples; s++){
-      myClone.alpha_baf[s] = NULL;
-      myClone.gamma_baf[s] = NULL;
-      myClone.get_baf_posterior(s);      
-      print_posterior( baf_fp, &myClone, &bafEmit, s, opts);
-      gsl_matrix_free( myClone.gamma_baf[s]);
-      myClone.gamma_baf[s] = NULL;
-      //total copynumber...
-      print_phi( baf_utcn_fp,  &myClone, &bafEmit, s, opts);
-    }
-    fclose(baf_fp);
-    delete [] myClone.gamma_baf;
-    delete [] myClone.alpha_baf;
-    }
-  */
+  } 
   else if (snpEmit.is_set){//SNP only...
     sprintf( buff, "%s.snv.posterior.txt", opts.pre);
     FILE * snp_fp = fopen( buff, "w");
@@ -432,7 +411,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     opt_idx++;
     if (opt_idx==argc) break;
     if ( argv[opt_idx][0] == '-' && argv[opt_idx][1] == '-') continue;
-    if ( opt_switch.compare("--cnv") == 0){
+    if ( opt_switch.compare("--cna") == 0){
       opts.cnv_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--baf") == 0){
@@ -482,7 +461,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--restarts") == 0){
       opts.restarts = atoi(argv[opt_idx]);
     }
-    else if ( opt_switch.compare("--cnv-rnd") == 0){
+    else if ( opt_switch.compare("--cna-rnd") == 0){
       opts.cnv_rnd = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--baf-rnd") == 0){
@@ -497,7 +476,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--snv-fpr") == 0){
       opts.snp_fpr = atof(argv[opt_idx]);
     }
-    else if ( opt_switch.compare("--cnv-jump") == 0){
+    else if ( opt_switch.compare("--cna-jump") == 0){
       opts.cnv_jump = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--baf-jump") == 0){
@@ -509,7 +488,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--bulk-sigma") == 0){
       opts.bulk_sigma = atof(argv[opt_idx]);
     }
-    else if ( opt_switch.compare("--cnv-shape") == 0){
+    else if ( opt_switch.compare("--cna-shape") == 0){
       opts.cnv_shape = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--baf-shape") == 0){
@@ -527,7 +506,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--purity") == 0){
       opts.purity_fn = argv[opt_idx];
     }
-    else if ( opt_switch.compare("--cnv-jumps") == 0){
+    else if ( opt_switch.compare("--cna-jumps") == 0){
       opts.cnv_jumps_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--baf-jumps") == 0){
@@ -615,7 +594,7 @@ void default_opts(cmdl_opts& opts){
 void test_opts(cmdl_opts& opts){
   // *** CHECK COMMAND LINE ARGUMENTS ***
   if ( opts.cnv_fn == NULL && opts.baf_fn == NULL && opts.snp_fn == NULL){
-    cout<<"One of --cnv [file], --baf [file] and --snv [file] must be given.\n";
+    cout<<"One of --cna [file], --baf [file] and --snv [file] must be given.\n";
     exit(1);
   }
   if (opts.snp_fn != NULL){
@@ -639,17 +618,17 @@ void test_opts(cmdl_opts& opts){
     }
   }
   if (opts.cnv_fn != NULL && opts.cn_fn != NULL){
-    cout<<"--copynumber [file] cannot be used with --cnv [file].\n";
+    cout<<"--copynumber [file] cannot be used with --cna [file].\n";
     exit(1);
   }
   if ( opts.cnv_fn != NULL && opts.cnv_jump < 0.0 && opts.cnv_jumps_fn == NULL ){
-    cout<<"With --cnv [file], --cnv-jump [double] or --cnv-jumps [file] must be given.\n";
+    cout<<"With --cna [file], --cna-jump [double] or --cna-jumps [file] must be given.\n";
     exit(1);
   }
-  if ( opts.cnv_fn == NULL && opts.baf_fn != NULL && opts.baf_jump < 0.0 && opts.baf_jumps_fn == NULL ){
+  /*if ( opts.cnv_fn == NULL && opts.baf_fn != NULL && opts.baf_jump < 0.0 && opts.baf_jumps_fn == NULL ){
     cout<<"With --baf [file] (no CNV), --baf-jump [double] or --baf-jumps [file] must be given.\n";
     exit(1);
-  }
+    }*/
   if (opts.bulk_fix == 0.0 && opts.snp_rnd == 0.0){
     opts.snp_rnd = 1.0e-9;
   }
@@ -665,14 +644,14 @@ void test_opts(cmdl_opts& opts){
 void print_opts(){
   cout<<"# All cloneHD command line options to be used in shell scripts"<<endl;
   cout<<"# the different data files"<<endl;
-  cout<<"cnv=[file]"<<endl;
+  cout<<"cna=[file]"<<endl;
   cout<<"baf=[file]"<<endl;
   cout<<"snv=[file]"<<endl;
   cout<<"# fixed clone frequencies"<<endl;
   cout<<"clones=[file]"<<endl;
   cout<<"# min. purity per sample"<<endl;
   cout<<"purity=[file]"<<endl;
-  cout<<"# total and max copynumber tracks (from cloneHD with CNV)"<<endl;
+  cout<<"# total and max copynumber tracks (from cloneHD with CNA)"<<endl;
   cout<<"copynumber=[file]"<<endl;
   cout<<"# the read depth bias field (from filterHD)"<<endl;
   cout<<"bias=[file]"<<endl;
@@ -693,21 +672,22 @@ void print_opts(){
   cout<<"# no. restarts of local optimization (from perturbed best solution), if applicable"<<endl;
   cout<<"restarts=[int:10]"<<endl;
   cout<<"# random emission rates"<<endl;
-  cout<<"cnvrnd=[double:0]"<<endl;
+  cout<<"cnarnd=[double:0]"<<endl;
   cout<<"bafrnd=[double:0]"<<endl;
   cout<<"snvrnd=[double:0]"<<endl;
+  cout<<"# SNV false positive frequency and false positive rate"<<endl;
   cout<<"snverr=[double:0]"<<endl;
   cout<<"snvfpr=[double:1.0e-4]"<<endl;
   cout<<"# jump probabilities per base"<<endl;
-  cout<<"cnvjump=[double]"<<endl;
+  cout<<"cnajump=[double]"<<endl;
   cout<<"bafjump=[double]"<<endl;
   cout<<"snvjump=[double]"<<endl;
   cout<<"# posterior jump probability track files (from filterHD)"<<endl;
-  cout<<"cnvjumps=[file]"<<endl;
+  cout<<"cnajumps=[file]"<<endl;
   cout<<"bafjumps=[file]"<<endl;
   cout<<"snvjumps=[file]"<<endl;
   cout<<"# dispersion shape parameters"<<endl;
-  cout<<"cnvshape=[double:inf]"<<endl;
+  cout<<"cnashape=[double:inf]"<<endl;
   cout<<"bafshape=[double:inf]"<<endl;
   cout<<"snvshape=[double:inf]"<<endl;
   cout<<"# penalty term for BAF and SNV priors"<<endl;
@@ -730,13 +710,13 @@ void print_opts(){
   //cout<<"# diffusion constant for the bulk allele frequency profile"<<endl;
   //cout<<"bulksigma=[double]"<<endl<<endl;
   */  
-  cout<<endl<<"cmd=\"./build/cloneHD --cnv $cnv --snv $snv --baf $baf --pre $pre --clones $clones --purity $purity ";
+  cout<<endl<<"cmd=\"./build/cloneHD --cna cna --snv $snv --baf $baf --pre $pre --clones $clones --purity $purity ";
   cout<<"--bias $bias --copynumber $copynumber --grid $grid --seed $seed --trials $trials ";
   cout<<"--restarts $restarts --nmax $nmax --force $force --maxcn $maxcn ";
-  cout<<"--cnv-jump $cnvjump --baf-jump $bafjump --snv-jump $snvjump ";
-  cout<<"--cnv-jumps $cnvjumps --baf-jumps $bafjumps --snv-jumps $snvjumps ";
-  cout<<"--cnv-rnd $cnvrnd --baf-rnd $bafrnd --snv-rnd $snvrnd --snv-err $snverr --snv-fpr $snvfpr";
-  cout<<"--cnv-shape $cnvshape --baf-shape $bafshape --snv-shape $snvshape --baf-pen $bafpen --snv-pen $snvpen";
+  cout<<"--cna-jump $cnajump --baf-jump $bafjump --snv-jump $snvjump ";
+  cout<<"--cna-jumps $cnajumps --baf-jumps $bafjumps --snv-jumps $snvjumps ";
+  cout<<"--cna-rnd $cnarnd --baf-rnd $bafrnd --snv-rnd $snvrnd --snv-err $snverr --snv-fpr $snvfpr";
+  cout<<"--cna-shape $cnashape --baf-shape $bafshape --snv-shape $snvshape --baf-pen $bafpen --snv-pen $snvpen";
   cout<<"--min-occ $minocc --min-jump $minjump --learn-priors $learnpriors";
   //cout<<"--bulk-prior $bulkprior --bulk-mean $bulkmean --bulk-fix $bulkfix --bulk-sigma $bulksigma --bulk-updates $bulkupdates ";
   cout<<"\""<<endl<<"echo $cmd"<<endl;

@@ -457,7 +457,7 @@ void Clone::set_cn_prior_cnv( gsl_vector * prior, int sample){
 void Clone::initialize_cn_prior_snp(){//SNP prior, conditional on max cn
   if (init_cn_prior_snp != NULL) gsl_matrix_free(init_cn_prior_snp);
   init_cn_prior_snp = gsl_matrix_calloc(maxcn+1,maxcn+1);
-  gsl_matrix_set( init_cn_prior_snp, 0, 0, snp_fpr);
+  gsl_matrix_set( init_cn_prior_snp, 0, 0, snp_fpr);//snp_fpr is small (def:1.0e-4)
   int nprior = 1;
   double p   = 0.5;// penalty for higher genotypes
   for (int cn=1; cn <= maxcn; cn++){

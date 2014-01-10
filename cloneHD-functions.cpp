@@ -501,7 +501,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
   char clonal_out[1024];
   sprintf( clonal_out, "%s.clonal.txt", opts.pre);
   FILE * clonal_fp = fopen(clonal_out,"w");
-  fprintf(clonal_fp, "# n cnv-llh baf-llh snv-llh total-llh total-bic\n");
+  fprintf(clonal_fp, "# n cna-llh baf-llh snv-llh total-llh total-bic\n");
   //containers for the best estimates, given n...
   gsl_vector ** best_mass   = new gsl_vector * [opts.nmax+1];
   gsl_matrix ** best_clones = new gsl_matrix * [opts.nmax+1];
@@ -1344,91 +1344,7 @@ void get_candidate_masses( gsl_matrix * clones,
   }
 }
 
-/*
-//evaluate LLH if all is fixed for CNV data *WITH* BAF/SNP...
-double cnv_llh_all_fixed( Clone * myClone ){
-  //allocate alpha/gamma for cnv
-  myClone->alpha_cnv = new gsl_matrix * [myClone->cnvEmit->nSamples];
-  myClone->gamma_cnv = new gsl_matrix * [myClone->cnvEmit->nSamples];
-  for ( int s=0; s< myClone->cnvEmit->nSamples; s++){
-    myClone->alpha_cnv[s] = gsl_matrix_alloc( myClone->cnvEmit->nEvents[s], myClone->nLevels);
-    myClone->gamma_cnv[s] = gsl_matrix_alloc( myClone->cnvEmit->nEvents[s], myClone->nLevels);;
-  }
-  int sample;
-  //CNV contribution....
-  myClone->save_cnv_alpha = 1;
-  myClone->cnv_total_llh  = 0.0;
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
-  for ( sample=0; sample< myClone->cnvEmit->nSamples; sample++){//START PARALLEL FOR
-    //1. get posterior for cnv
-    double llh=0,ent=0;
-    myClone->do_cnv_Fwd( sample, llh);
-#pragma omp critical
-    {
-      myClone->cnv_total_llh += llh;    
-    }
-    myClone->do_cnv_Bwd( sample, ent);
-    gsl_matrix_free(myClone->alpha_cnv[sample]);
-    myClone->alpha_cnv[sample] = NULL;
-    //2. get phi for cnv (total copynumber)
-    myClone->get_phi(sample);
-  }//END PARALLEL FOR
-  //
-  myClone->total_llh = myClone->cnv_total_llh;
-  //
-  //local cleanup...
-  delete [] myClone->alpha_cnv;
-  myClone->alpha_cnv = NULL;
-  //BAF contributions...
-  myClone->save_baf_alpha = 0;
-  myClone->baf_total_llh  = 0.0;
-  if ( myClone->bafEmit->is_set){
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
-    for ( sample=0; sample< myClone->cnvEmit->nSamples; sample++){//START PARALLEL FOR
-      double llh_baf = 0.0;
-      int cnv_chr    = myClone->cnvEmit->chr[sample];
-      int baf_sample = myClone->bafEmit->idx_of[cnv_chr];
-      if (baf_sample >= 0){  
-	myClone->map_phi( myClone->bafEmit, sample);	
-	myClone->do_baf_Fwd( baf_sample, llh_baf);
-#pragma omp critical
-	{
-	  myClone->baf_total_llh += llh_baf;
-	}
-      }
-    }//END PARALLEL FOR
-    myClone->total_llh += myClone->baf_total_llh;
-  }
-  //SNP contributions...
-  myClone->snp_total_llh = 0.0;
-  myClone->save_snp_alpha = 0;
-  if( myClone->snpEmit->is_set){
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
-    for ( sample=0; sample< myClone->cnvEmit->nSamples; sample++){//START PARALLEL FOR
-      double llh_snp = 0.0;
-      int cnv_chr = myClone->cnvEmit->chr[sample];
-      int snp_sample = myClone->snpEmit->idx_of[cnv_chr];
-      if( snp_sample >= 0){
-	myClone->map_phi( myClone->snpEmit, sample);	
-	myClone->do_snp_Fwd( snp_sample, llh_snp);
-#pragma omp critical
-	{
-	  myClone->snp_total_llh += llh_snp;
-	}
-      }
-    }//END PARALLEL FOR
-    myClone->total_llh += myClone->snp_total_llh;
-  }
-  //cleanup CNV posterior...
-  for ( sample=0; sample< myClone->cnvEmit->nSamples; sample++){
-    gsl_matrix_free( myClone->gamma_cnv[sample]);
-  }
-  delete [] myClone->gamma_cnv;
-  myClone->gamma_cnv = NULL;
-  //
-  return(myClone->total_llh);
-}
-*/
+
 
 double baf_clones( gsl_matrix*& clones, Clone * myClone, int restarts, int& steps){
   int nT = myClone->nTimes;
@@ -1799,7 +1715,7 @@ void set_random_start_freq(gsl_vector *& freq, double lower){
 }
 
 void report_results(double cllh, double bllh, double sllh, int steps, gsl_vector * mass, gsl_matrix * freq){
-  if (cllh != 0.0) printf("cnv-llh = %e ", cllh);
+  if (cllh != 0.0) printf("cna-llh = %e ", cllh);
   if (bllh != 0.0) printf("baf-llh = %e ", bllh);
   if (sllh != 0.0) printf("snv-llh = %e ", sllh);
   printf("tot-llh = %e ", cllh+bllh+sllh);

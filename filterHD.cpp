@@ -101,7 +101,8 @@ int main (int argc, const char * argv[]){
     total_nLoci += nSites[s];
   }
   //announce:
-  printf("\nfilterHD: Fitting jump-diffusion model to data at %i loci in %i sample(s) with a ", total_nLoci, nTimes);
+  printf("\nfilterHD: Fitting jump-diffusion model to data at %i loci ", total_nLoci);
+  printf("in %i segment(s) in %i sample(s) with a ", nSamples, nTimes);
   if (opts.mode == 1){
     printf("binomial ");
   }
@@ -151,7 +152,7 @@ int main (int argc, const char * argv[]){
   }
   //***Jump-Diffusion filtering of each sample***
   for (int t=0; t<nTimes; t++){
-    printf("\nFiltering sample %i of %i\n", t+1, nTimes);
+    printf("\nFiltering sample %i of %i:\n", t+1, nTimes);
     //the jump diffusion propagation object
     JumpDiffusion myJD( &myEmit, t);
     //find maximum-likelihood estimates of all parameters
