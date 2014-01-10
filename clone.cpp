@@ -584,7 +584,7 @@ void Clone::set_baf_prior_map(){
   double p = baf_pen;//penalty for complex chromosome status
   double f = 0;
   for (int cn=0; cn <= maxcn; cn++){
-    for (int bafcn=0; bafcn<=cn; bafcn++){
+    for (int bafcn=0; bafcn <= cn; bafcn++){
       f = pow( p, int( fabs(double(bafcn) - 0.5*double(cn)) ));
       gsl_matrix_set( baf_prior_map, bafcn, cn, f);
     }
