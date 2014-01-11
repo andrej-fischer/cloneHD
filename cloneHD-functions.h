@@ -29,24 +29,24 @@ using namespace std;
 
 
 struct cmdl_opts{
-  const char * cnv_fn;
+  const char * cna_fn;
   const char * baf_fn;
-  const char * snp_fn;
+  const char * snv_fn;
   const char * pre;
   const char * bias_fn;
   const char * cn_fn;
   const char * bulk_fn;
   const char * clones_fn;
   const char * purity_fn;
-  const char * cnv_jumps_fn;
+  const char * cna_jumps_fn;
   const char * baf_jumps_fn;
-  const char * snp_jumps_fn;
+  const char * snv_jumps_fn;
   //
   int grid, force, trials, restarts, nmax, seed, maxcn, print_all, learn_priors;
-  double cnv_jump, baf_jump, snp_jump;
-  double cnv_shape, baf_shape, snp_shape;
-  double cnv_rnd, baf_rnd, snp_rnd, snp_err;
-  double baf_pen, snp_pen, snp_fpr;
+  double cna_jump, baf_jump, snv_jump;
+  double cna_shape, baf_shape, snv_shape;
+  double cna_rnd, baf_rnd, snv_rnd, snv_err;
+  double baf_pen, snv_pen, snv_fpr;
   double bulk_fix, bulk_sigma, bulk_rnd;
   double min_occ,min_jump;
   int bulk_mean, bulk_prior, bulk_updates;
@@ -59,8 +59,8 @@ void default_opts(cmdl_opts& opts);
 void test_opts(cmdl_opts& opts);
 void print_opts();
 void print_clonal_header( FILE * fp, Clone * myClone,  Emission * myEmit, cmdl_opts& opts);
-void print_posterior( FILE * cnv_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts);
-void print_phi( FILE * phi_fp, Clone * myClone, Emission * cnvEmit, int s, cmdl_opts& opts);
+void print_posterior( FILE * cna_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts);
+void print_phi( FILE * phi_fp, Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
 
 void get_dims( const char * data_fn,
 	       int& nTimes,
@@ -102,7 +102,7 @@ double get_clones( gsl_matrix *& clones,
 		   double& bl,
 		   double& sl);
 
-double get_clones_cnv( gsl_matrix *& clones, 
+double get_clones_cna( gsl_matrix *& clones, 
 		       gsl_matrix *& Clones, 
 		       gsl_vector *& mass, 
 		       gsl_vector *& Mass, 
@@ -118,27 +118,27 @@ double get_clones_baf( gsl_matrix *& clones,
 		       cmdl_opts& opts
 		       );
 
-double get_clones_snp_ncorr( gsl_matrix *& clones, 
+double get_clones_snv_ncorr( gsl_matrix *& clones, 
 			     gsl_matrix *& Clones, 
 			     gsl_matrix *& priors, 
 			     Clone * myClone,
 			     cmdl_opts& opts
 			     );
 
-double get_clones_snp_wcorr( gsl_matrix *& clones, 
+double get_clones_snv_wcorr( gsl_matrix *& clones, 
 			     gsl_matrix *& Clones, 
 			     Clone * myClone,
 			     cmdl_opts& opts
 			     );
 
-double cnv_only_mass_noclones( gsl_vector *& mass, Clone * myClone, int restarts, int& steps);
-//double cnv_only_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone, int& steps);
-double cnv_clones_fixed_mass( gsl_matrix*& clones, Clone * myClone, int restarts, 
+double cna_only_mass_noclones( gsl_vector *& mass, Clone * myClone, int restarts, int& steps);
+//double cna_only_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone, int& steps);
+double cna_clones_fixed_mass( gsl_matrix*& clones, Clone * myClone, int restarts, 
 			      int& steps, double& cl, double& bl, double& sl);
-double cnv_mass_fixed_clones(gsl_vector*& mass, Clone * myClone, int restarts, 
+double cna_mass_fixed_clones(gsl_vector*& mass, Clone * myClone, int restarts, 
 			     int& steps, double& cl, double& bl, double& sl);
 
-double cnv_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone, int restarts, 
+double cna_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone, int restarts, 
 			int& steps, double& cl, double& bl, double& sl);
 
 
@@ -149,15 +149,15 @@ void get_candidate_masses( gsl_matrix * clones,
 			   gsl_vector*& levels,
 			   double min_occ);
 
-double cnv_llh_all_fixed(Clone * myClone);
+double cna_llh_all_fixed(Clone * myClone);
 
 double baf_clones( gsl_matrix*& clones, Clone* myClone, int restarts, int& steps);
 
-double snp_clones_fixed_priors( gsl_matrix*& clones, Clone * myClone, int restarts, int& steps);
-void snp_iterative_bulk_update( double& llh, gsl_matrix*& clones, Clone * myClone, int iter);
-double snp_priors_fixed_clones( gsl_matrix*& priors, Clone * myClone, int restarts, int& steps);
-double snp_clones_priors( gsl_matrix*& clones, gsl_matrix*& priors, Clone * myClone, int restarts, int& steps);
-void snp_bulk_update(Clone * myClone);
+double snv_clones_fixed_priors( gsl_matrix*& clones, Clone * myClone, int restarts, int& steps);
+void snv_iterative_bulk_update( double& llh, gsl_matrix*& clones, Clone * myClone, int iter);
+double snv_priors_fixed_clones( gsl_matrix*& priors, Clone * myClone, int restarts, int& steps);
+double snv_clones_priors( gsl_matrix*& clones, gsl_matrix*& priors, Clone * myClone, int restarts, int& steps);
+void snv_bulk_update(Clone * myClone);
 
 void set_random_start_freq(gsl_vector *& freq, double lower);
 void report_results( double cl, double bl, double sl, int steps, gsl_vector * mass, gsl_matrix * freq);
@@ -170,7 +170,7 @@ struct Q_par{
   int clones_fixed;
   int mass_fixed;
   int prior_fixed;
-  int cnv,baf,snp;
+  int cna,baf,snv;
 };
 
 

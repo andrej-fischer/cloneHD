@@ -54,7 +54,8 @@ tumorBAFjumps="${results}/tumor.baf.jumps.txt"
 echo "*** cloneHD ***"
 echo
 
-cmd="$cloneHD --cna $tumorCNA --baf $tumorBAF --pre ${results}/tumor --bias $bias --seed 123 --trials 1 --nmax 3 --force --maxcn 4 --cna-jumps $tumorCNAjumps --cna-rnd 0.0 --baf-rnd 0.0 --min-occ 0.01 --min-jump 0.01 --print-all 0 --restarts 10"
+cmd="$cloneHD --cna $tumorCNA --baf $tumorBAF --pre ${results}/tumor --bias $bias --seed 123 --trials 1 --nmax 3 --force --maxcn 4 --cna-jumps $tumorCNAjumps --cna-rnd 0.0 --baf-rnd 0.0 --min-occ 0.01 --min-jump 0.01 --print-all 0 --restarts 20"
 echo $cmd
 $cmd
 echo
+cat ${results}/tumor.clonal.txt

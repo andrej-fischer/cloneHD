@@ -59,17 +59,17 @@ int main (int argc, const char * argv[]){
   vector<int> nSites;
   int nTimes=0, nT=0;
   //*** EMITTED DATA OBJECTS ***
-  Emission cnvEmit, bafEmit, snpEmit;
-  if (opts.cnv_fn != NULL){//CNV DATA
-    get_dims( opts.cnv_fn, nTimes, chrs, nSites);
-    cnvEmit.mode = (opts.cnv_shape > 0.0) ? 4 : 3;
-    cnvEmit.shape = opts.cnv_shape;
-    cnvEmit.log_shape = (opts.cnv_shape > 0.0) ? log(opts.cnv_shape) : 0.0;
-    cnvEmit.rnd_emit  = opts.cnv_rnd;
-    if (opts.cnv_jump >= 0.0)      cnvEmit.connect = 1;
-    if (opts.cnv_jumps_fn != NULL) cnvEmit.connect = 1;
-    cnvEmit.set( nTimes, chrs, nSites, opts.grid);
-    get_data( opts.cnv_fn, &cnvEmit);
+  Emission cnaEmit, bafEmit, snvEmit;
+  if (opts.cna_fn != NULL){//CNA DATA
+    get_dims( opts.cna_fn, nTimes, chrs, nSites);
+    cnaEmit.mode = (opts.cna_shape > 0.0) ? 4 : 3;
+    cnaEmit.shape = opts.cna_shape;
+    cnaEmit.log_shape = (opts.cna_shape > 0.0) ? log(opts.cna_shape) : 0.0;
+    cnaEmit.rnd_emit  = opts.cna_rnd;
+    if (opts.cna_jump >= 0.0)      cnaEmit.connect = 1;
+    if (opts.cna_jumps_fn != NULL) cnaEmit.connect = 1;
+    cnaEmit.set( nTimes, chrs, nSites, opts.grid);
+    get_data( opts.cna_fn, &cnaEmit);
   }
   if (opts.baf_fn != NULL){//BAF DATA
     get_dims( opts.baf_fn, nT, chrs, nSites);
@@ -86,66 +86,66 @@ int main (int argc, const char * argv[]){
     bafEmit.get_log = 1;
     if (opts.baf_jump >= 0.0)    bafEmit.connect = 1;
     if (opts.baf_jumps_fn!=NULL) bafEmit.connect = 1;
-    if (opts.cnv_jumps_fn!=NULL) bafEmit.connect = 1;
+    if (opts.cna_jumps_fn!=NULL) bafEmit.connect = 1;
     bafEmit.set( nTimes, chrs, nSites, opts.grid);
     get_data( opts.baf_fn, &bafEmit);
     bafEmit.set_EmitProb(-1);
   }
-  if (opts.snp_fn != NULL){//SNP DATA
-    get_dims( opts.snp_fn, nT, chrs, nSites);
+  if (opts.snv_fn != NULL){//SNV DATA
+    get_dims( opts.snv_fn, nT, chrs, nSites);
     if (nTimes>0 && nT != nTimes){
       cout<<"ERROR-1b in cloneHD:main(): incompatible sample sizes CNA and SNV data.\n";
       exit(1);
     }
     nTimes = nT;
-    snpEmit.mode = (opts.snp_shape > 0.0) ? 2 : 1;
-    snpEmit.shape = opts.snp_shape;
-    snpEmit.log_shape = (opts.snp_shape > 0.0) ? log(opts.snp_shape) : 0.0;
-    snpEmit.rnd_emit = opts.snp_rnd;
-    snpEmit.get_log = 1;
-    snpEmit.reflect = 0;
-    if (opts.snp_jump >= 0.0)    snpEmit.connect = 1;
-    if (opts.snp_jumps_fn!=NULL) snpEmit.connect = 1;
-    snpEmit.set( nTimes, chrs, nSites, opts.grid);
-    get_data( opts.snp_fn, &snpEmit);
-    snpEmit.set_EmitProb(-1);
+    snvEmit.mode = (opts.snv_shape > 0.0) ? 2 : 1;
+    snvEmit.shape = opts.snv_shape;
+    snvEmit.log_shape = (opts.snv_shape > 0.0) ? log(opts.snv_shape) : 0.0;
+    snvEmit.rnd_emit = opts.snv_rnd;
+    snvEmit.get_log = 1;
+    snvEmit.reflect = 0;
+    if (opts.snv_jump >= 0.0)    snvEmit.connect = 1;
+    if (opts.snv_jumps_fn!=NULL) snvEmit.connect = 1;
+    snvEmit.set( nTimes, chrs, nSites, opts.grid);
+    get_data( opts.snv_fn, &snvEmit);
+    snvEmit.set_EmitProb(-1);
   }
   //*** ANNOUNCE ***
   printf("\ncloneHD: probabilistic inference of sub-clonality using...\n\n");
-  if (cnvEmit.is_set){
+  if (cnaEmit.is_set){
     printf("CNA data in %s: %i sites in %i chr across %i samples\n", 
-	   opts.cnv_fn, cnvEmit.total_loci, cnvEmit.nSamples, nTimes);
+	   opts.cna_fn, cnaEmit.total_loci, cnaEmit.nSamples, nTimes);
   }
   if (bafEmit.is_set){
     printf("BAF data in %s: %i sites in %i chr across %i samples\n", 
 	   opts.baf_fn, bafEmit.total_loci, bafEmit.nSamples, nTimes);
   }
-  if (snpEmit.is_set){
+  if (snvEmit.is_set){
     printf("SNV data in %s: %i sites in %i chr across %i samples\n", 
-	   opts.snp_fn, snpEmit.total_loci, snpEmit.nSamples, nTimes);
+	   opts.snv_fn, snvEmit.total_loci, snvEmit.nSamples, nTimes);
   }
   cout<<endl;
   // *** ALLOCATE CLONE ***
   Clone myClone;
-  myClone.allocate( &cnvEmit, &bafEmit, &snpEmit);
+  myClone.allocate( &cnaEmit, &bafEmit, &snvEmit);
   myClone.maxcn = opts.maxcn;
   myClone.bulk_fix = opts.bulk_fix;
-  myClone.snp_err  = (opts.snp_err >= 0.0) ? opts.snp_err : 0.0;
+  myClone.snv_err  = (opts.snv_err >= 0.0) ? opts.snv_err : 0.0;
   myClone.baf_pen  = (opts.baf_pen > 0.0)  ? opts.baf_pen : 1.0;
-  myClone.snp_pen  = (opts.snp_pen > 0.0)  ? opts.snp_pen : (bafEmit.is_set ? 0.01 : 0.5);
-  myClone.snp_fpr  = (opts.snp_fpr > 0.0)  ? opts.snp_fpr : 1.0e-4;
-  // *** GET SNP BULK PRIOR ***
-  if ( snpEmit.is_set && opts.bulk_fn != NULL ){
+  myClone.snv_pen  = (opts.snv_pen > 0.0)  ? opts.snv_pen : (bafEmit.is_set ? 0.01 : 0.5);
+  myClone.snv_fpr  = (opts.snv_fpr > 0.0)  ? opts.snv_fpr : 1.0e-4;
+  // *** GET SNV BULK PRIOR ***
+  if ( snvEmit.is_set && opts.bulk_fn != NULL ){
     if (opts.bulk_mean)  myClone.allocate_bulk_mean();
     if (opts.bulk_prior) myClone.allocate_bulk_dist();
     printf("Using data in %s as SNV bulk prior...\n", opts.bulk_fn);
     double ** vardummy  = NULL;
     gsl_matrix ** distdummy = NULL;
     if (opts.bulk_mean){
-      get_track( opts.bulk_fn, distdummy, myClone.bulk_prior_mean, vardummy, &snpEmit);
+      get_track( opts.bulk_fn, distdummy, myClone.bulk_prior_mean, vardummy, &snvEmit);
     }
     else if (opts.bulk_prior){
-      get_track( opts.bulk_fn, myClone.bulk_prior, myClone.bulk_prior_mean, vardummy, &snpEmit);
+      get_track( opts.bulk_fn, myClone.bulk_prior, myClone.bulk_prior_mean, vardummy, &snvEmit);
     }
     else{
       abort();
@@ -154,42 +154,42 @@ int main (int argc, const char * argv[]){
   //*** GET JUMP PROBABILITY TRACKS and COLLAPSE TO EVENTS***
   get_jump_probability( &myClone, opts);
   // *** GET TOTAL AND MAXIMUM COPYNUMBER TRACKS***  
-  if ( (snpEmit.is_set || bafEmit.is_set) && opts.cn_fn != NULL ){
+  if ( (snvEmit.is_set || bafEmit.is_set) && opts.cn_fn != NULL ){
     int global_max = 0;
-    if (snpEmit.is_set) global_max = max( global_max, get_phi( opts.cn_fn,  &snpEmit));
+    if (snvEmit.is_set) global_max = max( global_max, get_phi( opts.cn_fn,  &snvEmit));
     if (bafEmit.is_set) global_max = max( global_max, get_phi( opts.cn_fn,  &bafEmit));
     printf("Found maximum copynumber %i in %s. Will be used as --maxcn.\n\n",
 	   global_max, opts.cn_fn);
     myClone.maxcn = global_max;//change the maxcn for myClone, fixed hereafter!
   }
-  else if ( bafEmit.is_set && cnvEmit.is_set==0){
+  else if ( bafEmit.is_set && cnaEmit.is_set==0){
     bafEmit.cnmax_seen.clear();
     for (int s=0; s<bafEmit.nSamples; s++){//all chromosomes are normal???
       bafEmit.cnmax_seen.insert( myClone.normal_copy[bafEmit.chr[s]] );
     }
     //bafEmit.cnmax_seen.insert( myClone.maxcn );//or allow all states???
   }
-  else if ( snpEmit.is_set && cnvEmit.is_set==0){
-    snpEmit.cnmax_seen.clear();
-    for (int s=0; s<snpEmit.nSamples; s++){//all chromosomes are normal???
-      snpEmit.cnmax_seen.insert(myClone.normal_copy[snpEmit.chr[s]]);
+  else if ( snvEmit.is_set && cnaEmit.is_set==0){
+    snvEmit.cnmax_seen.clear();
+    for (int s=0; s<snvEmit.nSamples; s++){//all chromosomes are normal???
+      snvEmit.cnmax_seen.insert(myClone.normal_copy[snvEmit.chr[s]]);
     }
-    //snpEmit.cnmax_seen.insert( myClone.maxcn );//or allow all states???
+    //snvEmit.cnmax_seen.insert( myClone.maxcn );//or allow all states???
   }
   //*** GET READ DEPTH BIAS FIELD ***
-  if (cnvEmit.is_set && opts.bias_fn != NULL){
+  if (cnaEmit.is_set && opts.bias_fn != NULL){
     get_bias_field( &myClone, opts);
   }
   //*** PREPARE COARSE-GRAINED DATA ***
-  if (cnvEmit.is_set && opts.cnv_jumps_fn != NULL){
-    cnvEmit.log_space      = 1;
-    cnvEmit.coarse_grained = 1;
-    printf("Collapsed CNA data to %5i sites based on potential jump events.\n", cnvEmit.total_events);
+  if (cnaEmit.is_set && opts.cna_jumps_fn != NULL){
+    cnaEmit.log_space      = 1;
+    cnaEmit.coarse_grained = 1;
+    printf("Collapsed CNA data to %5i sites based on potential jump events.\n", cnaEmit.total_events);
     cout<<"Precomputing for CNA..."<<flush;
-    myClone.get_cnvEmitLog();
+    myClone.get_cnaEmitLog();
     cout<<"done."<<endl;
   }
-  if (bafEmit.is_set && (opts.cnv_jumps_fn != NULL || opts.baf_jumps_fn != NULL)){
+  if (bafEmit.is_set && (opts.cna_jumps_fn != NULL || opts.baf_jumps_fn != NULL)){
     bafEmit.log_space      = 1;
     bafEmit.coarse_grained = 1;
     printf("Collapsed BAF data to %5i sites based on potential jump events.\n", bafEmit.total_events);
@@ -197,12 +197,12 @@ int main (int argc, const char * argv[]){
     myClone.get_bafEmitLog();
     cout<<"done."<<endl;
   }
-  if (snpEmit.is_set && opts.snp_jumps_fn != NULL){
-    snpEmit.log_space      = 1;
-    snpEmit.coarse_grained = 1;
-    printf("Collapsed SNV data to %5i sites based on potential jump events.\n", snpEmit.total_events);
+  if (snvEmit.is_set && opts.snv_jumps_fn != NULL){
+    snvEmit.log_space      = 1;
+    snvEmit.coarse_grained = 1;
+    printf("Collapsed SNV data to %5i sites based on potential jump events.\n", snvEmit.total_events);
     cout<<"Precomputing for SNV..."<<flush;
-    myClone.get_snpEmitLog();//TBD
+    myClone.get_snvEmitLog();//TBD
     cout<<"done."<<endl;
   }
   cout<<endl;
@@ -243,55 +243,55 @@ int main (int argc, const char * argv[]){
   }
   fclose(margin_fp);
   // used total copynumber...
-  FILE * baf_utcn_fp=NULL, * snp_utcn_fp=NULL; 
+  FILE * baf_utcn_fp=NULL, * snv_utcn_fp=NULL; 
   if ( bafEmit.is_set ){
     sprintf( buff, "%s.baf.used-tcn.txt", opts.pre);
     baf_utcn_fp = fopen( buff, "w");
     fprintf( baf_utcn_fp, "#sample site used-total-copynumber\n");
   }
-  if (snpEmit.is_set){
+  if (snvEmit.is_set){
     sprintf( buff, "%s.snv.used-tcn.txt", opts.pre);
-    snp_utcn_fp = fopen( buff, "w");
-    fprintf( snp_utcn_fp, "#sample site used-total-copynumber\n");
+    snv_utcn_fp = fopen( buff, "w");
+    fprintf( snv_utcn_fp, "#sample site used-total-copynumber\n");
   }
-  // print CNV posterior distributions..
-  if (cnvEmit.is_set){
+  // print CNA posterior distributions..
+  if (cnaEmit.is_set){
     sprintf( buff, "%s.cna.posterior.txt", opts.pre);
-    FILE * cnv_fp = fopen( buff, "w");
-    print_clonal_header( cnv_fp, &myClone, &cnvEmit, opts);
+    FILE * cna_fp = fopen( buff, "w");
+    print_clonal_header( cna_fp, &myClone, &cnaEmit, opts);
     sprintf( buff,"%s.copynumber.txt", opts.pre); 
     FILE * phi_fp =  fopen(buff,"w");
     fprintf( phi_fp, "#sample site total-copynumber max-copynumber\n");
     //allocate space for the posterior
-    myClone.alpha_cnv = new gsl_matrix * [cnvEmit.nSamples];
-    myClone.gamma_cnv = new gsl_matrix * [cnvEmit.nSamples];
-    for (int s=0; s < cnvEmit.nSamples; s++){//print each chromosome...
-      myClone.alpha_cnv[s] = NULL;
-      myClone.gamma_cnv[s] = NULL;
-      myClone.get_cnv_posterior(s);
-      print_posterior( cnv_fp, &myClone, &cnvEmit, s, opts);
+    myClone.alpha_cna = new gsl_matrix * [cnaEmit.nSamples];
+    myClone.gamma_cna = new gsl_matrix * [cnaEmit.nSamples];
+    for (int s=0; s < cnaEmit.nSamples; s++){//print each chromosome...
+      myClone.alpha_cna[s] = NULL;
+      myClone.gamma_cna[s] = NULL;
+      myClone.get_cna_posterior(s);
+      print_posterior( cna_fp, &myClone, &cnaEmit, s, opts);
       //get, map and print total copynumber...
       myClone.get_phi(s);
-      print_phi( phi_fp, &myClone, &cnvEmit, s, opts);
+      print_phi( phi_fp, &myClone, &cnaEmit, s, opts);
       if (bafEmit.is_set){
-	myClone.map_phi( &cnvEmit, s, &bafEmit);
-	int baf_sample = bafEmit.idx_of[cnvEmit.chr[s]];
-	if (snpEmit.is_set) myClone.map_phi( &bafEmit, baf_sample, &snpEmit);
+	myClone.map_phi( &cnaEmit, s, &bafEmit);
+	int baf_sample = bafEmit.idx_of[cnaEmit.chr[s]];
+	if (snvEmit.is_set) myClone.map_phi( &bafEmit, baf_sample, &snvEmit);
       }
       else{
-	if (snpEmit.is_set) myClone.map_phi( &cnvEmit, s, &snpEmit);
+	if (snvEmit.is_set) myClone.map_phi( &cnaEmit, s, &snvEmit);
       }     
       //used total-copynumber tracks...
       if ( bafEmit.is_set && bafEmit.phi != NULL){
-	int baf_sample = bafEmit.idx_of[cnvEmit.chr[s]];
+	int baf_sample = bafEmit.idx_of[cnaEmit.chr[s]];
 	print_phi( baf_utcn_fp,  &myClone, &bafEmit, baf_sample, opts);
       }
-      if (snpEmit.is_set && snpEmit.phi != NULL){
-	int snp_sample = snpEmit.idx_of[cnvEmit.chr[s]];
-	print_phi( snp_utcn_fp,  &myClone, &snpEmit, snp_sample, opts);
+      if (snvEmit.is_set && snvEmit.phi != NULL){
+	int snv_sample = snvEmit.idx_of[cnaEmit.chr[s]];
+	print_phi( snv_utcn_fp,  &myClone, &snvEmit, snv_sample, opts);
       }
     }
-    fclose(cnv_fp);
+    fclose(cna_fp);
     fclose(phi_fp);
     if (bafEmit.is_set){//print BAF posterior...
       sprintf( buff, "%s.baf.posterior.txt", opts.pre);
@@ -307,60 +307,60 @@ int main (int argc, const char * argv[]){
       }
       fclose(baf_fp);
     }
-    if (snpEmit.is_set){//print SNP posterior...
+    if (snvEmit.is_set){//print SNV posterior...
       sprintf( buff, "%s.snv.posterior.txt", opts.pre);
-      FILE * snp_fp = fopen( buff, "w");
-      print_clonal_header( snp_fp, &myClone, &snpEmit, opts);
-      myClone.alpha_snp = new gsl_matrix * [myClone.snpEmit->nSamples];
-      myClone.gamma_snp = new gsl_matrix * [myClone.snpEmit->nSamples];   
-      for (int s=0; s < snpEmit.nSamples; s++){
-	myClone.alpha_snp[s] = NULL;
-	myClone.gamma_snp[s] = NULL;
-	myClone.get_snp_posterior(s);
-	print_posterior( snp_fp, &myClone, &snpEmit, s, opts);
+      FILE * snv_fp = fopen( buff, "w");
+      print_clonal_header( snv_fp, &myClone, &snvEmit, opts);
+      myClone.alpha_snv = new gsl_matrix * [myClone.snvEmit->nSamples];
+      myClone.gamma_snv = new gsl_matrix * [myClone.snvEmit->nSamples];   
+      for (int s=0; s < snvEmit.nSamples; s++){
+	myClone.alpha_snv[s] = NULL;
+	myClone.gamma_snv[s] = NULL;
+	myClone.get_snv_posterior(s);
+	print_posterior( snv_fp, &myClone, &snvEmit, s, opts);
 	//cleanup
-	gsl_matrix_free(myClone.gamma_snp[s]);
-	myClone.gamma_snp[s] = NULL;
+	gsl_matrix_free(myClone.gamma_snv[s]);
+	myClone.gamma_snv[s] = NULL;
       }
-      fclose(snp_fp);
-      delete [] myClone.gamma_snp;
-      delete [] myClone.alpha_snp;
+      fclose(snv_fp);
+      delete [] myClone.gamma_snv;
+      delete [] myClone.alpha_snv;
     }
     // clean up posterior...
-    for (int s=0; s < cnvEmit.nSamples; s++) gsl_matrix_free(myClone.gamma_cnv[s]);
-    delete []  myClone.gamma_cnv;
-    myClone.gamma_cnv = NULL;
+    for (int s=0; s < cnaEmit.nSamples; s++) gsl_matrix_free(myClone.gamma_cna[s]);
+    delete []  myClone.gamma_cna;
+    myClone.gamma_cna = NULL;
     if (bafEmit.is_set){
       for (int s=0; s < bafEmit.nSamples; s++) gsl_matrix_free(myClone.gamma_baf[s]);
       delete [] myClone.gamma_baf;
       delete [] myClone.alpha_baf;
     }
   } 
-  else if (snpEmit.is_set){//SNP only...
+  else if (snvEmit.is_set){//SNV only...
     sprintf( buff, "%s.snv.posterior.txt", opts.pre);
-    FILE * snp_fp = fopen( buff, "w");
-    print_clonal_header( snp_fp, &myClone, &snpEmit, opts);
-    myClone.alpha_snp = new gsl_matrix * [myClone.snpEmit->nSamples];
-    myClone.gamma_snp = new gsl_matrix * [myClone.snpEmit->nSamples];    
-    for (int s=0; s < snpEmit.nSamples; s++){
-      myClone.alpha_snp[s] = NULL;
-      myClone.gamma_snp[s] = NULL;
-      myClone.get_snp_posterior(s);
-      print_posterior( snp_fp, &myClone, &snpEmit, s, opts);
+    FILE * snv_fp = fopen( buff, "w");
+    print_clonal_header( snv_fp, &myClone, &snvEmit, opts);
+    myClone.alpha_snv = new gsl_matrix * [myClone.snvEmit->nSamples];
+    myClone.gamma_snv = new gsl_matrix * [myClone.snvEmit->nSamples];    
+    for (int s=0; s < snvEmit.nSamples; s++){
+      myClone.alpha_snv[s] = NULL;
+      myClone.gamma_snv[s] = NULL;
+      myClone.get_snv_posterior(s);
+      print_posterior( snv_fp, &myClone, &snvEmit, s, opts);
       //cleanup
-      gsl_matrix_free( myClone.gamma_snp[s]);
-      myClone.gamma_snp[s] = NULL;
+      gsl_matrix_free( myClone.gamma_snv[s]);
+      myClone.gamma_snv[s] = NULL;
       //total copynumber...
-      print_phi( snp_utcn_fp,  &myClone, &snpEmit, s, opts);
+      print_phi( snv_utcn_fp,  &myClone, &snvEmit, s, opts);
     }
-    fclose(snp_fp);
-    delete [] myClone.gamma_snp;
-    delete [] myClone.alpha_snp;
+    fclose(snv_fp);
+    delete [] myClone.gamma_snv;
+    delete [] myClone.alpha_snv;
   }
-  if (snp_utcn_fp != NULL) fclose(snp_utcn_fp);
+  if (snv_utcn_fp != NULL) fclose(snv_utcn_fp);
   if (baf_utcn_fp != NULL) fclose(baf_utcn_fp);
-  //SNP BULK
-  if (snpEmit.is_set && myClone.bulk_mean != NULL){
+  //SNV BULK
+  if (snvEmit.is_set && myClone.bulk_mean != NULL){
     if (opts.bulk_updates > 0) myClone.set_bulk_to_post();
     //print bulk posterior mean/distribution//TBD
     for (int t=0; t<nTimes; t++){
@@ -371,15 +371,15 @@ int main (int argc, const char * argv[]){
 	fprintf( bulk_fp, " std-dev dist");
       }
       fprintf( bulk_fp, "\n");
-      for (int s=0; s < snpEmit.nSamples; s++){
-	for (int idx=0; idx<snpEmit.nSites[s]; idx++){
+      for (int s=0; s < snvEmit.nSamples; s++){
+	for (int idx=0; idx<snvEmit.nSites[s]; idx++){
 	  double bmean = myClone.bulk_mean[t][s][idx];
-	  fprintf( bulk_fp, "%i %i %.3f", snpEmit.chr[s], snpEmit.loci[s][idx], bmean);
+	  fprintf( bulk_fp, "%i %i %.3f", snvEmit.chr[s], snvEmit.loci[s][idx], bmean);
 	  if (myClone.bulk_prior!=NULL){
 	    gsl_vector_view bdist = gsl_matrix_row( myClone.bulk_dist[t][s], idx);
 	    double var = get_var( &bdist.vector, 0.0, 1.0, bmean);
 	    fprintf( bulk_fp, " %.3f", sqrt(var));
-	    for (int i=0; i<=snpEmit.gridSize; i++){
+	    for (int i=0; i<=snvEmit.gridSize; i++){
 	      fprintf( bulk_fp, " %.3f", (&bdist.vector)->data[i]);
 	    }
 	  }
@@ -412,13 +412,13 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     if (opt_idx==argc) break;
     if ( argv[opt_idx][0] == '-' && argv[opt_idx][1] == '-') continue;
     if ( opt_switch.compare("--cna") == 0){
-      opts.cnv_fn = argv[opt_idx];
+      opts.cna_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--baf") == 0){
       opts.baf_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--snv") == 0){
-      opts.snp_fn = argv[opt_idx];
+      opts.snv_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--clones") == 0){
       opts.clones_fn = argv[opt_idx];
@@ -462,58 +462,58 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
       opts.restarts = atoi(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--cna-rnd") == 0){
-      opts.cnv_rnd = atof(argv[opt_idx]);
+      opts.cna_rnd = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--baf-rnd") == 0){
       opts.baf_rnd = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--snv-rnd") == 0){
-      opts.snp_rnd = atof(argv[opt_idx]);
+      opts.snv_rnd = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--snv-err") == 0){
-      opts.snp_err = atof(argv[opt_idx]);
+      opts.snv_err = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--snv-fpr") == 0){
-      opts.snp_fpr = atof(argv[opt_idx]);
+      opts.snv_fpr = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--cna-jump") == 0){
-      opts.cnv_jump = atof(argv[opt_idx]);
+      opts.cna_jump = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--baf-jump") == 0){
       opts.baf_jump = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--snv-jump") == 0){
-      opts.snp_jump = atof(argv[opt_idx]);
+      opts.snv_jump = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--bulk-sigma") == 0){
       opts.bulk_sigma = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--cna-shape") == 0){
-      opts.cnv_shape = atof(argv[opt_idx]);
+      opts.cna_shape = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--baf-shape") == 0){
       opts.baf_shape = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--snv-shape") == 0){
-      opts.snp_shape = atof(argv[opt_idx]);
+      opts.snv_shape = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--baf-pen") == 0){
       opts.baf_pen = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--snv-pen") == 0){
-      opts.snp_pen = atof(argv[opt_idx]);
+      opts.snv_pen = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--purity") == 0){
       opts.purity_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--cna-jumps") == 0){
-      opts.cnv_jumps_fn = argv[opt_idx];
+      opts.cna_jumps_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--baf-jumps") == 0){
       opts.baf_jumps_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--snv-jumps") == 0){
-      opts.snp_jumps_fn = argv[opt_idx];
+      opts.snv_jumps_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--force") == 0){
       opts.force = atoi(argv[opt_idx]);
@@ -548,33 +548,33 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
 }
 
 void default_opts(cmdl_opts& opts){
-  opts.cnv_fn    = NULL;
+  opts.cna_fn    = NULL;
   opts.baf_fn    = NULL;
-  opts.snp_fn    = NULL;
+  opts.snv_fn    = NULL;
   opts.bulk_fn    = NULL;
   opts.clones_fn  = NULL;
   opts.bias_fn    = NULL;
   opts.cn_fn      = NULL;
   opts.purity_fn  = NULL;
-  opts.cnv_jumps_fn   = NULL;
+  opts.cna_jumps_fn   = NULL;
   opts.baf_jumps_fn   = NULL;
-  opts.snp_jumps_fn   = NULL;
+  opts.snv_jumps_fn   = NULL;
   opts.pre      = "./out";
   opts.grid     = 300;
-  opts.cnv_jump = -1.0;//negative values mean NO correlations
+  opts.cna_jump = -1.0;//negative values mean NO correlations
   opts.baf_jump = -1.0;
-  opts.snp_jump = -1.0;
-  opts.cnv_rnd = 0.0;//random error rate
+  opts.snv_jump = -1.0;
+  opts.cna_rnd = 0.0;//random error rate
   opts.baf_rnd = 0.0;
-  opts.snp_rnd = 0.0;
-  opts.snp_err = 0.0;
-  opts.snp_fpr = -1.0;
-  opts.cnv_shape = -1.0;//shape parameters
+  opts.snv_rnd = 0.0;
+  opts.snv_err = 0.0;
+  opts.snv_fpr = -1.0;
+  opts.cna_shape = -1.0;//shape parameters
   opts.baf_shape = -1.0;
-  opts.snp_shape = -1.0;
+  opts.snv_shape = -1.0;
   opts.baf_pen   = -1.0;
-  opts.snp_pen   = -1.0;
-  opts.bulk_fix  = 0.0;//constant bulk for SNP
+  opts.snv_pen   = -1.0;
+  opts.bulk_fix  = 0.0;//constant bulk for SNV
   opts.bulk_sigma = -1.0;
   opts.force    = -1;
   opts.trials   = 1;
@@ -593,17 +593,17 @@ void default_opts(cmdl_opts& opts){
 
 void test_opts(cmdl_opts& opts){
   // *** CHECK COMMAND LINE ARGUMENTS ***
-  if ( opts.cnv_fn == NULL && opts.baf_fn == NULL && opts.snp_fn == NULL){
+  if ( opts.cna_fn == NULL && opts.baf_fn == NULL && opts.snv_fn == NULL){
     cout<<"One of --cna [file], --baf [file] and --snv [file] must be given.\n";
     exit(1);
   }
-  if (opts.snp_fn != NULL){
-    if ( opts.snp_jumps_fn != NULL || opts.snp_jump >= 0.0){
+  if (opts.snv_fn != NULL){
+    if ( opts.snv_jumps_fn != NULL || opts.snv_jump >= 0.0){
       if ( opts.bulk_fn == NULL && opts.bulk_fix < 0.0){
 	cout<<"With --snv [file] with correlations, one of --bulk-(prior/mean) [file] or --bulk-fix [double] must be given.\n";
 	exit(1);
       }
-      opts.snp_err = 0.0;
+      opts.snv_err = 0.0;
     }
     else{
       opts.bulk_fix = 0.0;
@@ -617,20 +617,20 @@ void test_opts(cmdl_opts& opts){
       exit(1);
     }
   }
-  if (opts.cnv_fn != NULL && opts.cn_fn != NULL){
+  if (opts.cna_fn != NULL && opts.cn_fn != NULL){
     cout<<"--copynumber [file] cannot be used with --cna [file].\n";
     exit(1);
   }
-  if ( opts.cnv_fn != NULL && opts.cnv_jump < 0.0 && opts.cnv_jumps_fn == NULL ){
+  if ( opts.cna_fn != NULL && opts.cna_jump < 0.0 && opts.cna_jumps_fn == NULL ){
     cout<<"With --cna [file], --cna-jump [double] or --cna-jumps [file] must be given.\n";
     exit(1);
   }
-  /*if ( opts.cnv_fn == NULL && opts.baf_fn != NULL && opts.baf_jump < 0.0 && opts.baf_jumps_fn == NULL ){
-    cout<<"With --baf [file] (no CNV), --baf-jump [double] or --baf-jumps [file] must be given.\n";
+  /*if ( opts.cna_fn == NULL && opts.baf_fn != NULL && opts.baf_jump < 0.0 && opts.baf_jumps_fn == NULL ){
+    cout<<"With --baf [file] (no CNA), --baf-jump [double] or --baf-jumps [file] must be given.\n";
     exit(1);
     }*/
-  if (opts.bulk_fix == 0.0 && opts.snp_rnd == 0.0){
-    opts.snp_rnd = 1.0e-9;
+  if (opts.bulk_fix == 0.0 && opts.snv_rnd == 0.0){
+    opts.snv_rnd = 1.0e-9;
   }
   //some settings...
   if (opts.clones_fn != NULL){
@@ -753,9 +753,9 @@ void print_posterior( FILE * post_fp, Clone * myClone, Emission * myEmit, int s,
     int first = myEmit->idx_of_event[s][evt];     
     int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1] - 1 : myEmit->nSites[s]-1; 
     gsl_matrix * post=NULL;
-    if ( myEmit == myClone->cnvEmit) post =  myClone->gamma_cnv[s];
+    if ( myEmit == myClone->cnaEmit) post =  myClone->gamma_cna[s];
     if ( myEmit == myClone->bafEmit) post =  myClone->gamma_baf[s];
-    if ( myEmit == myClone->snpEmit) post =  myClone->gamma_snp[s];
+    if ( myEmit == myClone->snvEmit) post =  myClone->gamma_snv[s];
     if( opts.print_all || myEmit->coarse_grained == 0 ){
       for (int idx=first; idx<=last; idx++){
       	fprintf( post_fp, "%i %6i", myEmit->chr[s], myEmit->loci[s][idx]);

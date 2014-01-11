@@ -4,3 +4,5 @@ build/
 test/
 release/
 release*
+*.bk
+bk/

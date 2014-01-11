@@ -533,30 +533,6 @@ double find_JD_parameters(JumpDiffusion * myJD, cmdl_opts& opts){
     gsl_vector * range = gsl_vector_calloc(nvar);
     //set initial values
     init_parameter(var, range,  to_opt, myJD, opts);
-    /*for (int i=0; i<nvar; i++){
-      if (to_opt[i] == 0){//jump probability
-	var->data[i]   = (opts.jump_i > 0.0) ? opts.jump_i : 1.0e-5;
-	range->data[i] = 1.0;
-      }
-      else if(to_opt[i] == 1){//diffusion constant
-	if (opts.sigma_i > 0.0){
-	  var->data[i]   = opts.sigma_i;
-	}
-	else{
-	  var->data[i]   = 0.1*myJD->myEmit->dx / sqrt(myJD->myEmit->median_dist);
-	}
-	range->data[i] = 0.0;
-      }
-      else if(to_opt[i] == 2){//random rate
-	var->data[i]   = (opts.rnd_emit_i > 0.0) ? opts.rnd_emit_i : 1.0e-5;
-	range->data[i] = 1.0;
-      }
-      else if(to_opt[i] == 3){//shape parameter
-	var->data[i]   = (opts.shape_i > 0.0) ? opts.shape_i : 100.0;
-	range->data[i] = 0.0;
-      }
-      }
-    */
     fpar myfpar;
     myfpar.myJD    = myJD;
     myfpar.to_opt  = to_opt;
@@ -581,7 +557,7 @@ double find_JD_parameters(JumpDiffusion * myJD, cmdl_opts& opts){
 	printf("%-11s ", "shape");
       }
     }
-    printf("llh\n");
+    printf("-llh\n");
     llh = - find_local_optimum( 0, simplex, lower, var, range,  param, &Q, 1.0e-3, steps, 1);
     //adapt the range if needed
     if ((opts.mode==3 || opts.mode==4) && (opts.xmin < 0.0 && opts.xmax < 0.0)  && opts.bias_fn == NULL){

@@ -311,27 +311,27 @@ void get_fixed_clones(gsl_matrix *& clones, gsl_vector *& mass, const char * clo
 void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
   double ** vardummy = NULL;
   gsl_matrix ** distdummy = NULL;
-  if (myClone->cnvEmit->is_set){//***CNV JUMPS***
-    if(opts.cnv_jumps_fn != NULL){//1. either use external jump probability track
-      get_track( opts.cnv_jumps_fn, distdummy, myClone->cnvEmit->pjump, vardummy, myClone->cnvEmit);
-      for (int s=0; s< myClone->cnvEmit->nSamples; s++){
-	myClone->cnvEmit->coarse_grain_jumps( s, opts.min_jump, 5);
+  if (myClone->cnaEmit->is_set){//***CNA JUMPS***
+    if(opts.cna_jumps_fn != NULL){//1. either use external jump probability track
+      get_track( opts.cna_jumps_fn, distdummy, myClone->cnaEmit->pjump, vardummy, myClone->cnaEmit);
+      for (int s=0; s< myClone->cnaEmit->nSamples; s++){
+	myClone->cnaEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
-      myClone->cnvEmit->get_events_via_jumps();
+      myClone->cnaEmit->get_events_via_jumps();
     }
-    else if (opts.cnv_jump >= 0.0){//2. or constant jump probability per base
-      myClone->cnvEmit->set_pjump(opts.cnv_jump);
+    else if (opts.cna_jump >= 0.0){//2. or constant jump probability per base
+      myClone->cnaEmit->set_pjump(opts.cna_jump);
     }
     else{
       abort();
     }
-    myClone->cnvEmit->allocate_phi();
-    myClone->cnvEmit->allocate_cnmax();
+    myClone->cnaEmit->allocate_phi();
+    myClone->cnaEmit->allocate_cnmax();
     if (myClone->bafEmit->is_set){
-      myClone->bafEmit->map_idx_to_Event(myClone->cnvEmit);
+      myClone->bafEmit->map_idx_to_Event(myClone->cnaEmit);
     }
     else{
-      if (myClone->snpEmit->is_set) myClone->snpEmit->map_idx_to_Event(myClone->cnvEmit);
+      if (myClone->snvEmit->is_set) myClone->snvEmit->map_idx_to_Event(myClone->cnaEmit);
     }
   }
   if ( myClone->bafEmit->is_set ){//***BAF JUMPS***
@@ -341,13 +341,13 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
 	myClone->bafEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
       myClone->bafEmit->get_events_via_jumps();
-      if ( myClone->cnvEmit->is_set && opts.cnv_jumps_fn != NULL ){//allow transit at CNV jumps
-	myClone->bafEmit->add_break_points_via_jumps( myClone->cnvEmit, opts.min_jump);
+      if ( myClone->cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//allow transit at CNA jumps
+	myClone->bafEmit->add_break_points_via_jumps( myClone->cnaEmit, opts.min_jump);
       }
       myClone->bafEmit->get_events_via_jumps();
     }
-    else if ( myClone->cnvEmit->is_set && opts.cnv_jumps_fn != NULL ){//2. map the CNV jumps to BAF
-      myClone->bafEmit->map_jumps(myClone->cnvEmit);
+    else if ( myClone->cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//2. map the CNA jumps to BAF
+      myClone->bafEmit->map_jumps(myClone->cnaEmit);
       myClone->bafEmit->get_events_via_jumps();
     }
     else if (opts.baf_jump >= 0.0){//or 3. constant jump probability per base
@@ -356,30 +356,30 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
     else{
       abort();
     }
-    if (myClone->cnvEmit->is_set || opts.cn_fn != NULL){
+    if (myClone->cnaEmit->is_set || opts.cn_fn != NULL){
       myClone->bafEmit->allocate_phi();
       myClone->bafEmit->allocate_cnmax();
     }
-    if (myClone->snpEmit->is_set) myClone->snpEmit->map_idx_to_Event(myClone->bafEmit);
+    if (myClone->snvEmit->is_set) myClone->snvEmit->map_idx_to_Event(myClone->bafEmit);
   }
-  if ( myClone->snpEmit->is_set ){//***SNP JUMPS***
-    if ( opts.snp_jumps_fn != NULL ){
-      get_track( opts.snp_jumps_fn, distdummy, myClone->snpEmit->pjump, vardummy, myClone->snpEmit);
-      for (int s=0; s< myClone->snpEmit->nSamples; s++){//ignore improbable jump events
-	myClone->snpEmit->coarse_grain_jumps( s, opts.min_jump, 5);
+  if ( myClone->snvEmit->is_set ){//***SNV JUMPS***
+    if ( opts.snv_jumps_fn != NULL ){
+      get_track( opts.snv_jumps_fn, distdummy, myClone->snvEmit->pjump, vardummy, myClone->snvEmit);
+      for (int s=0; s< myClone->snvEmit->nSamples; s++){//ignore improbable jump events
+	myClone->snvEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
-      myClone->snpEmit->get_events_via_jumps();
-      if ( opts.cnv_jumps_fn != NULL ){
-	myClone->snpEmit->add_break_points_via_jumps( myClone->cnvEmit, opts.min_jump);
+      myClone->snvEmit->get_events_via_jumps();
+      if ( opts.cna_jumps_fn != NULL ){
+	myClone->snvEmit->add_break_points_via_jumps( myClone->cnaEmit, opts.min_jump);
       }
-      myClone->snpEmit->get_events_via_jumps();
+      myClone->snvEmit->get_events_via_jumps();
     }
-    else if (opts.snp_jump >= 0.0){
-      myClone->snpEmit->set_pjump(opts.snp_jump);
+    else if (opts.snv_jump >= 0.0){
+      myClone->snvEmit->set_pjump(opts.snv_jump);
     }
-    if (myClone->cnvEmit->is_set || opts.cn_fn != NULL){
-      myClone->snpEmit->allocate_phi();
-      myClone->snpEmit->allocate_cnmax();
+    if (myClone->cnaEmit->is_set || opts.cn_fn != NULL){
+      myClone->snvEmit->allocate_phi();
+      myClone->snvEmit->allocate_cnmax();
     }
   }
 }
@@ -390,26 +390,26 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
 
 //***BIAS FIELD***
 void get_bias_field( Clone * myClone, cmdl_opts& opts){
-  myClone->cnvEmit->allocate_bias();
-  get_bias( opts.bias_fn, myClone->cnvEmit);
+  myClone->cnaEmit->allocate_bias();
+  get_bias( opts.bias_fn, myClone->cnaEmit);
   //normalize the bias field...
   double bias_mean=0.0,norm=0.0;
-  for (int s=0; s< myClone->cnvEmit->nSamples; s++){
-    int ncn = myClone->normal_copy[ myClone->cnvEmit->chr[s]];
-    for (int i=0; i< myClone->cnvEmit->nSites[s]; i++){
-      bias_mean += myClone->cnvEmit->bias[s][i] / double(ncn);
+  for (int s=0; s< myClone->cnaEmit->nSamples; s++){
+    int ncn = myClone->normal_copy[ myClone->cnaEmit->chr[s]];
+    for (int i=0; i< myClone->cnaEmit->nSites[s]; i++){
+      bias_mean += myClone->cnaEmit->bias[s][i] / double(ncn);
     }
-    norm += double(myClone->cnvEmit->nSites[s]);
+    norm += double(myClone->cnaEmit->nSites[s]);
   }
   bias_mean /= norm;
-  for (int s=0; s< myClone->cnvEmit->nSamples; s++){
-    int ncn = myClone->normal_copy[ myClone->cnvEmit->chr[s]];
-    for (int i=0; i< myClone->cnvEmit->nSites[s]; i++){
-      myClone->cnvEmit->bias[s][i] /= bias_mean * double(ncn);
-      myClone->cnvEmit->log_bias[s][i] = log(myClone->cnvEmit->bias[s][i]);
-      for (int t=1; t<myClone->cnvEmit->nTimes; t++){
-	myClone->cnvEmit->bias[s][i]     = myClone->cnvEmit->bias[s][i];
-	myClone->cnvEmit->log_bias[s][i] = myClone->cnvEmit->log_bias[s][i];
+  for (int s=0; s< myClone->cnaEmit->nSamples; s++){
+    int ncn = myClone->normal_copy[ myClone->cnaEmit->chr[s]];
+    for (int i=0; i< myClone->cnaEmit->nSites[s]; i++){
+      myClone->cnaEmit->bias[s][i] /= bias_mean * double(ncn);
+      myClone->cnaEmit->log_bias[s][i] = log(myClone->cnaEmit->bias[s][i]);
+      for (int t=1; t<myClone->cnaEmit->nTimes; t++){
+	myClone->cnaEmit->bias[s][i]     = myClone->cnaEmit->bias[s][i];
+	myClone->cnaEmit->log_bias[s][i] = myClone->cnaEmit->log_bias[s][i];
       }
     }
   }
@@ -434,7 +434,7 @@ void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, 
   gsl_matrix_view nclones;
   gsl_vector_view nmass;
   printf("Printing log-likelihood values for %i parameter sets to %s\n", nPts, clonal_out);
-  if (myClone->cnvEmit->is_set && mass != NULL){        
+  if (myClone->cnaEmit->is_set && mass != NULL){        
     for (int i=0; i<nPts; i++){
       printf("\r%i", i+1);
       cout<<flush;
@@ -452,21 +452,21 @@ void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, 
       myClone->set_mass( &nmass.vector );
       myClone->get_all_total_llh();
       fprintf( clonal_fp, "%.8e %.8e %.8e %.8e\n", 
-	       myClone->cnv_total_llh , myClone->baf_total_llh , myClone->snp_total_llh,
-	       myClone->cnv_total_llh + myClone->baf_total_llh + myClone->snp_total_llh);
+	       myClone->cna_total_llh , myClone->baf_total_llh , myClone->snv_total_llh,
+	       myClone->cna_total_llh + myClone->baf_total_llh + myClone->snv_total_llh);
     }
   }
-  else if ( myClone->snpEmit->is_set){   
+  else if ( myClone->snvEmit->is_set){   
     fprintf(clonal_fp, "\n");  
     for (int i=0; i<nPts; i++){
       printf("\r%i", i+1);
       cout<<flush;
       nclones = gsl_matrix_submatrix( clones, i*nT, 0, nT, nC);
       myClone->set(&nclones.matrix);		
-      myClone->get_snp_total_llh();
+      myClone->get_snv_total_llh();
       fprintf( clonal_fp, "%.8e %.8e %.8e %.8e\n", 
-	       0. , 0. , myClone->snp_total_llh,
-	       myClone->snp_total_llh);
+	       0. , 0. , myClone->snv_total_llh,
+	       myClone->snv_total_llh);
     }
   }
   cout<<"...done"<<endl;
@@ -479,7 +479,7 @@ void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, 
 //top-level clone inference function (checks dimensions and chooses sub-programmes)...
 int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_opts& opts){
   //***check input***
-  if (Mass != NULL && myClone->cnvEmit->is_set){
+  if (Mass != NULL && myClone->cnaEmit->is_set){
     if (Clones != NULL && Clones->size1 != Mass->size){
       cout<<"ERROR-1a in infer_clones()\n";
       exit(1);
@@ -512,7 +512,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     best_priors[n] = NULL;
   }
   //exit(0);
-  double bic=0, llh=0, max_llh=0,cnv_llh=0,baf_llh=0,snp_llh=0, max_bic=0; 
+  double bic=0, llh=0, max_llh=0,cna_llh=0,baf_llh=0,snv_llh=0, max_bic=0; 
   int steps=0,btrial=0,bestn=0;
   int nT = myClone->nTimes;
   // *** NO CLONE SCENARIO (n==0) ***
@@ -520,48 +520,48 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     myClone->nClones = 0;
     myClone->set(NULL);
     llh = 0.0;
-    if (myClone->cnvEmit->is_set){// ***CNV***
-      //with CNV data, the mass must be found even for n=0...
+    if (myClone->cnaEmit->is_set){// ***CNA***
+      //with CNA data, the mass must be found even for n=0...
       best_mass[0] = gsl_vector_alloc(nT);
       if ( Mass == NULL){//need to get masses...
-	cnv_llh = cnv_only_mass_noclones(  best_mass[0], myClone, 0, steps);
+	cna_llh = cna_only_mass_noclones(  best_mass[0], myClone, 0, steps);
 	myClone->set_mass(best_mass[0]);	
       }
       else if ( Mass != NULL){//masses are fixed...
 	gsl_vector_memcpy( best_mass[0],  Mass);
 	myClone->set_mass( best_mass[0]);
-	cnv_llh = myClone->get_cnv_total_llh();
+	cna_llh = myClone->get_cna_total_llh();
       }   
       //set trivial (normal) total copynumber...  
-      for (int s=0; s<myClone->cnvEmit->nSamples; s++){
+      for (int s=0; s<myClone->cnaEmit->nSamples; s++){
 	myClone->get_phi(s);
-	if (myClone->bafEmit->is_set) myClone->map_phi( myClone->cnvEmit, s, myClone->bafEmit);
-	if (myClone->snpEmit->is_set) myClone->map_phi( myClone->cnvEmit, s, myClone->snpEmit);
+	if (myClone->bafEmit->is_set) myClone->map_phi( myClone->cnaEmit, s, myClone->bafEmit);
+	if (myClone->snvEmit->is_set) myClone->map_phi( myClone->cnaEmit, s, myClone->snvEmit);
       }
     }
     if (myClone->bafEmit->is_set){//*** BAF - NO CLONE ***
       baf_llh = myClone->get_baf_total_llh();
     }
-    if (myClone->snpEmit->is_set){//*** SNP - NO CLONE ***
+    if (myClone->snvEmit->is_set){//*** SNV - NO CLONE ***
       if (myClone->bulk_mean != NULL){
-	snp_bulk_update(myClone);
+	snv_bulk_update(myClone);
 	myClone->set_bulk_to_post();
       }
-      snp_llh = myClone->get_snp_total_llh();
+      snv_llh = myClone->get_snv_total_llh();
       if (myClone->bulk_prior != NULL) myClone->set_bulk_to_prior();
     }
-    llh = cnv_llh + baf_llh + snp_llh;   
+    llh = cna_llh + baf_llh + snv_llh;   
     max_bic = 2.0*llh;
-    if (myClone->cnvEmit->is_set){//no. parameters
+    if (myClone->cnaEmit->is_set){//no. parameters
       double complexity = double(myClone->nTimes)*log( double(myClone->total_loci) );
       max_bic -= complexity;
       printf("complexity = %f\n", complexity);
     }
-    report_results( cnv_llh, baf_llh, snp_llh, steps, best_mass[0], NULL);
+    report_results( cna_llh, baf_llh, snv_llh, steps, best_mass[0], NULL);
     printf("\nno clone best total llh = %+.6e, bic = %+.6e\n", llh, max_bic);
     cout<<endl;
     fprintf(clonal_fp, "0 %.10e %.10e %.10e %.10e %.10e\n", 
-	    cnv_llh, baf_llh, snp_llh, llh, max_bic);
+	    cna_llh, baf_llh, snv_llh, llh, max_bic);
   }
   //exit(0);
   // *** ONE OR MORE CLONES (n>0) ***
@@ -572,11 +572,11 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     gsl_matrix * clones = gsl_matrix_alloc( nT, n);
     gsl_vector * mass   = NULL;
     gsl_matrix * priors = NULL;
-    if (myClone->cnvEmit->is_set){//mass only for CNV data...
+    if (myClone->cnaEmit->is_set){//mass only for CNA data...
       mass         = gsl_vector_calloc(nT);
       best_mass[n] = gsl_vector_calloc(nT);
     }
-    if (myClone->snpEmit->is_set){//SNP cn-priors only for SNP data...
+    if (myClone->snvEmit->is_set){//SNV cn-priors only for SNV data...
       priors         = gsl_matrix_calloc(myClone->maxcn+1,myClone->maxcn+1);
       best_priors[n] = gsl_matrix_calloc(myClone->maxcn+1,myClone->maxcn+1);
     }
@@ -589,9 +589,9 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
       //test llh value...
       if (trial==0 || llh > max_llh){
 	max_llh = llh;
-	cnv_llh = cl;
+	cna_llh = cl;
 	baf_llh = bl;
-	snp_llh = sl;
+	snv_llh = sl;
 	btrial  = trial;//trial with the best solution
 	// keep results...	
 	gsl_matrix_memcpy( best_clones[n], clones);
@@ -607,7 +607,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     bic = 2.0*max_llh - myClone->complexity;
     printf("%i clone best total llh (trial %i) = %+.6e, bic = %+.6e\n\n", n, btrial+1, max_llh, bic);
     fprintf(clonal_fp, "%i %.10e %.10e %.10e %.10e %.10e\n", 
-	    n, cnv_llh, baf_llh, snp_llh, max_llh, bic);
+	    n, cna_llh, baf_llh, snv_llh, max_llh, bic);
     // test BIC value...
     if (bic > max_bic || (opts.force > 0 && opts.force == n) ){
       bestn   = n;
@@ -650,9 +650,9 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     myClone->set_mass(best_mass[bestn]);
   }
   if (best_priors[bestn] != NULL && bestn > 0){
-    myClone->set_cn_prior_snp( best_priors[bestn] );
+    myClone->set_cn_prior_snv( best_priors[bestn] );
   }
-  /*if (myClone->cnvEmit->is_set==0 && myClone->bafEmit->is_set){
+  /*if (myClone->cnaEmit->is_set==0 && myClone->bafEmit->is_set){
     myClone->set_cn_prior_baf();
   }
   */
@@ -678,45 +678,45 @@ double get_clones( gsl_matrix *& clones,
 		   gsl_matrix *& priors, 
 		   Clone * myClone,
 		   cmdl_opts& opts,
-		   double& cnv_llh,
+		   double& cna_llh,
 		   double& baf_llh,
-		   double& snp_llh
+		   double& snv_llh
 		   ){
   int nC = myClone->nClones;
   //default set
   gsl_matrix_set_all( clones, 1.0/double(nC));
   myClone->set( clones );
   double llh=0;
-  if (myClone->cnvEmit->is_set){
-    llh = get_clones_cnv( clones, Clones, mass, Mass, myClone, opts, cnv_llh, baf_llh, snp_llh);
+  if (myClone->cnaEmit->is_set){
+    llh = get_clones_cna( clones, Clones, mass, Mass, myClone, opts, cna_llh, baf_llh, snv_llh);
   }
   else if (myClone->bafEmit->is_set){
     llh = get_clones_baf( clones, Clones, myClone, opts);
     baf_llh = llh;
   }
-  else if (myClone->snpEmit->is_set){
-    if (myClone->snpEmit->connect){
-      llh = get_clones_snp_wcorr( clones, Clones, myClone, opts);
+  else if (myClone->snvEmit->is_set){
+    if (myClone->snvEmit->connect){
+      llh = get_clones_snv_wcorr( clones, Clones, myClone, opts);
     }
     else{
-      llh = get_clones_snp_ncorr( clones, Clones, priors, myClone, opts); 
+      llh = get_clones_snv_ncorr( clones, Clones, priors, myClone, opts); 
     }
-    snp_llh = llh;
+    snv_llh = llh;
   }
   return(llh);
 }
 
 
 
-double get_clones_cnv( gsl_matrix *& clones, 
+double get_clones_cna( gsl_matrix *& clones, 
 		       gsl_matrix *& Clones, 
 		       gsl_vector *& mass, 
 		       gsl_vector *& Mass, 
 		       Clone * myClone,
 		       cmdl_opts& opts,
-		       double& cnv_llh,
+		       double& cna_llh,
 		       double& baf_llh,
-		       double& snp_llh
+		       double& snv_llh
 		       ){
   int nT = myClone->nTimes;
   int nC = myClone->nClones;
@@ -725,7 +725,7 @@ double get_clones_cnv( gsl_matrix *& clones,
   int steps;
   gsl_matrix * nclones = gsl_matrix_alloc(nT,nC);
   gsl_vector * mem = gsl_vector_alloc(nC);
-  if ( myClone->snpEmit->is_set && myClone->bulk_mean != NULL) myClone->set_bulk_to_prior();
+  if ( myClone->snvEmit->is_set && myClone->bulk_mean != NULL) myClone->set_bulk_to_prior();
   if (Mass==NULL && Clones == NULL){//nothing is fixed
     //*** STEP 1: FIND FIRST ESTIMATES OF MASS AND CLONES ***    
     //random initial values
@@ -735,8 +735,8 @@ double get_clones_cnv( gsl_matrix *& clones,
       double p = (1.5 - double(rand()) / double(RAND_MAX));
       mass->data[t] = 0.5*double(myClone->nmean->data[t]) * p;
     }
-    llh = cnv_clones_mass( clones, mass, myClone, 0, steps, cnv_llh, baf_llh, snp_llh);
-    report_results( cnv_llh, baf_llh, snp_llh, steps, mass, clones);
+    llh = cna_clones_mass( clones, mass, myClone, 0, steps, cna_llh, baf_llh, snv_llh);
+    report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
     gsl_matrix * candidate_masses = gsl_matrix_calloc(nL,nT);
     gsl_vector * levels = gsl_vector_calloc(nL);
     gsl_vector * nmass  = gsl_vector_calloc(nT);
@@ -770,12 +770,12 @@ double get_clones_cnv( gsl_matrix *& clones,
 	  gsl_matrix_set_row( nclones, t, mem);
 	}
 	steps=0;
-	nllh = cnv_clones_fixed_mass( nclones, myClone, opts.restarts, steps, cl, bl, sl);
+	nllh = cna_clones_fixed_mass( nclones, myClone, opts.restarts, steps, cl, bl, sl);
 	if (nllh > llh + 1.0 ){
 	  llh = nllh;
-	  cnv_llh = cl;
+	  cna_llh = cl;
 	  baf_llh = bl;
-	  snp_llh = sl;
+	  snv_llh = sl;
 	  gsl_vector_memcpy( mass, &cmass.vector);
 	  gsl_matrix_memcpy( clones, nclones);
 	  printf("\r");
@@ -787,12 +787,12 @@ double get_clones_cnv( gsl_matrix *& clones,
 	  gsl_matrix_memcpy( nclones, clones);
 	  gsl_vector_memcpy( nmass, mass);
 	  steps=0;
-	  nllh = cnv_clones_mass( nclones, nmass, myClone, 0, steps, cl, bl, sl);
+	  nllh = cna_clones_mass( nclones, nmass, myClone, 0, steps, cl, bl, sl);
 	  if ( nllh > llh ){
 	    llh = nllh;
-	    cnv_llh = cl;
+	    cna_llh = cl;
 	    baf_llh = bl;
-	    snp_llh = sl;
+	    snv_llh = sl;
 	    gsl_vector_memcpy( mass, nmass);
 	    gsl_matrix_memcpy( clones, nclones);
 	    printf("\r");
@@ -805,21 +805,21 @@ double get_clones_cnv( gsl_matrix *& clones,
     gsl_matrix_free(candidate_masses);
     gsl_vector_free(levels);
     gsl_vector_free(nmass);
-    //SNP bulk update, if required...
+    //SNV bulk update, if required...
     if (opts.bulk_updates>0){
       for (int it=0; it<opts.bulk_updates; it++){
-	snp_bulk_update(myClone);
+	snv_bulk_update(myClone);
 	myClone->set_bulk_to_post();
 	if (myClone->bulk_prior==NULL) break;
-	if (myClone->snpEmit->coarse_grained) myClone->get_snpEmitLog();
+	if (myClone->snvEmit->coarse_grained) myClone->get_snvEmitLog();
 	gsl_matrix_memcpy( nclones, clones);
 	gsl_vector_memcpy( nmass, mass);
-	nllh = cnv_clones_mass( nclones, nmass, myClone, 0, steps, cl, bl, sl);
+	nllh = cna_clones_mass( nclones, nmass, myClone, 0, steps, cl, bl, sl);
 	if (nllh > llh + 1.0){
 	  llh = nllh;
-	  cnv_llh = cl;
+	  cna_llh = cl;
 	  baf_llh = bl;
-	  snp_llh = sl;
+	  snv_llh = sl;
 	  gsl_vector_memcpy( mass, nmass);
 	  gsl_matrix_memcpy( clones, nclones);
 	  report_results( cl,bl,sl, steps, mass, clones);
@@ -841,47 +841,47 @@ double get_clones_cnv( gsl_matrix *& clones,
       }
       steps=0;
       double cl,bl,sl;
-      double nllh = cnv_mass_fixed_clones( nmass, myClone, 0, steps, cl,bl,sl);
+      double nllh = cna_mass_fixed_clones( nmass, myClone, 0, steps, cl,bl,sl);
       if (run==0 || nllh > llh + 1.0){	
-	cnv_llh=cl;
+	cna_llh=cl;
 	baf_llh=bl;
-	snp_llh=sl;
+	snv_llh=sl;
 	llh = nllh;
 	gsl_vector_memcpy(mass,nmass);
 	printf("%2i of %3i\n",run+1,opts.restarts);
-	report_results( cnv_llh, baf_llh, snp_llh, steps, mass, clones);
+	report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
       }
     }
     gsl_vector_free(nmass);
     myClone->set_mass(mass);
-    //SNP bulk update, if required...
+    //SNV bulk update, if required...
     if (opts.bulk_updates>0){
-      snp_bulk_update(myClone);
+      snv_bulk_update(myClone);
       myClone->set_bulk_to_post();
-      if (myClone->snpEmit->coarse_grained) myClone->get_snpEmitLog();
-      //get CNV posterior and SNP llh...
-      myClone->alpha_cnv = new gsl_matrix * [myClone->cnvEmit->nSamples];
-      myClone->gamma_cnv = new gsl_matrix * [myClone->cnvEmit->nSamples];
+      if (myClone->snvEmit->coarse_grained) myClone->get_snvEmitLog();
+      //get CNA posterior and SNV llh...
+      myClone->alpha_cna = new gsl_matrix * [myClone->cnaEmit->nSamples];
+      myClone->gamma_cna = new gsl_matrix * [myClone->cnaEmit->nSamples];
       int s;
-      snp_llh=0; 
+      snv_llh=0; 
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
-      for ( s=0; s<myClone->snpEmit->nSamples; s++){  
-	int cnv_sample = myClone->cnvEmit->idx_of[myClone->snpEmit->chr[s]];
-	myClone->alpha_cnv[cnv_sample]=NULL;
-	myClone->gamma_cnv[cnv_sample]=NULL;
-	myClone->get_cnv_posterior(cnv_sample);
-	myClone->map_phi( myClone->cnvEmit, cnv_sample, myClone->snpEmit);
+      for ( s=0; s<myClone->snvEmit->nSamples; s++){  
+	int cna_sample = myClone->cnaEmit->idx_of[myClone->snvEmit->chr[s]];
+	myClone->alpha_cna[cna_sample]=NULL;
+	myClone->gamma_cna[cna_sample]=NULL;
+	myClone->get_cna_posterior(cna_sample);
+	myClone->map_phi( myClone->cnaEmit, cna_sample, myClone->snvEmit);
 	double l;
-	myClone->do_snp_Fwd( s, l);
+	myClone->do_snv_Fwd( s, l);
 	#pragma omp critical
 	{
-	  snp_llh += l;
+	  snv_llh += l;
 	}
-	gsl_matrix_free(myClone->gamma_cnv[cnv_sample]);  
+	gsl_matrix_free(myClone->gamma_cna[cna_sample]);  
       }
-      delete [] myClone->gamma_cnv;
-      delete [] myClone->alpha_cnv;
-      report_results( cnv_llh, baf_llh, snp_llh, steps, mass, clones);	
+      delete [] myClone->gamma_cna;
+      delete [] myClone->alpha_cna;
+      report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);	
     }
   }
   else if (Mass != NULL && Clones == NULL){// mass is fixed, clones are not
@@ -892,22 +892,22 @@ double get_clones_cnv( gsl_matrix *& clones,
       gsl_matrix_set_row( clones, t, mem);
     }
     steps=0;
-    llh = cnv_clones_fixed_mass( clones, myClone, opts.restarts, steps, cnv_llh, baf_llh, snp_llh);
-    report_results( cnv_llh, baf_llh, snp_llh, steps, mass, clones);
-    //SNP bulk update, if required...
+    llh = cna_clones_fixed_mass( clones, myClone, opts.restarts, steps, cna_llh, baf_llh, snv_llh);
+    report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
+    //SNV bulk update, if required...
     if (opts.bulk_updates>0){
       for (int it=0; it<opts.bulk_updates; it++){
-	snp_bulk_update(myClone);
+	snv_bulk_update(myClone);
 	myClone->set_bulk_to_post();
 	if (myClone->bulk_prior==NULL) break;
-	if (myClone->snpEmit->coarse_grained) myClone->get_snpEmitLog();
+	if (myClone->snvEmit->coarse_grained) myClone->get_snvEmitLog();
 	gsl_matrix_memcpy( nclones, clones);
-	double nllh = cnv_clones_fixed_mass( nclones, myClone, 0, steps, cl, bl, sl);
+	double nllh = cna_clones_fixed_mass( nclones, myClone, 0, steps, cl, bl, sl);
 	if (nllh > llh ){
 	  llh = nllh;
-	  cnv_llh = cl;
+	  cna_llh = cl;
 	  baf_llh = bl;
-	  snp_llh = sl;
+	  snv_llh = sl;
 	  gsl_matrix_memcpy( clones, nclones);
 	  report_results( cl,bl,sl, steps, mass, clones);
 	}
@@ -922,41 +922,41 @@ double get_clones_cnv( gsl_matrix *& clones,
     myClone->set(Clones);
     gsl_vector_memcpy( mass, Mass);
     myClone->set_mass(Mass);
-    //llh = cnv_llh_all_fixed( myClone);
+    //llh = cna_llh_all_fixed( myClone);
     llh = myClone->get_all_total_llh();
-    cnv_llh = myClone->cnv_total_llh;
+    cna_llh = myClone->cna_total_llh;
     baf_llh = myClone->baf_total_llh;
-    snp_llh = myClone->snp_total_llh;
-    report_results(  cnv_llh, baf_llh, snp_llh, 0, mass, clones);
-    //SNP bulk update, if required...
+    snv_llh = myClone->snv_total_llh;
+    report_results(  cna_llh, baf_llh, snv_llh, 0, mass, clones);
+    //SNV bulk update, if required...
     if (opts.bulk_updates>0){
-      snp_bulk_update(myClone);
+      snv_bulk_update(myClone);
       myClone->set_bulk_to_post();
-      if (myClone->snpEmit->coarse_grained) myClone->get_snpEmitLog();
-      //get CNV posterior and SNP llh...
-      myClone->alpha_cnv = new gsl_matrix * [myClone->cnvEmit->nSamples];
-      myClone->gamma_cnv = new gsl_matrix * [myClone->cnvEmit->nSamples];
+      if (myClone->snvEmit->coarse_grained) myClone->get_snvEmitLog();
+      //get CNA posterior and SNV llh...
+      myClone->alpha_cna = new gsl_matrix * [myClone->cnaEmit->nSamples];
+      myClone->gamma_cna = new gsl_matrix * [myClone->cnaEmit->nSamples];
       int s;
-      snp_llh = 0.0;
-      myClone->save_snp_alpha = 0; 
+      snv_llh = 0.0;
+      myClone->save_snv_alpha = 0; 
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
-      for ( s=0; s<myClone->snpEmit->nSamples; s++){  
-	int cnv_sample = myClone->cnvEmit->idx_of[myClone->snpEmit->chr[s]];
-	myClone->alpha_cnv[cnv_sample]=NULL;
-	myClone->gamma_cnv[cnv_sample]=NULL;
-	myClone->get_cnv_posterior(cnv_sample);
-	myClone->map_phi( myClone->cnvEmit, cnv_sample, myClone->snpEmit);
+      for ( s=0; s<myClone->snvEmit->nSamples; s++){  
+	int cna_sample = myClone->cnaEmit->idx_of[myClone->snvEmit->chr[s]];
+	myClone->alpha_cna[cna_sample]=NULL;
+	myClone->gamma_cna[cna_sample]=NULL;
+	myClone->get_cna_posterior(cna_sample);
+	myClone->map_phi( myClone->cnaEmit, cna_sample, myClone->snvEmit);
 	double l=0;
-	myClone->do_snp_Fwd(s,l);
+	myClone->do_snv_Fwd(s,l);
 #pragma omp critical
 	{
-	  snp_llh += l;
+	  snv_llh += l;
 	}
-	gsl_matrix_free(myClone->gamma_cnv[cnv_sample]);  
+	gsl_matrix_free(myClone->gamma_cna[cna_sample]);  
       }
-      delete [] myClone->gamma_cnv;
-      delete [] myClone->alpha_cnv;
-      report_results( cnv_llh, baf_llh, snp_llh, 0, mass, clones);	
+      delete [] myClone->gamma_cna;
+      delete [] myClone->alpha_cna;
+      report_results( cna_llh, baf_llh, snv_llh, 0, mass, clones);	
     }
   }
   gsl_matrix_free(nclones);
@@ -997,8 +997,8 @@ double get_clones_baf( gsl_matrix *& clones,
 }
 
 
-//***SNP ONLY CLONE INFERENCE***
-double get_clones_snp_ncorr( gsl_matrix *& clones, 
+//***SNV ONLY CLONE INFERENCE***
+double get_clones_snv_ncorr( gsl_matrix *& clones, 
 			     gsl_matrix *& Clones, 
 			     gsl_matrix *& priors, 
 			     Clone * myClone,
@@ -1010,15 +1010,15 @@ double get_clones_snp_ncorr( gsl_matrix *& clones,
   double llh=0;
   gsl_vector * mem = gsl_vector_alloc(nC);
   //STEP 1: learn clones with fixed priors...
-  myClone->initialize_cn_prior_snp();// initialize SNP copynumber prior
-  gsl_matrix_memcpy( priors, myClone->init_cn_prior_snp);
+  myClone->initialize_cn_prior_snv();// initialize SNV copynumber prior
+  gsl_matrix_memcpy( priors, myClone->init_cn_prior_snv);
   if ( Clones == NULL ){
     for (int t=0; t<nT; t++){
       set_random_start_freq( mem, (myClone->min_purity)->data[t]);
       gsl_matrix_set_row( clones, t, mem);
     }
     steps=0;
-    llh = snp_clones_fixed_priors( clones, myClone, opts.restarts, steps);
+    llh = snv_clones_fixed_priors( clones, myClone, opts.restarts, steps);
     report_results( 0, 0, llh, steps, NULL, clones);
     myClone->set(clones);
   }
@@ -1026,7 +1026,7 @@ double get_clones_snp_ncorr( gsl_matrix *& clones,
     gsl_matrix_memcpy( clones, Clones);
     myClone->set(Clones);
   }     
-  //STEP 2: for uncorrelated SNP data, learn cn-priors as well...
+  //STEP 2: for uncorrelated SNV data, learn cn-priors as well...
   if (opts.learn_priors){
     gsl_matrix * npriors = gsl_matrix_alloc(priors->size1,priors->size2);
     gsl_matrix_memcpy(npriors,priors);
@@ -1034,7 +1034,7 @@ double get_clones_snp_ncorr( gsl_matrix *& clones,
       gsl_matrix * nclones = gsl_matrix_alloc(nT,nC);
       gsl_matrix_memcpy(nclones,clones);
       steps=0;
-      double nllh = snp_clones_priors( nclones, npriors, myClone, opts.restarts, steps);
+      double nllh = snv_clones_priors( nclones, npriors, myClone, opts.restarts, steps);
       if (nllh>llh){
 	gsl_matrix_memcpy(clones,nclones);
 	gsl_matrix_memcpy(priors,npriors);
@@ -1048,14 +1048,14 @@ double get_clones_snp_ncorr( gsl_matrix *& clones,
 	  cout<<endl;
 	}
       }
-      myClone->set_cn_prior_snp(priors);
+      myClone->set_cn_prior_snv(priors);
       myClone->set(clones);
       gsl_matrix_free(nclones);
     }
     else{//STEP 4b: learn priors with fixed clones...
       myClone->set(Clones);
       gsl_matrix_memcpy( clones, Clones);
-      llh = snp_priors_fixed_clones( priors, myClone, 0, steps);
+      llh = snv_priors_fixed_clones( priors, myClone, 0, steps);
       report_results( 0, 0, llh, steps, NULL, clones);
       printf("Found these copynumber priors per clone\n");
       for (int i=0; i< (int) priors->size1; i++){
@@ -1064,7 +1064,7 @@ double get_clones_snp_ncorr( gsl_matrix *& clones,
 	}
 	cout<<endl;
       }
-      myClone->set_cn_prior_snp(priors);
+      myClone->set_cn_prior_snv(priors);
     }
     gsl_matrix_free(npriors);
   }
@@ -1073,7 +1073,7 @@ double get_clones_snp_ncorr( gsl_matrix *& clones,
 }
 
 
-double get_clones_snp_wcorr( gsl_matrix *& clones, 
+double get_clones_snv_wcorr( gsl_matrix *& clones, 
 			     gsl_matrix *& Clones, 
 			     Clone * myClone,
 			     cmdl_opts& opts
@@ -1093,30 +1093,30 @@ double get_clones_snp_wcorr( gsl_matrix *& clones,
       gsl_matrix_set_row( clones, t, mem);
     }
     steps=0;
-    llh = snp_clones_fixed_priors( clones, myClone, 0, steps);
+    llh = snv_clones_fixed_priors( clones, myClone, 0, steps);
     report_results( 0., 0., llh, steps, NULL, clones);
     myClone->set(clones);
   }
   else{
     gsl_matrix_memcpy( clones, Clones);
     myClone->set(Clones);
-    llh = myClone->get_snp_total_llh();
+    llh = myClone->get_snv_total_llh();
     report_results( 0., 0., llh, 0, NULL, clones);
   }     
   //STEP 3: iterative bulk update
   if( myClone->bulk_mean != NULL && opts.bulk_updates > 0){
     gsl_matrix_memcpy(nclones,clones);
     for (int it=0; it < opts.bulk_updates; it++){
-      snp_bulk_update(myClone);
+      snv_bulk_update(myClone);
       myClone->set_bulk_to_post();
-      if (myClone->snpEmit->coarse_grained) myClone->get_snpEmitLog();
+      if (myClone->snvEmit->coarse_grained) myClone->get_snvEmitLog();
       if (Clones != NULL){
-	llh = myClone->get_snp_total_llh();
+	llh = myClone->get_snv_total_llh();
 	report_results( 0, 0, llh, 0, NULL, clones);
 	break;
       }
       else if (myClone->bulk_prior!=NULL){
-	double nllh = snp_clones_fixed_priors( nclones, myClone, 0, steps);
+	double nllh = snv_clones_fixed_priors( nclones, myClone, 0, steps);
 	if (nllh > llh+1.0){
 	  gsl_matrix_memcpy(clones,nclones);
 	  llh = nllh;
@@ -1131,7 +1131,7 @@ double get_clones_snp_wcorr( gsl_matrix *& clones,
   return(llh);
 }
 
-double cnv_only_mass_noclones( gsl_vector *& best_mass, Clone * myClone, int restarts, int& steps){	
+double cna_only_mass_noclones( gsl_vector *& best_mass, Clone * myClone, int restarts, int& steps){	
   gsl_vector * mass  = gsl_vector_calloc(myClone->nTimes);
   gsl_vector * range = gsl_vector_calloc(myClone->nTimes);
   double llh, max_llh;
@@ -1144,9 +1144,9 @@ double cnv_only_mass_noclones( gsl_vector *& best_mass, Clone * myClone, int res
   Qpar.clones_fixed = 1;//to NULL
   Qpar.mass_fixed   = 0;
   Qpar.prior_fixed  = 1;//does not apply
-  Qpar.cnv=1;
+  Qpar.cna=1;
   Qpar.baf=0;
-  Qpar.snp=0;
+  Qpar.snv=0;
   void * param = static_cast<void*>(&Qpar);
   steps = 0;
   for (int trial=0; trial<10; trial++){//try several times to get mass estimates
@@ -1172,9 +1172,9 @@ double cnv_only_mass_noclones( gsl_vector *& best_mass, Clone * myClone, int res
 
 
 
-//find maxLLH mass and clones for CNV data only...
-double cnv_clones_fixed_mass( gsl_matrix*& clones, Clone * myClone, int restarts, int& steps,
-			      double& cnv_llh, double& baf_llh, double& snp_llh){
+//find maxLLH mass and clones for CNA data only...
+double cna_clones_fixed_mass( gsl_matrix*& clones, Clone * myClone, int restarts, int& steps,
+			      double& cna_llh, double& baf_llh, double& snv_llh){
   int nT = myClone->nTimes;
   int nC = myClone->nClones;
   Q_par Qpar;
@@ -1191,9 +1191,9 @@ double cnv_clones_fixed_mass( gsl_matrix*& clones, Clone * myClone, int restarts
     lower->data[t] = (myClone->min_purity)->data[t];
     Qpar.simplexD.push_back(nC);
   }
-  Qpar.cnv = 1;
+  Qpar.cna = 1;
   Qpar.baf = (myClone->bafEmit->is_set) ? 1 : 0;  
-  Qpar.snp = (myClone->snpEmit->is_set) ? 1 : 0;
+  Qpar.snv = (myClone->snvEmit->is_set) ? 1 : 0;
   Qpar.clones_fixed = 0;
   Qpar.mass_fixed   = 1;
   Qpar.prior_fixed  = 1;
@@ -1208,16 +1208,16 @@ double cnv_clones_fixed_mass( gsl_matrix*& clones, Clone * myClone, int restarts
   gsl_vector_free(lower);
   myClone->set(clones);
   llh = myClone->get_all_total_llh();
-  //myClone->get_cnv_total_llh();
-  cnv_llh = myClone->cnv_total_llh;
+  //myClone->get_cna_total_llh();
+  cna_llh = myClone->cna_total_llh;
   baf_llh = myClone->baf_total_llh;
-  snp_llh = myClone->snp_total_llh;
+  snv_llh = myClone->snv_total_llh;
   return(llh);
 }
 
 
-double cnv_mass_fixed_clones( gsl_vector*& mass, Clone * myClone, int restarts, int& steps, 
-			      double& cnv_llh, double& baf_llh, double& snp_llh){
+double cna_mass_fixed_clones( gsl_vector*& mass, Clone * myClone, int restarts, int& steps, 
+			      double& cna_llh, double& baf_llh, double& snv_llh){
   int nT = myClone->nTimes;
   Q_par Qpar;
   Qpar.myClone = myClone; 
@@ -1228,9 +1228,9 @@ double cnv_mass_fixed_clones( gsl_vector*& mass, Clone * myClone, int restarts, 
   Qpar.nSimplex = 0;
   Qpar.simplexD.clear();
   for (int t=0; t<nT; t++) other->data[t] = mass->data[t];
-  Qpar.cnv = 1;
+  Qpar.cna = 1;
   Qpar.baf = (myClone->bafEmit->is_set) ? 1 : 0;  
-  Qpar.snp = (myClone->snpEmit->is_set) ? 1 : 0;
+  Qpar.snv = (myClone->snvEmit->is_set) ? 1 : 0;
   Qpar.clones_fixed = 1;
   Qpar.mass_fixed   = 0;
   Qpar.prior_fixed  = 1;//does not apply here
@@ -1244,9 +1244,9 @@ double cnv_mass_fixed_clones( gsl_vector*& mass, Clone * myClone, int restarts, 
   gsl_vector_free(range);
   myClone->set_mass(mass);
   llh = myClone->get_all_total_llh();
-  cnv_llh = myClone->cnv_total_llh;
+  cna_llh = myClone->cna_total_llh;
   baf_llh = myClone->baf_total_llh;
-  snp_llh = myClone->snp_total_llh;
+  snv_llh = myClone->snv_total_llh;
   return(llh);
 }
 
@@ -1254,8 +1254,8 @@ double cnv_mass_fixed_clones( gsl_vector*& mass, Clone * myClone, int restarts, 
 
 
 //learn both using all data...
-double cnv_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone, int restarts, int& steps,
-			double& cnv_llh, double& baf_llh, double& snp_llh){
+double cna_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone, int restarts, int& steps,
+			double& cna_llh, double& baf_llh, double& snv_llh){
   int nT = myClone->nTimes;
   int nC = myClone->nClones;
   Q_par Qpar;
@@ -1273,9 +1273,9 @@ double cnv_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone,
     Qpar.simplexD.push_back(nC);
   }
   for (int t=0; t<nT; t++) other->data[t] = mass->data[t];
-  Qpar.cnv = 1;
+  Qpar.cna = 1;
   Qpar.baf = (myClone->bafEmit->is_set) ? 1 : 0;  
-  Qpar.snp = (myClone->snpEmit->is_set) ? 1 : 0;
+  Qpar.snv = (myClone->snvEmit->is_set) ? 1 : 0;
   Qpar.clones_fixed = 0;
   Qpar.mass_fixed   = 0;
   Qpar.prior_fixed  = 1;//does not apply here
@@ -1295,9 +1295,9 @@ double cnv_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone,
   myClone->set(clones);
   myClone->set_mass(mass);
   llh = myClone->get_all_total_llh();
-  cnv_llh = myClone->cnv_total_llh;
+  cna_llh = myClone->cna_total_llh;
   baf_llh = myClone->baf_total_llh;
-  snp_llh = myClone->snp_total_llh;
+  snv_llh = myClone->snv_total_llh;
   return(llh);
 }
 
@@ -1363,9 +1363,9 @@ double baf_clones( gsl_matrix*& clones, Clone * myClone, int restarts, int& step
     lower->data[t] = myClone->min_purity->data[t];
     Qpar.simplexD.push_back(nC);
   }
-  Qpar.cnv = 0;
+  Qpar.cna = 0;
   Qpar.baf = 1;
-  Qpar.snp = 0;
+  Qpar.snv = 0;
   Qpar.clones_fixed = 0;
   Qpar.mass_fixed   = 1;//does not apply here
   Qpar.prior_fixed  = 1;//does not apply here
@@ -1384,7 +1384,7 @@ double baf_clones( gsl_matrix*& clones, Clone * myClone, int restarts, int& step
 }
 
 
-double snp_clones_fixed_priors( gsl_matrix*& clones, Clone * myClone, int restarts, int& steps){
+double snv_clones_fixed_priors( gsl_matrix*& clones, Clone * myClone, int restarts, int& steps){
   int nT = myClone->nTimes;
   int nC = myClone->nClones;
   Q_par Qpar;
@@ -1401,9 +1401,9 @@ double snp_clones_fixed_priors( gsl_matrix*& clones, Clone * myClone, int restar
     lower->data[t] = (myClone->min_purity)->data[t];
     Qpar.simplexD.push_back(nC);
   }
-  Qpar.cnv = 0;
+  Qpar.cna = 0;
   Qpar.baf = 0;
-  Qpar.snp = 1;
+  Qpar.snv = 1;
   Qpar.clones_fixed = 0;
   Qpar.mass_fixed   = 1;// does not apply here
   Qpar.prior_fixed  = 1;// priors are fixed!
@@ -1414,7 +1414,7 @@ double snp_clones_fixed_priors( gsl_matrix*& clones, Clone * myClone, int restar
 					 param, &Q, 1.0e-3, restarts, steps, 0);
   for (int t=0; t<nT; t++) gsl_matrix_set_row( clones, t, simplex[t]);
   myClone->set(clones);
-  llh = myClone->get_snp_total_llh();
+  llh = myClone->get_snv_total_llh();
   //cleanup...
   for (int t=0; t<nT; t++) gsl_vector_free(simplex[t]);
   delete [] simplex;
@@ -1425,7 +1425,7 @@ double snp_clones_fixed_priors( gsl_matrix*& clones, Clone * myClone, int restar
 
 
 
-double snp_priors_fixed_clones( gsl_matrix*& priors, Clone * myClone, int restarts, int& steps){
+double snv_priors_fixed_clones( gsl_matrix*& priors, Clone * myClone, int restarts, int& steps){
   Q_par Qpar;
   Qpar.myClone = myClone;
   int nP=0;
@@ -1450,9 +1450,9 @@ double snp_priors_fixed_clones( gsl_matrix*& priors, Clone * myClone, int restar
     Qpar.simplexD.push_back(cn+1);
     ct++;
   }
-  Qpar.cnv = 0;
+  Qpar.cna = 0;
   Qpar.baf = 0;
-  Qpar.snp = 1;
+  Qpar.snv = 1;
   Qpar.clones_fixed = 1;
   Qpar.mass_fixed   = 1;// does not apply here
   Qpar.prior_fixed  = 0;
@@ -1465,8 +1465,8 @@ double snp_priors_fixed_clones( gsl_matrix*& priors, Clone * myClone, int restar
     int cn = Qpar.simplexD[p] - 1;
     for (int j=0; j<=cn; j++) gsl_matrix_set( priors, cn, j, (simplex[p])->data[j]);
   }
-  myClone->set_cn_prior_snp(priors);
-  llh = myClone->get_snp_total_llh();
+  myClone->set_cn_prior_snv(priors);
+  llh = myClone->get_snv_total_llh();
   //cleanup...
   for (int p=0; p<nP; p++) gsl_vector_free(simplex[p]);
   delete [] simplex;
@@ -1476,7 +1476,7 @@ double snp_priors_fixed_clones( gsl_matrix*& priors, Clone * myClone, int restar
 
 
 
-double snp_clones_priors( gsl_matrix*& clones, gsl_matrix*& priors, Clone * myClone, int restarts, int& steps){
+double snv_clones_priors( gsl_matrix*& clones, gsl_matrix*& priors, Clone * myClone, int restarts, int& steps){
   int nT = myClone->nTimes;
   int nC = myClone->nClones;
   Q_par Qpar;
@@ -1510,9 +1510,9 @@ double snp_clones_priors( gsl_matrix*& clones, gsl_matrix*& priors, Clone * myCl
     Qpar.simplexD.push_back(cn+1);
     ct++;
   }
-  Qpar.cnv = 0;
+  Qpar.cna = 0;
   Qpar.baf = 0;
-  Qpar.snp = 1;
+  Qpar.snv = 1;
   Qpar.clones_fixed = 0;
   Qpar.mass_fixed   = 1;// does not apply here
   Qpar.prior_fixed  = 0;
@@ -1530,8 +1530,8 @@ double snp_clones_priors( gsl_matrix*& clones, gsl_matrix*& priors, Clone * myCl
     for (int j=0; j<=cn; j++) gsl_matrix_set( priors, cn, j, (simplex[nT+p])->data[j]);
   }
   myClone->set(clones);
-  myClone->set_cn_prior_snp(priors);
-  llh = myClone->get_snp_total_llh();
+  myClone->set_cn_prior_snv(priors);
+  llh = myClone->get_snv_total_llh();
   //cleanup...
   for (int i=0; i<nT+nP; i++) gsl_vector_free(simplex[i]);
   delete [] simplex;
@@ -1600,27 +1600,27 @@ double Q( const gsl_vector * x, void * p){
 	int cn = (int) (simplex[i])->size - 1;
 	for (int j=0; j<=cn; j++) gsl_matrix_set( prior, cn, j, gsl_vector_get(simplex[i],j));
       }
-      Qpar->myClone->set_cn_prior_snp(prior);
+      Qpar->myClone->set_cn_prior_snv(prior);
     }
     if (Qpar->mass_fixed == 0){//set mass
       Qpar->myClone->set_mass(other);
     }
     //get total LLH
-    if ( Qpar->cnv == 1 && Qpar->baf == 0 && Qpar->snp == 0 ){
-      //get only the total llh for CNV *without* BAF/SNP
-      LLH = Qpar->myClone->get_cnv_total_llh();
+    if ( Qpar->cna == 1 && Qpar->baf == 0 && Qpar->snv == 0 ){
+      //get only the total llh for CNA *without* BAF/SNV
+      LLH = Qpar->myClone->get_cna_total_llh();
     }
-    else if (Qpar->cnv == 1){//get llh for CNV *with* BAF/SNP
-      //LLH = cnv_llh_all_fixed(Qpar->myClone);
+    else if (Qpar->cna == 1){//get llh for CNA *with* BAF/SNV
+      //LLH = cna_llh_all_fixed(Qpar->myClone);
       LLH = Qpar->myClone->get_all_total_llh();
     }
     else if (Qpar->baf == 1){
       // get the total llh for BAF *only*
       LLH = Qpar->myClone->get_baf_total_llh();
     }
-    else if (Qpar->snp == 1){
-      // get the total llh for SNP *only*
-      LLH = Qpar->myClone->get_snp_total_llh();
+    else if (Qpar->snv == 1){
+      // get the total llh for SNV *only*
+      LLH = Qpar->myClone->get_snv_total_llh();
     }
     else{
       abort();
@@ -1642,39 +1642,39 @@ double Q( const gsl_vector * x, void * p){
 
 
 
-void snp_bulk_update(Clone * myClone){
-  myClone->alpha_snp = new gsl_matrix * [myClone->snpEmit->nSamples];
-  myClone->gamma_snp = new gsl_matrix * [myClone->snpEmit->nSamples];
-  if (myClone->cnvEmit->is_set){
-    myClone->alpha_cnv = new gsl_matrix * [myClone->cnvEmit->nSamples];
-    myClone->gamma_cnv = new gsl_matrix * [myClone->cnvEmit->nSamples];
+void snv_bulk_update(Clone * myClone){
+  myClone->alpha_snv = new gsl_matrix * [myClone->snvEmit->nSamples];
+  myClone->gamma_snv = new gsl_matrix * [myClone->snvEmit->nSamples];
+  if (myClone->cnaEmit->is_set){
+    myClone->alpha_cna = new gsl_matrix * [myClone->cnaEmit->nSamples];
+    myClone->gamma_cna = new gsl_matrix * [myClone->cnaEmit->nSamples];
   }
-  int cnv_sample=0;
+  int cna_sample=0;
   int s;
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
-  for ( s=0; s<myClone->snpEmit->nSamples; s++){  
-    if (myClone->cnvEmit->is_set){
-      cnv_sample = myClone->cnvEmit->idx_of[myClone->snpEmit->chr[s]];
-      myClone->alpha_cnv[cnv_sample]=NULL;
-      myClone->gamma_cnv[cnv_sample]=NULL;
-      myClone->get_cnv_posterior(cnv_sample);
-      myClone->map_phi( myClone->cnvEmit, cnv_sample, myClone->snpEmit);
+  for ( s=0; s<myClone->snvEmit->nSamples; s++){  
+    if (myClone->cnaEmit->is_set){
+      cna_sample = myClone->cnaEmit->idx_of[myClone->snvEmit->chr[s]];
+      myClone->alpha_cna[cna_sample]=NULL;
+      myClone->gamma_cna[cna_sample]=NULL;
+      myClone->get_cna_posterior(cna_sample);
+      myClone->map_phi( myClone->cnaEmit, cna_sample, myClone->snvEmit);
     }
     myClone->update_bulk(s);
-    if (myClone->cnvEmit->is_set) gsl_matrix_free(myClone->gamma_cnv[cnv_sample]);
+    if (myClone->cnaEmit->is_set) gsl_matrix_free(myClone->gamma_cna[cna_sample]);
   }  
   myClone->set_bulk_to_post();
   //clean up...
-  if (myClone->cnvEmit->is_set){
-    delete [] myClone->gamma_cnv;
-    delete [] myClone->alpha_cnv;
-    myClone->gamma_cnv = NULL;
-    myClone->alpha_cnv = NULL;
+  if (myClone->cnaEmit->is_set){
+    delete [] myClone->gamma_cna;
+    delete [] myClone->alpha_cna;
+    myClone->gamma_cna = NULL;
+    myClone->alpha_cna = NULL;
   }
-  delete [] myClone->gamma_snp;
-  delete [] myClone->alpha_snp;
-  myClone->gamma_snp = NULL;
-  myClone->alpha_snp = NULL;	
+  delete [] myClone->gamma_snv;
+  delete [] myClone->alpha_snv;
+  myClone->gamma_snv = NULL;
+  myClone->alpha_snv = NULL;	
 }
 
 void set_random_start_freq(gsl_vector *& freq, double lower){
