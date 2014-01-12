@@ -43,10 +43,13 @@ class Clone{
   ~Clone();
   Emission * cnaEmit, * bafEmit, * snvEmit;
   Bulk * myBulk;
-  void allocate(Emission * cnaEmit, Emission * bafEmit, Emission * snvEmit);
+  void allocate(Emission * cnaEmit, Emission * bafEmit, Emission * snvEmit, const char * chr_fn);
+  void get_normal_copy(const char * chr_fn);
+  void set_normal_copy(const char * chr_fn);
   void clean();
   int nTimes, nClones, maxcn;
   int allocated, is_set;
+  int maj_ncn;
   double bulk_fix,snv_err,baf_pen,snv_pen, snv_fpr;
   int total_loci;
   //SNV bulk contribution
@@ -91,7 +94,7 @@ class Clone{
   gsl_matrix * init_cn_prior_snv;
   void initialize_cn_prior_snv();
   gsl_matrix * copynumber_post;
-  gsl_vector * cn2_post;
+  gsl_vector * majcn_post;
   //
   gsl_matrix * TransMat_snv, * TransMat_cna;
   void set_TransMat_cna();

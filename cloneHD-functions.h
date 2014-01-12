@@ -35,6 +35,7 @@ struct cmdl_opts{
   const char * pre;
   const char * bias_fn;
   const char * cn_fn;
+  const char * chr_fn;
   const char * bulk_fn;
   const char * clones_fn;
   const char * purity_fn;

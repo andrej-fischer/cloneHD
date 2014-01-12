@@ -127,7 +127,7 @@ int main (int argc, const char * argv[]){
   cout<<endl;
   // *** ALLOCATE CLONE ***
   Clone myClone;
-  myClone.allocate( &cnaEmit, &bafEmit, &snvEmit);
+  myClone.allocate( &cnaEmit, &bafEmit, &snvEmit, opts.chr_fn);
   myClone.maxcn = opts.maxcn;
   myClone.bulk_fix = opts.bulk_fix;
   myClone.snv_err  = (opts.snv_err >= 0.0) ? opts.snv_err : 0.0;
@@ -443,6 +443,9 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--pre") == 0){
       opts.pre = argv[opt_idx];
     }
+    else if ( opt_switch.compare("--chr") == 0){
+      opts.chr_fn = argv[opt_idx];
+    }
     else if ( opt_switch.compare("--grid") == 0){
       opts.grid = atoi(argv[opt_idx]);
     }
@@ -555,6 +558,7 @@ void default_opts(cmdl_opts& opts){
   opts.clones_fn  = NULL;
   opts.bias_fn    = NULL;
   opts.cn_fn      = NULL;
+  opts.chr_fn     = NULL;
   opts.purity_fn  = NULL;
   opts.cna_jumps_fn   = NULL;
   opts.baf_jumps_fn   = NULL;
@@ -657,6 +661,8 @@ void print_opts(){
   cout<<"bias=[file]"<<endl;
   cout<<"# the prefix for all output files"<<endl;
   cout<<"pre=[string:\"./out\"]"<<endl;
+  cout<<"# a list of chromosomes and their normal copynumber"<<endl;
+  cout<<"chr=[file]"<<endl;
   cout<<"# the resolution precomputed emission probabilities"<<endl;
   cout<<"grid=[int:300]"<<endl;
   cout<<"# random seed"<<endl;
@@ -710,7 +716,7 @@ void print_opts(){
   //cout<<"# diffusion constant for the bulk allele frequency profile"<<endl;
   //cout<<"bulksigma=[double]"<<endl<<endl;
   */  
-  cout<<endl<<"cmd=\"./build/cloneHD --cna cna --snv $snv --baf $baf --pre $pre --clones $clones --purity $purity ";
+  cout<<endl<<"cmd=\"./build/cloneHD --cna cna --snv $snv --baf $baf --pre $pre --clones $clones --purity $purity --chr $chr ";
   cout<<"--bias $bias --copynumber $copynumber --grid $grid --seed $seed --trials $trials ";
   cout<<"--restarts $restarts --nmax $nmax --force $force --maxcn $maxcn ";
   cout<<"--cna-jump $cnajump --baf-jump $bafjump --snv-jump $snvjump ";

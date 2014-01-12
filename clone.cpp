@@ -42,7 +42,7 @@ Clone::Clone(){
   copynumber_post  = NULL;
   init_cn_prior_snv= NULL;
   clone_spectrum   = NULL;
-  cn2_post  = NULL;
+  majcn_post  = NULL;
   bulk_fix  = -1.0;
   baf_pen = 1.0;
   snv_pen = 0.01;
@@ -73,7 +73,7 @@ Clone::Clone(){
   bulk_min = NULL;
 }
 
-void Clone::allocate( Emission * cna, Emission * baf, Emission * snv){
+void Clone::allocate( Emission * cna, Emission * baf, Emission * snv, const char * chr_fn){
   cnaEmit = cna;
   bafEmit = baf;
   snvEmit = snv;
@@ -84,22 +84,8 @@ void Clone::allocate( Emission * cna, Emission * baf, Emission * snv){
   if (cnaEmit->is_set) total_loci += cnaEmit->total_loci;
   if (bafEmit->is_set) total_loci += bafEmit->total_loci;
   if (snvEmit->is_set) total_loci += snvEmit->total_loci;
-  //the normal copy number of human DNA
-  normal_copy = new int [25];
-  normal_copy[0] = 0;
-  for (int c=1; c<=23; c++){
-    normal_copy[c] = 2;
-  }
-  normal_copy[24] = 0;//female by default
-  //check whether there is a Y chromosome...
-  int male=0;
-  if (cnaEmit->is_set && cnaEmit->maxchr >= 24 && cnaEmit->idx_of[24] >= 0) male=1;
-  if (bafEmit->is_set && bafEmit->maxchr >= 24 && bafEmit->idx_of[24] >= 0) male=1;
-  if (snvEmit->is_set && snvEmit->maxchr >= 24 && snvEmit->idx_of[24] >= 0) male=1;
-  if (male){
-    normal_copy[23] = 1;
-    normal_copy[24] = 1;
-  }
+  // normal copy number
+  Clone::set_normal_copy(chr_fn);
   if (cnaEmit->is_set){
     mass     = gsl_vector_alloc(nTimes);
     log_mass = gsl_vector_alloc(nTimes);
@@ -136,7 +122,95 @@ void Clone::allocate( Emission * cna, Emission * baf, Emission * snv){
   allocated = 1;//done
 }
 
+void Clone::set_normal_copy(const char * chr_fn){
+  normal_copy = new int [100];
+  normal_copy[0] = 0;
+  for (int c=0; c<100; c++) normal_copy[c] = 0;
+  if (chr_fn == NULL){//if --chr [file] was not given, this is used
+    for (int c=1; c<=23; c++) normal_copy[c] = 2;
+    normal_copy[24] = 0;//female by default
+    //check whether there is a Y chromosome...
+    int male=0;
+    if (cnaEmit->is_set && cnaEmit->maxchr >= 24 && cnaEmit->idx_of[24] >= 0) male=1;
+    if (bafEmit->is_set && bafEmit->maxchr >= 24 && bafEmit->idx_of[24] >= 0) male=1;
+    if (snvEmit->is_set && snvEmit->maxchr >= 24 && snvEmit->idx_of[24] >= 0) male=1;
+    if (male){
+      normal_copy[23] = 1;
+      normal_copy[24] = 1;
+    }
+    maj_ncn = 2;//majority normal copy number
+  }
+  else{
+    Clone::get_normal_copy(chr_fn);
+  }
+  //test normal copy numbers
+  int found_err=0;
+  if (cnaEmit->is_set){
+    for (int s=0; s<cnaEmit->nSamples; s++){
+      if (normal_copy[cnaEmit->chr[s]] == 0) found_err=1;
+    }
+  }
+  if (bafEmit->is_set){
+    for (int s=0; s<bafEmit->nSamples; s++){
+      if (normal_copy[bafEmit->chr[s]] == 0) found_err=1;
+    }
+  }
+  if (snvEmit->is_set){
+    for (int s=0; s<snvEmit->nSamples; s++){
+      if (normal_copy[snvEmit->chr[s]] == 0) found_err=1;
+    }
+  }
+  if (found_err){
+    cout<<"Normal copy number for some chromosomes not given."<<endl;
+    cout<<"Use --chr [file] to set normal copy numbers."<<endl;
+    exit(1);
+  }
+}
 
+void Clone::get_normal_copy(const char * chr_fn){
+  if (chr_fn==NULL) abort();
+  ifstream ifs;
+  string line;
+  stringstream line_ss;
+  ifs.open( chr_fn, ios::in);
+  if (ifs.fail()){
+    printf("ERROR: file %s cannot be opened.\n", chr_fn);
+    exit(1);
+  }
+  int chr = 0, ncn=0;
+  map<int,int> tally;
+  while( ifs.good() ){
+    line.clear();
+    getline( ifs, line);
+    if (line.empty()) break;
+    if (line[0] == '#') continue;
+    line_ss.clear();
+    line_ss.str(line);
+    line_ss >> chr >> ncn;
+    normal_copy[chr] = ncn;
+    if (tally.count(ncn) == 0){
+      tally.insert(std::pair<int,int>(ncn,0));
+    }
+    if (cnaEmit->is_set){
+      if (chr > cnaEmit->maxchr || cnaEmit->idx_of[chr] < 0) continue;
+      tally[ncn] += cnaEmit->nSites[cnaEmit->idx_of[chr]];
+    }
+    else if (snvEmit->is_set){
+      if (chr > snvEmit->maxchr || snvEmit->idx_of[chr] < 0) continue;
+      tally[ncn] += snvEmit->nSites[snvEmit->idx_of[chr]];
+    }
+  }
+  ifs.close();
+  int mx=0;
+  maj_ncn=2;
+  map<int,int>::iterator it;
+  for (it=tally.begin(); it != tally.end(); it++){
+    if (it->second > mx){
+      maj_ncn = it->first;
+      mx = it->second;
+    }
+  }
+}
 
 void Clone::allocate_bulk_mean(){//mean only...
   if (snvEmit->is_set==0) abort();
@@ -749,9 +823,9 @@ void Clone::get_cna_marginals(){
   gsl_vector * post = gsl_vector_calloc(nLevels);
   gsl_vector * mem  = gsl_vector_calloc(nLevels);
   if (copynumber_post != NULL) gsl_matrix_free(copynumber_post);
-  if (cn2_post != NULL) gsl_vector_free(cn2_post);
+  if (majcn_post != NULL) gsl_vector_free(majcn_post);
   copynumber_post = gsl_matrix_calloc( cnaEmit->nSamples, nLevels);
-  cn2_post        = gsl_vector_calloc(nLevels);
+  majcn_post      = gsl_vector_calloc(nLevels);
   alpha_cna = new gsl_matrix * [cnaEmit->nSamples];
   gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
   for (int s=0; s< cnaEmit->nSamples; s++){
@@ -769,7 +843,7 @@ void Clone::get_cna_marginals(){
 	gsl_matrix_get_row( post, gamma_cna[s], evt);
 	last_evt = evt;
       }
-      if ( ncn == 2) gsl_vector_add( cn2_post, post);
+      if ( ncn == maj_ncn) gsl_vector_add( majcn_post, post);
       gsl_vector_add( &cn_row.vector, post);
       gsl_blas_dgemv( CblasNoTrans, 1.0, margin_map, post, 1.0, &mg_row.vector);
     }
@@ -782,11 +856,13 @@ void Clone::get_cna_marginals(){
   alpha_cna = NULL;
   gamma_cna = NULL;
   gsl_vector_free(post);
-  //normalize cn2 posterior
-  double norm = gsl_blas_dasum( cn2_post);
-  gsl_vector_scale( cn2_post, 1.0/norm);
+  //normalize majority ncn posterior
+  double norm = gsl_blas_dasum( majcn_post);
+  if (norm <= 0.0) abort();
+  gsl_vector_scale( majcn_post, 1.0/norm);
   //normalize posterior
   norm = gsl_blas_dasum(mem);
+  if (norm <= 0.0) abort();
   for (int s=0; s<cnaEmit->nSamples; s++){
     gsl_vector_view cn_row = gsl_matrix_row(copynumber_post,s);
     gsl_vector_scale(&cn_row.vector,1.0/norm);
@@ -802,24 +878,19 @@ void Clone::get_cna_marginals(){
       norm += gsl_blas_dasum(&part.vector);
     }
     gsl_matrix_view pt = gsl_matrix_submatrix( marginals, 0, ct, cnaEmit->nSamples, maxcn+1);
-    if (norm > 0.0){
-      gsl_matrix_scale(&pt.matrix, 1.0 / norm);
-    }
-    else{
-      cout<<"ERROR-2 in Clone::get_marginals().\n";
-      exit(1);
-    }
+    if (norm <= 0.0) abort();
+    gsl_matrix_scale( &pt.matrix, 1.0 / norm);
     ct += maxcn+1;
   }
 }
 
 
-void Clone::get_mass_candidates(){//only in normal_copy = 2 samples!
+void Clone::get_mass_candidates(){//only in normal copy number = majority samples!
   Clone::get_cna_marginals();
   levels_sorted.clear();
   for (int i=0; i<nLevels; i++) levels_sorted.push_back(i);
   SortDesc sd;
-  sd.arg = cn2_post->data;
+  sd.arg = majcn_post->data;
   std::sort( levels_sorted.begin(), levels_sorted.end(), sd);
   if (mass_candidates != NULL) gsl_matrix_free(mass_candidates);
   mass_candidates = gsl_matrix_calloc(nLevels,nTimes);
@@ -827,8 +898,8 @@ void Clone::get_mass_candidates(){//only in normal_copy = 2 samples!
   for (int i=0; i<nLevels; i++){
     int level = levels_sorted[i];
     for (int t=0; t<nTimes; t++){
-      z = 2.0 * (1.0 - purity[t]) + clone_spectrum[t][level];
-      z *= mass->data[t] / 2.0;
+      z = double(maj_ncn) * (1.0 - purity[t]) + clone_spectrum[t][level];
+      z *= mass->data[t] / double(maj_ncn);
       gsl_matrix_set( mass_candidates, i, t, z);
     }
   }
