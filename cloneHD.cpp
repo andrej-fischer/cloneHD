@@ -525,6 +525,9 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
       opts.print_all = atoi(argv[opt_idx]);
       if (opts.print_all>0) opts.print_all = 1;
     }
+    else if ( opt_switch.compare("--mass-gauging") == 0){
+      opts.mass_gauging = atoi(argv[opt_idx]);
+    }
     else if ( opt_switch.compare("--bulk-fix") == 0){
       opts.bulk_fix = atof(argv[opt_idx]);
     }
@@ -593,6 +596,7 @@ void default_opts(cmdl_opts& opts){
   opts.bulk_updates=0;
   opts.restarts = 10;
   opts.learn_priors = 1;
+  opts.mass_gauging = 1;
 }
 
 void test_opts(cmdl_opts& opts){
@@ -704,7 +708,9 @@ void print_opts(){
   cout<<"# min jump probability for fuzzy segmentation"<<endl;
   cout<<"minjump=[double:0.01]"<<endl;
   cout<<"# whether to learn SNV priors"<<endl;
-  cout<<"learnpriors=[0/1:0]"<<endl;  
+  cout<<"learnpriors=[0/1:0]"<<endl;
+  cout<<"# whether to do mass-gauging"<<endl;
+  cout<<"massgauging=[0/1:1]"<<endl;  
   /*
   cout<<"# bulk allele frequency track (from filterHD, mean or full distribution)"<<endl;
   cout<<"bulk-prior=[file]"<<endl;
@@ -723,7 +729,7 @@ void print_opts(){
   cout<<"--cna-jumps $cnajumps --baf-jumps $bafjumps --snv-jumps $snvjumps ";
   cout<<"--cna-rnd $cnarnd --baf-rnd $bafrnd --snv-rnd $snvrnd --snv-err $snverr --snv-fpr $snvfpr";
   cout<<"--cna-shape $cnashape --baf-shape $bafshape --snv-shape $snvshape --baf-pen $bafpen --snv-pen $snvpen";
-  cout<<"--min-occ $minocc --min-jump $minjump --learn-priors $learnpriors";
+  cout<<"--min-occ $minocc --min-jump $minjump --learn-priors $learnpriors --mass-gauging $massgauging";
   //cout<<"--bulk-prior $bulkprior --bulk-mean $bulkmean --bulk-fix $bulkfix --bulk-sigma $bulksigma --bulk-updates $bulkupdates ";
   cout<<"\""<<endl<<"echo $cmd"<<endl;
   cout<<"$cmd"<<endl;

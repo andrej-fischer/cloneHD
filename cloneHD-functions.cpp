@@ -735,12 +735,13 @@ double get_clones_cna( gsl_matrix *& clones,
       double p = (1.5 - double(rand()) / double(RAND_MAX));
       mass->data[t] = 0.5*double(myClone->nmean->data[t]) * p;
     }
-    llh = cna_clones_mass( clones, mass, myClone, 0, steps, cna_llh, baf_llh, snv_llh);
+    int restarts = opts.mass_gauging ? 0 : opts.restarts;
+    llh = cna_clones_mass( clones, mass, myClone, restarts, steps, cna_llh, baf_llh, snv_llh);
     report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
     gsl_matrix * candidate_masses = gsl_matrix_calloc(nL,nT);
     gsl_vector * levels = gsl_vector_calloc(nL);
     gsl_vector * nmass  = gsl_vector_calloc(nT);
-    int repeat = 1;
+    int repeat = opts.mass_gauging;
     int iter   = 0;
     double nllh;
     while(repeat==1){
@@ -757,7 +758,7 @@ double get_clones_cna( gsl_matrix *& clones,
 	int level = levels->data[i];
 	printf("\rGauging masses via state ");
 	for (int j=0; j<nC; j++) printf("%i", myClone->copynumber[level][j]);
-	printf(" (%6.3f %%) to: ", myClone->cn2_post->data[level] * 100.0);
+	printf(" (%6.3f %%) to: ", myClone->majcn_post->data[level] * 100.0);
 	for (int t=0; t<nT; t++){
 	  printf("%.3e ", gsl_matrix_get(candidate_masses, i, t));
 	}
@@ -1320,7 +1321,7 @@ void get_candidate_masses( gsl_matrix * clones,
   int ct=0;
   for (int i=0; i< nL; i++){//loop through the candidate masses...
     int level = myClone->levels_sorted[i];
-    if (myClone->cn2_post->data[level] < min_occ || i>=15) break;//***THRESHOLD OCCUPANCY***
+    if (myClone->majcn_post->data[level] < min_occ || i>=15) break;//***THRESHOLD OCCUPANCY***
     //test whether new masses are sufficiently different from everything sofar...
     int found=0;
     for (int j=0; j<i; j++){

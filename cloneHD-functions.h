@@ -44,6 +44,7 @@ struct cmdl_opts{
   const char * snv_jumps_fn;
   //
   int grid, force, trials, restarts, nmax, seed, maxcn, print_all, learn_priors;
+  int mass_gauging;
   double cna_jump, baf_jump, snv_jump;
   double cna_shape, baf_shape, snv_shape;
   double cna_rnd, baf_rnd, snv_rnd, snv_err;
