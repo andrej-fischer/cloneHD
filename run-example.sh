@@ -43,7 +43,7 @@ tumorCNAjumps="${results}/tumor.cna.bias.jumps.txt"
 
 # tumour BAF
 tumorBAF="${data}/tumor.baf.txt"
-cmd="$exec --data $tumorBAF --mode 1 --pre ${results}/tumour.baf --grid 100 --sigma 0 --jumps 1 --reflect 1 --dist 1"
+cmd="$filterHD --data $tumorBAF --mode 1 --pre ${results}/tumor.baf --grid 100 --sigma 0 --jumps 1 --reflect 1 --dist 1"
 echo $cmd
 $cmd
 echo
