@@ -1,7 +1,7 @@
 # changelog for cloneHD/filterHD
 
-1.16.3 / ???
-* symmetrized BAF posterior in output
+1.16.3 / 13.01.2014
+* introduced the option --mass-gauging [0/1:1] to switch off the mass gauging for cna data.
 
 1.16.2 / 12.01.2104
 * snp -> snv and cnv -> cna in all code
