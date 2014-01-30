@@ -2,6 +2,7 @@
 
 1.16.4 / ???
 * filterHD: if --reflect 1, use only posterior in [0,0.5] for mean/std-dev 
+* fixed bug with --bulk-fix 0.0
 
 1.16.3 / 13.01.2014
 * introduced the option --mass-gauging [0/1:1] to switch off the mass gauging for cna data.
