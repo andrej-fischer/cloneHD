@@ -203,19 +203,33 @@ int main (int argc, const char * argv[]){
 	delete [] mean;
       }
     }
-    //print posterior information to file
+    // print posterior information to file
     char buff[1024];
     sprintf(buff,"%s.posterior.%i.txt", opts.pre, t+1);
     FILE * total_fp = fopen(buff,"w");
     fprintf(total_fp, "#sample site mean std-dev jump-prob");
     fprintf(total_fp, " posterior %.5e %.5e\n", myJD.myEmit->xmin,  myJD.myEmit->xmax);
+    int uidx  = opts.reflect ? int(0.5*double( myJD.gridSize)) :  myJD.gridSize;
+    double mx = opts.reflect ? 0.5 : myJD.myEmit->xmax;
+    double mn = myJD.myEmit->xmin;
+    gsl_vector * post = gsl_vector_alloc(uidx+1);
     for (int s=0; s < myJD.nSamples; s++){
       //get posterior distribution with the ML parameters
       myJD.get_posterior(s);
       for (int l=0; l < myJD.nSites[s]; l++){
-	gsl_vector_view post = gsl_matrix_row(myJD.gamma[s],l);
-	double mean = get_mean( &post.vector, myJD.myEmit->xmin, myJD.myEmit->xmax);
-	double var  = get_var(  &post.vector, myJD.myEmit->xmin, myJD.myEmit->xmax, mean);
+	if (opts.reflect){//distribution in lower half
+	  gsl_vector_view lower = gsl_matrix_subrow( myJD.gamma[s], l, 0, uidx+1);
+	  gsl_vector_memcpy( post, &lower.vector);
+	  double norm = gsl_blas_dasum(post);
+	  norm = (norm - 0.5*(post->data[0] + post->data[uidx])) * myJD.myEmit->dx;
+	  if (norm <= 0.0) abort();
+	  gsl_vector_scale(post,1.0/norm);
+	}
+	else{
+	  gsl_matrix_get_row( post, myJD.gamma[s], l);
+	}
+	double mean = get_mean( post, mn, mx);
+	double var  = get_var(  post, mn, mx, mean);
 	if (opts.jumps==1){
 	  jumps[s][l] *= exp(myJD.pnojump[s][l]);
 	}
@@ -233,6 +247,7 @@ int main (int argc, const char * argv[]){
       myJD.gamma[s] = NULL;
     }
     fclose(total_fp);
+    gsl_vector_free(post);
     // *** RESET ***
     myEmit.delete_old_Emit();
     myEmit.range_set = 0;

@@ -1,5 +1,8 @@
 # changelog for cloneHD/filterHD
 
+1.17 / ???
+* filterHD: if --reflect 1, use only posterior in [0,0.5] for mean/std-dev 
+
 1.16.3 / 13.01.2014
 * introduced the option --mass-gauging [0/1:1] to switch off the mass gauging for cna data.
 
