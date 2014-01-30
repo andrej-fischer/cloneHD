@@ -581,7 +581,7 @@ void default_opts(cmdl_opts& opts){
   opts.snv_shape = -1.0;
   opts.baf_pen   = -1.0;
   opts.snv_pen   = -1.0;
-  opts.bulk_fix  = 0.0;//constant bulk for SNV
+  opts.bulk_fix  = -1.0;//constant bulk for SNV
   opts.bulk_sigma = -1.0;
   opts.force    = -1;
   opts.trials   = 1;
@@ -617,7 +617,7 @@ void test_opts(cmdl_opts& opts){
       opts.bulk_fix = 0.0;
     }
     if (opts.bulk_fn != NULL && opts.bulk_fix >= 0.0){
-      cout<<"only one of --bulk-(mean/prior) [file] and --bulk-fix [double] can be used.\n";
+      cout<<"Only one of --bulk-(mean/prior) [file] and --bulk-fix [double] can be used.\n";
       exit(1);
     }
     if (opts.bulk_fn != NULL && opts.bulk_mean == 1 && opts.bulk_prior == 1){
