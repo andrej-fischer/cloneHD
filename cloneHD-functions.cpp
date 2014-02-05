@@ -327,11 +327,23 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
     }
     myClone->cnaEmit->allocate_phi();
     myClone->cnaEmit->allocate_cnmax();
-    if (myClone->bafEmit->is_set){
-      myClone->bafEmit->map_idx_to_Event(myClone->cnaEmit);
+    if (myClone->bafEmit->is_set){//CNA + BAF: map CNA events to BAF
+      for (int s=0; s<myClone->bafEmit->nSamples; s++){
+	myClone->bafEmit->map_idx_to_Event( myClone->cnaEmit, s);
+      }
+      if (myClone->snvEmit->is_set){//CNA + BAF + SNV: map CNA events to SNV outside of autosomes
+	for (int s=0; s<myClone->snvEmit->nSamples; s++){
+	  int snvChr = myClone->snvEmit->chr[s];
+	  if (myClone->bafEmit->chrs.count(snvChr) == 0){
+	    myClone->snvEmit->map_idx_to_Event( myClone->cnaEmit, s);
+	  }
+	}
+      }
     }
-    else{
-      if (myClone->snvEmit->is_set) myClone->snvEmit->map_idx_to_Event(myClone->cnaEmit);
+    else if (myClone->snvEmit->is_set){//CNA + SNV (no BAF): map CNA events to SNV
+      for (int s=0; s<myClone->snvEmit->nSamples; s++){
+	myClone->snvEmit->map_idx_to_Event( myClone->cnaEmit, s);
+      }
     }
   }
   if ( myClone->bafEmit->is_set ){//***BAF JUMPS***
@@ -360,7 +372,14 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
       myClone->bafEmit->allocate_phi();
       myClone->bafEmit->allocate_cnmax();
     }
-    if (myClone->snvEmit->is_set) myClone->snvEmit->map_idx_to_Event(myClone->bafEmit);
+    if (myClone->snvEmit->is_set){//CNA + BAF + SNV: map BAF to SNV for autosomes only
+      for (int s=0; s<myClone->snvEmit->nSamples; s++){
+	int snvChr = myClone->snvEmit->chr[s];
+	if (myClone->bafEmit->chrs.count(snvChr) == 1){
+	  myClone->snvEmit->map_idx_to_Event( myClone->bafEmit, s);
+	}
+      }
+    }
   }
   if ( myClone->snvEmit->is_set ){//***SNV JUMPS***
     if ( opts.snv_jumps_fn != NULL ){
@@ -369,7 +388,7 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
 	myClone->snvEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
       myClone->snvEmit->get_events_via_jumps();
-      if ( opts.cna_jumps_fn != NULL ){
+      if ( opts.cna_jumps_fn != NULL ){//allow SNV to jump at CNA jump sites
 	myClone->snvEmit->add_break_points_via_jumps( myClone->cnaEmit, opts.min_jump);
       }
       myClone->snvEmit->get_events_via_jumps();

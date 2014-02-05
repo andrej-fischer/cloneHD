@@ -69,7 +69,8 @@ class Clone{
   //
   gsl_matrix * margin_map;
   gsl_matrix * baf_prior_map;
-  gsl_matrix ** snv_prior_map;
+  gsl_matrix ** snv_prior_from_cna_baf_map;
+  gsl_matrix *  snv_prior_from_cna_map;
   void set_margin_map();
   void set_baf_prior_map();
   void set_snv_prior_map();

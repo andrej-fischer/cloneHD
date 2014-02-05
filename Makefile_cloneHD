@@ -1,7 +1,7 @@
 CC		= g++-mp-4.7
 GSL		= /opt/local/lib/libgsl.a /opt/local/lib/libgslcblas.a 
-CC_FLAGS	= -Wall -O3 -DHAVE_INLINE -fopenmp 
-LD_FLAGS	= ${GSL} -fopenmp
+CC_FLAGS	= -Wall -ggdb# -DHAVE_INLINE -fopenmp 
+LD_FLAGS	= ${GSL}# -fopenmp
 EMISSION	= emission
 FUNCTIONS	= common-functions
 JUMPDIFF	= jump-diffusion
@@ -15,7 +15,7 @@ OBJECTS      	= $(EMISSION).o $(FILTER).o $(MINIMIZE).o $(LOGSPACE).o $(JUMPDIFF
 all:	$(OBJECTS)
 	$(CC) $(CC_FLAGS) $(EMISSION).o $(FUNCTIONS).o $(FILTER).o $(MINIMIZE).o $(JUMPDIFF).o -o ./build/$(FILTER) $(LD_FLAGS)
 	$(CC) $(CC_FLAGS) $(EMISSION).o $(FUNCTIONS).o $(MINIMIZE).o $(LOGSPACE).o $(CLONE).o $(CHDFUNCTIONS).o $(CLONEHD).o -o ./build/$(CLONEHD) $(LD_FLAGS)
-	rm -f ./*.o
+#	rm -f ./*.o
 $(FILTER).o: $(FILTER).cpp
 	$(CC) $(CC_FLAGS) -c $(FILTER).cpp
 $(EMISSION).o: $(EMISSION).cpp $(EMISSION).h

@@ -130,10 +130,10 @@ int main (int argc, const char * argv[]){
   myClone.allocate( &cnaEmit, &bafEmit, &snvEmit, opts.chr_fn);
   myClone.maxcn = opts.maxcn;
   myClone.bulk_fix = opts.bulk_fix;
-  myClone.snv_err  = (opts.snv_err >= 0.0) ? opts.snv_err : 0.0;
-  myClone.baf_pen  = (opts.baf_pen > 0.0)  ? opts.baf_pen : 1.0;
-  myClone.snv_pen  = (opts.snv_pen > 0.0)  ? opts.snv_pen : (bafEmit.is_set ? 0.01 : 0.5);
-  myClone.snv_fpr  = (opts.snv_fpr > 0.0)  ? opts.snv_fpr : 1.0e-4;
+  myClone.baf_pen  = (opts.baf_pen > 0.0)  ? opts.baf_pen : 1.0;// BAF penalty for complex chr status
+  myClone.snv_fpr  = (opts.snv_fpr > 0.0)  ? opts.snv_fpr : 1.0e-4;//SNV false-positive rate
+  myClone.snv_err  = (opts.snv_err >= 0.0) ? opts.snv_err : 0.0;   //SNV frequency of false positives
+  myClone.snv_pen  = (opts.snv_pen > 0.0)  ? opts.snv_pen : (bafEmit.is_set ? 0.01 : 0.5);//penalty for SNV genotypes higher than max
   // *** GET SNV BULK PRIOR ***
   if ( snvEmit.is_set && opts.bulk_fn != NULL ){
     if (opts.bulk_mean)  myClone.allocate_bulk_mean();
@@ -574,7 +574,7 @@ void default_opts(cmdl_opts& opts){
   opts.cna_rnd = 0.0;//random error rate
   opts.baf_rnd = 0.0;
   opts.snv_rnd = 0.0;
-  opts.snv_err = 0.0;
+  opts.snv_err = -1.0;
   opts.snv_fpr = -1.0;
   opts.cna_shape = -1.0;//shape parameters
   opts.baf_shape = -1.0;

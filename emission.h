@@ -76,6 +76,7 @@ public:
   unsigned int ** dist;
   int * nSites;
   int * chr;
+  std::set<int> chrs;
   int * idx_of;
   int maxchr;
   double ** bias;
@@ -101,7 +102,7 @@ public:
   void init_events();
   int * nEvents;
   unsigned int ** Event_of_idx;  // map from idx to cnv-event 
-  void map_idx_to_Event(Emission * Emit);
+  void map_idx_to_Event(Emission * Emit, int sample);
   //void get_events_via_evt_map();
   void map_jumps(Emission * Emit);
   void add_break_points_via_jumps(Emission * Emit, double pmin);

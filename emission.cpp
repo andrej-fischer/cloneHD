@@ -46,18 +46,20 @@ Emission::Emission(){
 
 
 // real constructor
-void Emission::set(int ntimes, vector<int>& chrs, vector<int>& nsites, int grid){
-  if ((int) chrs.size() != (int) nsites.size()) abort();
+void Emission::set(int ntimes, vector<int>& Chrs, vector<int>& nsites, int grid){
+  if ((int) Chrs.size() != (int) nsites.size()) abort();
   nSamples  = (int) nsites.size();
   nTimes    = ntimes;
   nSites  = new int [nSamples]; 
   chr     = new int [nSamples];
+  chrs.clear();
   total_loci   = 0;
   maxchr = 0;
   for (int s=0; s<nSamples; s++){
-    chr[s]     = chrs[s];
-    maxchr     = max( maxchr, chr[s]);
-    nSites[s]  = nsites[s];
+    chr[s]     = Chrs[s];
+    chrs.insert(chr[s]);
+    maxchr      = max( maxchr, chr[s]);
+    nSites[s]   = nsites[s];
     total_loci += nSites[s];
   }
   idx_of = new int [maxchr+1];
@@ -115,43 +117,42 @@ void Emission::init_events(){
 
 
 //map each observations to an event in another data track...
-void Emission::map_idx_to_Event(Emission * Emit){
+void Emission::map_idx_to_Event(Emission * Emit, int sample){
   if (Emit->is_set == 0) abort(); 
-  for (int sample=0; sample<nSamples; sample++){
-    if ( chr[sample] > Emit->maxchr || Emit->idx_of[ chr[sample] ] < 0 ) abort();
-    int Sample = Emit->idx_of[ chr[sample] ];
-    int Event = 0;
-    int Idx   = Emit->idx_of_event[Sample][Event];
-    int Locus = Emit->loci[Sample][Idx];
-    int idx   = 0;
-    int locus = loci[sample][idx];
-    while(locus < Locus){//left over-hang
-      Event_of_idx[sample][idx] = 0;
+  // for (int sample=0; sample<nSamples; sample++){
+  if ( chr[sample] > Emit->maxchr || Emit->idx_of[ chr[sample] ] < 0 ) abort();
+  int Sample = Emit->idx_of[ chr[sample] ];
+  int Event = 0;
+  int Idx   = Emit->idx_of_event[Sample][Event];
+  int Locus = Emit->loci[Sample][Idx];
+  int idx   = 0;
+  int locus = loci[sample][idx];
+  while(locus < Locus){//left over-hang
+    Event_of_idx[sample][idx] = 0;
+    idx++;
+    if (idx == nSites[sample]) break;  
+    locus = loci[sample][idx];
+  }
+  for ( Event = 1; Event < Emit->nEvents[Sample]; Event++){
+    Idx   = Emit->idx_of_event[Sample][Event];
+    Locus = Emit->loci[Sample][Idx];
+    while(locus < Locus){
+      Event_of_idx[sample][idx]= Event - 1;
       idx++;
       if (idx == nSites[sample]) break;  
       locus = loci[sample][idx];
     }
-    for ( Event = 1; Event < Emit->nEvents[Sample]; Event++){
-      Idx   = Emit->idx_of_event[Sample][Event];
-      Locus = Emit->loci[Sample][Idx];
-      while(locus < Locus){
-	Event_of_idx[sample][idx]= Event - 1;
-	idx++;
-	if (idx == nSites[sample]) break;  
-	locus = loci[sample][idx];
-      }
-      if (idx == nSites[sample]) break;  
-    }
-    while( idx < nSites[sample]){//right over-hang
-      Event_of_idx[sample][idx]= Emit->nEvents[Sample] - 1;
-      idx++;
-    }
+    if (idx == nSites[sample]) break;  
   }
-  idx_to_Event_mapped=1;
+  while( idx < nSites[sample]){//right over-hang
+    Event_of_idx[sample][idx]= Emit->nEvents[Sample] - 1;
+    idx++;
+  }
+  //idx_to_Event_mapped=1;
 }
 
 void Emission::map_jumps(Emission * Emit){
-  if (idx_to_Event_mapped==0) abort();
+  //if (idx_to_Event_mapped==0) abort();
   for (int s=0; s<nSamples; s++){
     int Sample = Emit->idx_of[chr[s]];
     for (int idx=0; idx<nSites[s]; idx++) pjump[s][idx]=0;
@@ -168,7 +169,7 @@ void Emission::map_jumps(Emission * Emit){
 }
 
 void Emission::add_break_points_via_jumps(Emission * Emit, double pmin){
-  if (idx_to_Event_mapped==0) abort();
+  //if (idx_to_Event_mapped==0) abort();
   for (int s=0; s<nSamples; s++){
     int Sample = Emit->idx_of[chr[s]];
     int old    = Event_of_idx[s][0];
