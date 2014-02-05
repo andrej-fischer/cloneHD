@@ -1,9 +1,12 @@
 # changelog for cloneHD/filterHD
 
-1.16.4 / ???
-* filterHD: if --reflect 1, use only posterior in [0,0.5] for mean/std-dev 
+1.16.5 / 05.004.2014
+* fixed major bug when CNA, BAF and SNV data used with males (X,Y with only one copy)
+* fixed bug in Clone::snv_prior_from_cna_baf_post()
+
+1.16.4 / 30.01.2014
+* filterHD: if --reflect 1, use only posterior in [0,0.5] for mean/std-dev
 * fixed bug with --bulk-fix 0.0
-* fixed bug when CNA, BAF and SNV data used with males (X,Y with only one copy)
 
 1.16.3 / 13.01.2014
 * introduced the option --mass-gauging [0/1:1] to switch off the mass gauging for cna data.
