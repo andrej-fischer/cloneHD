@@ -567,9 +567,9 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
 	}
       }
     }
-    //if (myClone->bafEmit->is_set){//*** BAF - NO CLONE ***
-    //baf_llh = myClone->get_baf_total_llh();
-    //}
+    if (myClone->bafEmit->is_set){//*** BAF - NO CLONE ***
+      baf_llh = myClone->get_baf_total_llh();
+    }
     if (myClone->snvEmit->is_set){//*** SNV - NO CLONE ***
       if (myClone->bulk_mean != NULL){
 	snv_bulk_update(myClone);

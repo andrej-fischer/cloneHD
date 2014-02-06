@@ -2190,7 +2190,7 @@ void Clone::update_snv_event( gsl_vector * post, int sample, int evt){
   */
 }
 
-//Dirac-Delta bulk prior distribution...
+//Dirac-Delta bulk prior distribution (maybe fixed at zero)...
 void Clone::update_snv_fixed( gsl_vector * prior, 
 			      gsl_vector * post, 
 			      int sample, 
@@ -2213,14 +2213,14 @@ void Clone::update_snv_fixed( gsl_vector * prior,
     double nrnd = 1.0 - snvEmit->rnd_emit;
     double total_cn = (snvEmit->phi == NULL) ? double(ncn) : snvEmit->phi[t][sample][evt];
     double bfix = (bulk_fix >= 0.0) ? bulk_fix : bulk_mean[t][sample][site];
-    y =  bfix * (1.0-purity[t]) * double(ncn) / total_cn;
+    y =  bfix * (1.0-purity[t]) * double(ncn) / total_cn;//for cancer app, this is usually 0.0!
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= 0.0){
 	post->data[level] = 0.0;
 	continue;
       }
       x = y + clone_spectrum[t][level] / total_cn; 
-      if (snv_err>0.0){
+      if (snv_err>0.0){//frequency of erroneous reads
 	x = snv_err + (1.0-snv_err)*x;
       }
       if (x > 1.0){//outside range...
