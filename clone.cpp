@@ -2493,7 +2493,9 @@ void Clone::get_phi(int sample){//only ever used for cnaEmit
 }
 
 void Clone::map_phi( Emission * fromEmit, int from_sample, Emission * toEmit){
-  int sample = toEmit->idx_of[fromEmit->chr[from_sample]];
+  int fromChr = fromEmit->chr[from_sample];
+  if ( toEmit->chrs.count(fromChr) == 0 ) abort();
+  int sample = toEmit->idx_of[fromChr];
   if (nClones == 0){
     double ncn = normal_copy[toEmit->chr[sample]];
     for (int t=0; t<nTimes; t++){

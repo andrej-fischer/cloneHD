@@ -133,7 +133,7 @@ int main (int argc, const char * argv[]){
   myClone.baf_pen  = (opts.baf_pen > 0.0)  ? opts.baf_pen : 1.0;// BAF penalty for complex chr status
   myClone.snv_fpr  = (opts.snv_fpr > 0.0)  ? opts.snv_fpr : 1.0e-4;//SNV false-positive rate
   myClone.snv_err  = (opts.snv_err >= 0.0) ? opts.snv_err : 0.0;   //SNV frequency of false positives
-  myClone.snv_pen  = (opts.snv_pen > 0.0)  ? opts.snv_pen : (bafEmit->is_set ? 0.01 : 0.5);//penalty for SNV genotypes higher than max
+  myClone.snv_pen  = (opts.snv_pen > 0.0)  ? opts.snv_pen : (bafEmit.is_set ? 0.01 : 0.5);//penalty for SNV genotypes higher than max
   // *** GET SNV BULK PRIOR ***
   if ( snvEmit.is_set && opts.bulk_fn != NULL ){
     if (opts.bulk_mean)  myClone.allocate_bulk_mean();
@@ -606,14 +606,14 @@ void test_opts(cmdl_opts& opts){
     exit(1);
   }
   if (opts.snv_fn != NULL){
-    if ( opts.snv_jumps_fn != NULL || opts.snv_jump >= 0.0){
+    if ( opts.snv_jumps_fn != NULL || opts.snv_jump >= 0.0){//with SNV persistence
       if ( opts.bulk_fn == NULL && opts.bulk_fix < 0.0){
 	cout<<"With --snv [file] with correlations, one of --bulk-(prior/mean) [file] or --bulk-fix [double] must be given.\n";
 	exit(1);
       }
       opts.snv_err = 0.0;
     }
-    else{
+    else{//no SNV persistence
       opts.bulk_fix = 0.0;
     }
     if (opts.bulk_fn != NULL && opts.bulk_fix >= 0.0){

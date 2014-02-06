@@ -552,15 +552,24 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
 	cna_llh = myClone->get_cna_total_llh();
       }   
       //set trivial (normal) total copynumber...  
-      for (int s=0; s<myClone->cnaEmit->nSamples; s++){
-	myClone->get_phi(s);
-	if (myClone->bafEmit->is_set) myClone->map_phi( myClone->cnaEmit, s, myClone->bafEmit);
-	if (myClone->snvEmit->is_set) myClone->map_phi( myClone->cnaEmit, s, myClone->snvEmit);
+      for (int cnaSample=0; cnaSample<myClone->cnaEmit->nSamples; cnaSample++){
+	myClone->get_phi(cnaSample);
+	int cnaChr = myClone->cnaEmit->chr[cnaSample];
+	if (myClone->bafEmit->is_set && myClone->bafEmit->chrs.count(cnaChr) == 1){
+	  myClone->map_phi( myClone->cnaEmit, cnaSample, myClone->bafEmit);
+	  if (myClone->snvEmit->is_set && myClone->snvEmit->chrs.count(cnaChr) == 1){
+	    int bafSample = myClone->bafEmit->idx_of[cnaChr];
+	    myClone->map_phi( myClone->bafEmit, bafSample, myClone->snvEmit);
+	  }
+	}
+	else if (myClone->snvEmit->is_set && myClone->snvEmit->chrs.count(cnaChr) == 1){
+	  myClone->map_phi( myClone->cnaEmit, cnaSample, myClone->snvEmit);
+	}
       }
     }
-    if (myClone->bafEmit->is_set){//*** BAF - NO CLONE ***
-      baf_llh = myClone->get_baf_total_llh();
-    }
+    //if (myClone->bafEmit->is_set){//*** BAF - NO CLONE ***
+    //baf_llh = myClone->get_baf_total_llh();
+    //}
     if (myClone->snvEmit->is_set){//*** SNV - NO CLONE ***
       if (myClone->bulk_mean != NULL){
 	snv_bulk_update(myClone);
