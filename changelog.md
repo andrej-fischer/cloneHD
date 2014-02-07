@@ -2,13 +2,13 @@
 
 v1.16.5 / 07.04.2014
 
-	*	fixed major bug when CNA, BAF and SNV data used with males (X,Y
+*	fixed major bug when CNA, BAF and SNV data used with males (X,Y
 		with only one copy)
-	*	fixed bug in Clone::snv_prior_from_cna_baf_post()
-	*	fixed bug in posterior output for BAF and SNV
-	*	introduced prior masking for all update functions
-	* 	introduced --maxcn_mask [file] option to limit total
-		c.n. per chromosome
+*	fixed bug in Clone::snv_prior_from_cna_baf_post()
+*	fixed bug in posterior output for BAF and SNV
+*	introduced prior masking for all update functions
+* 	introduced --maxcn_mask [file] option to limit total
+	c.n. per chromosome
 
 v1.16.4 / 30.01.2014
 
