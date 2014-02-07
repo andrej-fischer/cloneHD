@@ -42,6 +42,7 @@ struct cmdl_opts{
   const char * cna_jumps_fn;
   const char * baf_jumps_fn;
   const char * snv_jumps_fn;
+  const char * maxcn_mask_fn;
   //
   int grid, force, trials, restarts, nmax, seed, maxcn, print_all, learn_priors;
   int mass_gauging;

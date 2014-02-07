@@ -72,6 +72,7 @@ Clone::Clone(){
   bulk_post_mean  = NULL;
   bulk_mean       = NULL; 
   bulk_min = NULL;
+  logzero = -1.0e6;
 }
 
 void Clone::allocate( Emission * cna, Emission * baf, Emission * snv, const char * chr_fn){
@@ -227,6 +228,43 @@ void Clone::get_normal_copy(const char * chr_fn){
     }
   }
 }
+
+
+// get the maximum total c.n. mask per chromosome
+void Clone::get_maxcn_mask(const char * mask_fn){
+  if (mask_fn==NULL) abort();
+  ifstream ifs;
+  string line;
+  stringstream line_ss;
+  ifs.open( mask_fn, ios::in);
+  if (ifs.fail()){
+    printf("ERROR: file %s cannot be opened.\n", mask_fn);
+    exit(1);
+  }
+  int chr = 0, mxcn=0;
+  maxcn_mask.clear();
+  while( ifs.good() ){
+    line.clear();
+    getline( ifs, line);
+    if (line.empty()) break;
+    if (line[0] == '#') continue;
+    line_ss.clear();
+    line_ss.str(line);
+    line_ss >> chr >> mxcn;
+    if (chr<0 || chr >= 100) abort();
+    if (maxcn_mask.count(chr) == 0){
+      maxcn_mask.insert(std::pair<int,int>(chr,mxcn));
+    }
+    else{
+      printf("ERROR: in file %s: chr %i appears twice.\n", mask_fn, chr);
+      exit(1);
+    }
+  }
+  ifs.close();
+}
+
+
+
 
 void Clone::allocate_bulk_mean(){//mean only...
   if (snvEmit->is_set==0) abort();
@@ -478,6 +516,8 @@ void Clone::get_complexity(){
     if (snvEmit->is_set) size += double(snvEmit->total_loci);
     complexity *= log(size);
   }
+  //TODO: if maxcn_mask is used???
+  //
   /* *** BAF only not supported ***
     else if (bafEmit->is_set){
     complexity = double(nTimes)*(double(nClones) + 1.0) + pow(double(maxcn+1), nClones);
@@ -540,7 +580,7 @@ void Clone::set_cn_prior_cna( gsl_vector * prior, int sample){
   gsl_vector_scale( prior, 1.0 / norm);
   if (cnaEmit->log_space){
     for (int l=0; l<nLevels;l++){ 
-      prior->data[l] = prior->data[l]> 0.0 ? log(prior->data[l]) : -1.0e6;
+      prior->data[l] = prior->data[l]> 0.0 ? log(prior->data[l]) : logzero;
     }
   }
 }
@@ -598,7 +638,7 @@ void Clone::set_cn_prior_snv( gsl_matrix * prior_per_clone){
   gsl_vector_set( pr, 0, 1.0);
   if (snvEmit->log_space){//log-transform?
     for (int l=0; l<nLevels; l++){
-      pr->data[l] = (pr->data[l] > 0.0) ? log(pr->data[l]) : - 1.0e6;
+      pr->data[l] = (pr->data[l] > 0.0) ? log(pr->data[l]) : logzero;
     }
   }
   cn_prior_snv.insert(pair<int,gsl_vector*>(0,pr));
@@ -632,7 +672,7 @@ void Clone::set_cn_prior_snv( gsl_matrix * prior_per_clone){
     gsl_vector_scale( pr, 1.0/norm);
     if (snvEmit->log_space){//log-transform
       for (int l=0; l<nLevels; l++){
-	pr->data[l] = pr->data[l] > 0.0 ? log(pr->data[l]) : - 1.0e6;
+	pr->data[l] = pr->data[l] > 0.0 ? log(pr->data[l]) : logzero;
       }
     }
     cn_prior_snv.insert( pair<int,gsl_vector*>(cn,pr));
@@ -1320,13 +1360,20 @@ void Clone::do_cna_Fwd( int sample, double& llh){
   double norm = 0.0;
   double pj = 1.0;
   int idx=0;
+  int cnaChr = cnaEmit->chr[sample];
+  int mx = maxcn_mask.count(cnaChr) ? maxcn_mask[cnaChr]: maxcn;
   llh = 0.0;
   for (int evt=0; evt < cnaEmit->nEvents[sample]; evt++){
     idx = cnaEmit->idx_of_event[sample][evt];
     //***PREDICT STEP***
     if (nClones > 0 && cnaEmit->connect && evt > 0){//connect to the left...
       pj = cnaEmit->pjump[sample][idx];
-      Clone::predict( prior, post, cnaEmit, pj, Trans);
+      if (mx < maxcn){//maximum c.n. mask applies?
+	Clone::predict( prior, post, cnaEmit, pj, Trans, mx);
+      }
+      else{
+	Clone::predict( prior, post, cnaEmit, pj, Trans);
+      }
     }//connect done.
     else if (nClones == 0){
       gsl_vector_set_all( prior, flat);
@@ -1559,6 +1606,8 @@ void Clone::do_cna_Bwd(int sample, double& ent){
     }
   }
   gsl_vector_memcpy( post, prior);
+  int cnaChr = cnaEmit->chr[sample];
+  int mx = maxcn_mask.count(cnaChr) ? maxcn_mask[cnaChr]: maxcn;
   gsl_vector_view alph;
   double pj = 1.0;
   double norm;
@@ -1571,7 +1620,12 @@ void Clone::do_cna_Bwd(int sample, double& ent){
     if ( cnaEmit->connect && nClones > 0 &&  evt < last_evt){//connect to the right... 
       pj = cnaEmit->pjump[sample][last_idx];
       last_idx = idx;
-      Clone::predict( prior, post, cnaEmit, pj, Trans);
+      if (mx < maxcn){
+	Clone::predict( prior, post, cnaEmit, pj, Trans, mx);
+      }
+      else{
+	Clone::predict( prior, post, cnaEmit, pj, Trans);
+      }
     }//connect done.
     else{
       gsl_vector_set_all( prior, flat);
@@ -1852,7 +1906,7 @@ double Clone::entropy(gsl_vector * x){
   return(H);
 }
 
-// predict step...
+// predict step with transition matrix...
 void Clone::predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T){
   if (pj == 0.0){
     gsl_vector_memcpy( prior, post);//no jump possible
@@ -1863,12 +1917,41 @@ void Clone::predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, d
     gsl_blas_dgemv( CblasTrans, pj, T, post, 1.0-pj, prior);
     if (myEmit->log_space){
       for (int l=0;l<nLevels;l++){
-	prior->data[l] = prior->data[l]>0.0 ? log(prior->data[l]) : -1.0e6;
+	prior->data[l] = prior->data[l]>0.0 ? log(prior->data[l]) : logzero;
       }
     }
   }
 }
 
+//predict step with transition matrix and maximum cn constraint...
+void Clone::predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T, int mxcn){
+  if (pj == 0.0){
+    gsl_vector_memcpy( prior, post);//no jump possible
+  }
+  else{
+    if (myEmit->log_space) for (int l=0;l<nLevels;l++) post->data[l] = exp(post->data[l]);
+    gsl_vector_memcpy( prior, post);
+    gsl_blas_dgemv( CblasTrans, pj, T, post, 1.0-pj, prior);
+    for (int l=0;l<nLevels;l++){
+      for (int j=0; j<nClones; j++){
+	if (copynumber[l][j] > mxcn){
+	  prior->data[l] = 0.0;
+	  break;
+	}
+      }
+    }
+    double norm = gsl_blas_dasum(prior);
+    if (norm <= 0.0) abort();
+    gsl_vector_scale(prior,1.0/norm);
+    if (myEmit->log_space){
+      for (int l=0;l<nLevels;l++){
+	prior->data[l] = prior->data[l]>0.0 ? log(prior->data[l]) : logzero;
+      }
+    }
+  }
+}
+
+// predict step with convex mixing...
 void Clone::predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, double flat){
   if (pj==0.0){
     gsl_vector_memcpy(prior,post);
@@ -1895,10 +1978,10 @@ void Clone::predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, d
 // general update step...
 double Clone::update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, int sample, int evt){ 
   if (myEmit == cnaEmit){
-    Clone::update_cna( post, sample, evt);
+    Clone::update_cna( prior, post, sample, evt);
   }
   else if (myEmit == bafEmit){
-    Clone::update_baf( post, sample, evt);
+    Clone::update_baf( prior, post, sample, evt);
   }
   else if (myEmit == snvEmit){
     Clone::update_snv( prior, post, sample, evt);
@@ -1948,22 +2031,22 @@ void Clone::set_tcn(int s){//only used for cnaEmit...
 
 
 // update step for CNA...
-void Clone::update_cna( gsl_vector * post, int sample, int evt){ 
+void Clone::update_cna( gsl_vector * prior, gsl_vector * post, int sample, int evt){ 
   if ( cnaEmit->coarse_grained ){
-    Clone::update_cna_event( post, sample, evt);
+    Clone::update_cna_event( prior, post, sample, evt);
   }
   else{
     if (nClones==0){
       Clone::update_cna_site_noclone( post, sample, evt);
     }
     else{
-      Clone::update_cna_site_wclone( post, sample, evt);
+      Clone::update_cna_site_wclone( prior, post, sample, evt);
     }
   }
 }
 
 
-void Clone::update_cna_event( gsl_vector * post, int sample, int evt){
+void Clone::update_cna_event( gsl_vector * prior, gsl_vector * post, int sample, int evt){
   gsl_vector_set_all( post, 0.0);//log-space!
   gsl_vector_view emit;
   double x,dx,val;
@@ -1971,6 +2054,7 @@ void Clone::update_cna_event( gsl_vector * post, int sample, int evt){
     emit = gsl_matrix_row( cnaEmitLog[t][sample], evt);
     dx   = (cna_xmax[t] - cna_xmin[t]) / double(cnaEmit->gridSize);
     for (int level=0; level<nLevels; level++){
+      if (prior->data[level] <= logzero) continue;
       x = tcn[t][sample][level] * mass->data[t];
       if ( x < cna_xmin[t] || x > cna_xmax[t]){//outside range...
 	val = -1.0e10;
@@ -2021,8 +2105,8 @@ void Clone::update_cna_site_noclone( gsl_vector * post, int sample, int site){//
 }
 
 //normal case with one or more clones
-void Clone::update_cna_site_wclone( gsl_vector * post, int sample, int site){
-  gsl_vector_set_all( post, 1.0);
+void Clone::update_cna_site_wclone( gsl_vector * prior, gsl_vector * post, int sample, int site){
+  gsl_vector_set_all( post, 1.0);//NOT logspace!
   double b  = (cnaEmit->bias != NULL) ? cnaEmit->bias[sample][site] : -1.0;
   double lb = (cnaEmit->log_bias != NULL) ? cnaEmit->log_bias[sample][site] : 0.0;
   for (int time=0; time<nTimes; time++){
@@ -2039,6 +2123,7 @@ void Clone::update_cna_site_wclone( gsl_vector * post, int sample, int site){
 	pre2 *= b;
       }
       for (int l=0; l<nLevels; l++){
+	if (prior->data[l] <= 0.0) continue;
 	val = pre1 - pre2*tcn[time][sample][l] + double(n)*log_tcn[time][sample][l];
 	val = exp(val);
 	if (rnd > 0.0) val = val*nrnd + rnd;
@@ -2050,6 +2135,7 @@ void Clone::update_cna_site_wclone( gsl_vector * post, int sample, int site){
       double pre = loggma[int(n1)+n] - loggma[int(n1)] - loggma[n+1] + n1*cnaEmit->log_shape;
       double rate;
       for (int l=0; l<nLevels; l++){
+	if (prior->data[l] <= 0.0) continue;
 	rate = mass->data[time] * tcn[time][sample][l];
 	val  = pre +  double(n) * (log_mass->data[time] + log_tcn[time][sample][l]);
 	if (b > 0.0){
@@ -2066,16 +2152,16 @@ void Clone::update_cna_site_wclone( gsl_vector * post, int sample, int site){
 }
 
 
-void Clone::update_baf( gsl_vector * post, int sample, int evt){
+void Clone::update_baf( gsl_vector * prior, gsl_vector * post, int sample, int evt){
   if (bafEmit->coarse_grained){
-    Clone::update_baf_event( post, sample, evt);
+    Clone::update_baf_event( prior, post, sample, evt);
   }
   else{
-    Clone::update_baf_site( post, sample, evt);
+    Clone::update_baf_site( prior, post, sample, evt);
   }
 }
 
-void Clone::update_baf_event( gsl_vector * post, int sample, int evt){
+void Clone::update_baf_event( gsl_vector * prior, gsl_vector * post, int sample, int evt){
   gsl_vector_set_all( post, 0.0);//log-space!
   double x,y,val,total_cn;
   double dx = bafEmit->dx;
@@ -2085,9 +2171,10 @@ void Clone::update_baf_event( gsl_vector * post, int sample, int evt){
     y = (1.0 - purity[t]) / total_cn;
     emit = gsl_matrix_row( bafEmitLog[t][sample], evt);
     for (int level=0; level<nLevels; level++){
+      if (prior->data[level] <= logzero) continue;
       x = y + clone_spectrum[t][level] / total_cn;
       if ( x < 0.0 || x > 1.0){//outside range...
-	val = -1.0e6;
+	val = logzero;
       }
       else{//inside range...
 	val = Clone::get_interpolation( x, 0.0, 1.0, dx, &emit.vector);
@@ -2098,8 +2185,8 @@ void Clone::update_baf_event( gsl_vector * post, int sample, int evt){
 }
 
 
-void Clone::update_baf_site( gsl_vector * post, int sample, int site){
-  gsl_vector_set_all( post, 1.0);
+void Clone::update_baf_site( gsl_vector * prior, gsl_vector * post, int sample, int site){
+  gsl_vector_set_all( post, 1.0);//not log-space!
   double x, y, total_cn, val;
   unsigned int N, n1, n2;
   double dx = bafEmit->dx;
@@ -2115,6 +2202,7 @@ void Clone::update_baf_site( gsl_vector * post, int sample, int site){
     total_cn = (bafEmit->phi == NULL) ? 2.0 : bafEmit->phi[t][sample][evt];
     y = (1.0-purity[t]) / total_cn;
     for (int level=0; level<nLevels; level++){
+      if (prior->data[level] <= 0.0) continue;
       x = y + clone_spectrum[t][level] / total_cn;
       if (x > 1.0){//outside range...
 	val = 0.0;
@@ -2154,7 +2242,7 @@ void Clone::update_baf_site( gsl_vector * post, int sample, int site){
 
 void Clone::update_snv( gsl_vector * prior, gsl_vector * post, int sample, int evt){
   if (snvEmit->coarse_grained){
-    Clone::update_snv_event( post, sample, evt);
+    Clone::update_snv_event( prior, post, sample, evt);
   }
   else if ( bulk_fix >= 0.0 || (bulk_mean != NULL && bulk_dist == NULL)){
     Clone::update_snv_fixed( prior, post, sample, evt);
@@ -2164,7 +2252,7 @@ void Clone::update_snv( gsl_vector * prior, gsl_vector * post, int sample, int e
   }
 }
 
-void Clone::update_snv_event( gsl_vector * post, int sample, int evt){
+void Clone::update_snv_event( gsl_vector * prior, gsl_vector * post, int sample, int evt){
   gsl_vector_set_all( post, 0.0);//log-space!
   double val,total_cn;
   double ncn = double(normal_copy[snvEmit->chr[sample]]);
@@ -2172,11 +2260,12 @@ void Clone::update_snv_event( gsl_vector * post, int sample, int evt){
     total_cn = (snvEmit->phi == NULL) ? ncn : snvEmit->phi[t][sample][evt];
     double b = (1.0 - purity[t]) * ncn / total_cn;
     for (int level=0; level<nLevels; level++){
+      if (prior->data[level] <= logzero) continue;
       double a = clone_spectrum[t][level] / total_cn;
       if (a > 1.0){//outside range...
 	int idx  = snvEmit->idx_of_event[sample][evt];
 	int nidx = (evt < snvEmit->nEvents[sample]-1) ? snvEmit->idx_of_event[sample][evt+1] : snvEmit->nSites[sample];
-	val = -1.0e6 * double(nidx-idx);
+	val = logzero * double(nidx-idx);
       }
       else{//inside range...
 	val = Clone::get_interpolation( a, 0.0, 1.0, b, 0.0, 1.0/bulk_min[t][sample][evt], snvEmitLog[t][sample][evt]);
@@ -2184,17 +2273,10 @@ void Clone::update_snv_event( gsl_vector * post, int sample, int evt){
       post->data[level] += val;
     }
   }
-  /*
-  for (int level=0; level<nLevels; level++) printf("%.2e ", post->data[level]);
-  cout<<endl;
-  */
 }
 
 //Dirac-Delta bulk prior distribution (maybe fixed at zero)...
-void Clone::update_snv_fixed( gsl_vector * prior, 
-			      gsl_vector * post, 
-			      int sample, 
-			      int site){
+void Clone::update_snv_fixed( gsl_vector * prior, gsl_vector * post, int sample, int site){
   gsl_vector_set_all( post, 1.0);
   int ncn = normal_copy[snvEmit->chr[sample]];
   double x,y,val=0;
@@ -2215,10 +2297,7 @@ void Clone::update_snv_fixed( gsl_vector * prior,
     double bfix = (bulk_fix >= 0.0) ? bulk_fix : bulk_mean[t][sample][site];
     y =  bfix * (1.0-purity[t]) * double(ncn) / total_cn;//for cancer app, this is usually 0.0!
     for (int level=0; level<nLevels; level++){
-      if (prior->data[level] <= 0.0){
-	post->data[level] = 0.0;
-	continue;
-      }
+      if (prior->data[level] <= 0.0) continue;
       x = y + clone_spectrum[t][level] / total_cn; 
       if (snv_err>0.0){//frequency of erroneous reads
 	x = snv_err + (1.0-snv_err)*x;
@@ -2244,25 +2323,13 @@ void Clone::update_snv_fixed( gsl_vector * prior,
       post->data[level] *= val;
     }
   }
-  /*
-  for (int level=0; level<nLevels; level++) 
-    printf("%.2e ", post->data[level] > 0.0 ? log(post->data[level]) : -1.0e6);
-  cout<<endl;
-  */
 }
 
 
 
 
- 
-
-
-
 //non-trivial case with one or more clones
-void Clone::update_snv_nfixed( gsl_vector * prior, 
-			       gsl_vector * post, 
-			       int sample, 
-			       int site){
+void Clone::update_snv_nfixed( gsl_vector * prior, gsl_vector * post, int sample, int site){
   gsl_vector_set_all(post, 1.0);
   int ncn = normal_copy[snvEmit->chr[sample]];
   double val=0;
@@ -2356,8 +2423,8 @@ double Clone::get_interpolation(double x, double xmin, double xmax, double dx, g
       nu -= 1.0;
     }
     else{
-      f1=-1.0e6;
-      f2=-1.0e6;
+      f1=logzero;
+      f2=logzero;
     }
   }
   else{
@@ -2367,8 +2434,8 @@ double Clone::get_interpolation(double x, double xmin, double xmax, double dx, g
       nu += 1.0;
     }
     else{
-      f1=-1.0e6;
-      f2=-1.0e6;
+      f1=logzero;
+      f2=logzero;
     }
   }
   double val = (1.0-nu)*f1 + nu*f2;//linear interpolation (in log-space)
@@ -2432,7 +2499,7 @@ double Clone::trapezoidal( gsl_vector * blk, double a, double b, gsl_vector * em
   }
   val *= dx;
   if (val != val) abort();
-  if (get_log==1) val = (val > 0.0) ? log(val) : -1.0e6;
+  if (get_log==1) val = (val > 0.0) ? log(val) : logzero;
   return(val);
 }
 
@@ -2663,21 +2730,21 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
 	    for (int j=0; j<=snvEmit->gridSize; j++){
 	      double b = double(j) / (double(snvEmit->gridSize) * bulk_min[t][s][evt]);
 	      if( b > (1.0-a) / bulk_min[t][s][evt]){
-		val = -1.0e6;
+		val = logzero;
 	      }
 	      else if (bulk_prior==NULL){//bulk point estimate...	      
 		double x =  a + bfix * b;
 		if (x > 1.0){//outside range...
-		  val = -1.0e6;
+		  val = logzero;
 		}
 		else if (x>0.0 && x<1.0){//inside range...
 		  val = Clone::get_interpolation( x, 0.0, 1.0, dx, emit);
 		}
 		else if ( x==1.0 ){//edges...
-		  val = (n==N) ? 0.0 : -1.0e6;
+		  val = (n==N) ? 0.0 : logzero;
 		}
 		else if ( x==0.0 ){
-		  val = (n==0) ? 0.0 : -1.0e6;
+		  val = (n==0) ? 0.0 : logzero;
 		}
 	      }
 	      else{//bulk full distribution...		

@@ -47,7 +47,10 @@ class Clone{
   void get_normal_copy(const char * chr_fn);
   void set_normal_copy(const char * chr_fn);
   void clean();
-  int nTimes, nClones, maxcn;
+  int nTimes, nClones;
+  int maxcn;
+  std::map<int,int> maxcn_mask;
+  void get_maxcn_mask(const char * maxcn_mask_fn);
   int allocated, is_set;
   int maj_ncn;
   double bulk_fix,snv_err,baf_pen,snv_pen, snv_fpr;
@@ -148,20 +151,21 @@ class Clone{
   double entropy(gsl_vector * x);
   //
   void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T);
+  void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T, int mxcn);
   void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, double flat);
   double update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, int sample, int site);
   //
-  void update_cna( gsl_vector * post, int sample, int site);
-  void update_cna_event( gsl_vector * post, int sample, int evt);
+  void update_cna( gsl_vector * prior, gsl_vector * post, int sample, int site);
+  void update_cna_event( gsl_vector * prior, gsl_vector * post, int sample, int evt);
   void update_cna_site_noclone( gsl_vector * post, int sample, int site);
-  void update_cna_site_wclone( gsl_vector * post, int sample, int site);
+  void update_cna_site_wclone( gsl_vector * prior, gsl_vector * post, int sample, int site);
   //
-  void update_baf( gsl_vector * post, int sample, int evt);
-  void update_baf_event( gsl_vector * post, int sample, int evt);
-  void update_baf_site( gsl_vector * post, int sample, int site);
+  void update_baf( gsl_vector * prior, gsl_vector * post, int sample, int evt);
+  void update_baf_event( gsl_vector * prior, gsl_vector * post, int sample, int evt);
+  void update_baf_site( gsl_vector * prior, gsl_vector * post, int sample, int site);
   //
   void update_snv( gsl_vector * prior, gsl_vector * post, int sample, int site);
-  void update_snv_event( gsl_vector * post,int sample,int evt);
+  void update_snv_event( gsl_vector * prior, gsl_vector * post,int sample,int evt);
   void update_snv_fixed(  gsl_vector * prior, gsl_vector * post, int sample, int site);
   void update_snv_nfixed( gsl_vector * prior, gsl_vector * post, int sample, int site);	  
   double get_interpolation(double x, double xmin, double xmax, double dx, gsl_vector * emit);
@@ -187,7 +191,7 @@ class Clone{
   //SNV bulk updates
   void update_bulk(int sample);
   void get_bulk_post_dist( gsl_vector * bprior, gsl_vector * bpost, gsl_vector * emit, int time, int sample, int idx);
-  
+  double logzero;
 };
 
 

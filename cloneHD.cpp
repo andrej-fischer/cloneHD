@@ -134,6 +134,9 @@ int main (int argc, const char * argv[]){
   myClone.snv_fpr  = (opts.snv_fpr > 0.0)  ? opts.snv_fpr : 1.0e-4;//SNV false-positive rate
   myClone.snv_err  = (opts.snv_err >= 0.0) ? opts.snv_err : 0.0;   //SNV frequency of false positives
   myClone.snv_pen  = (opts.snv_pen > 0.0)  ? opts.snv_pen : (bafEmit.is_set ? 0.01 : 0.5);//penalty for SNV genotypes higher than max
+  if (opts.maxcn_mask_fn != NULL){//mask for maximum total c.n. per chromosome
+    myClone.get_maxcn_mask(opts.maxcn_mask_fn);
+  }
   // *** GET SNV BULK PRIOR ***
   if ( snvEmit.is_set && opts.bulk_fn != NULL ){
     if (opts.bulk_mean)  myClone.allocate_bulk_mean();
@@ -459,6 +462,9 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--maxcn") == 0){
       opts.maxcn = atoi(argv[opt_idx]);
     }
+    else if ( opt_switch.compare("--maxcn-mask") == 0){
+      opts.maxcn_mask_fn = argv[opt_idx];
+    }
     else if ( opt_switch.compare("--nmax") == 0){
       opts.nmax = atoi(argv[opt_idx]);
     }
@@ -570,6 +576,7 @@ void default_opts(cmdl_opts& opts){
   opts.cna_jumps_fn   = NULL;
   opts.baf_jumps_fn   = NULL;
   opts.snv_jumps_fn   = NULL;
+  opts.maxcn_mask_fn   = NULL;
   opts.pre      = "./out";
   opts.grid     = 300;
   opts.cna_jump = -1.0;//negative values mean NO correlations
