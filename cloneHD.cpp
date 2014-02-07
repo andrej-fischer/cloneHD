@@ -81,7 +81,7 @@ int main (int argc, const char * argv[]){
     bafEmit.mode = (opts.baf_shape > 0.0) ? 2 : 1;//shape?
     bafEmit.shape = opts.baf_shape;
     bafEmit.log_shape = (opts.baf_shape > 0.0) ? log(opts.baf_shape) : 0.0;
-    bafEmit.rnd_emit = opts.baf_rnd;
+    bafEmit.rnd_emit  = opts.baf_rnd;
     bafEmit.reflect = 1;//reflect at 0.5 (n == N-n)
     bafEmit.get_log = 1;
     if (opts.baf_jump >= 0.0)    bafEmit.connect = 1;
@@ -273,22 +273,26 @@ int main (int argc, const char * argv[]){
       //get, map and print total copynumber...
       myClone.get_phi(s);
       print_phi( phi_fp, &myClone, &cnaEmit, s, opts);
-      if (bafEmit.is_set){
+      int cnaChr = cnaEmit.chr[s];
+      int bafSample = -1;
+      int snvSample = -1;
+      if (bafEmit.is_set && bafEmit.chrs.count(cnaChr) == 1){
 	myClone.map_phi( &cnaEmit, s, &bafEmit);
-	int baf_sample = bafEmit.idx_of[cnaEmit.chr[s]];
-	if (snvEmit.is_set) myClone.map_phi( &bafEmit, baf_sample, &snvEmit);
+	bafSample = bafEmit.idx_of[cnaChr];
+	if (snvEmit.is_set && snvEmit.chrs.count(cnaChr) == 1){
+	  myClone.map_phi( &bafEmit, bafSample, &snvEmit);
+	}
       }
-      else{
-	if (snvEmit.is_set) myClone.map_phi( &cnaEmit, s, &snvEmit);
+      else if (snvEmit.is_set && snvEmit.chrs.count(cnaChr) == 1){
+	myClone.map_phi( &cnaEmit, s, &snvEmit);
+	snvSample = snvEmit.idx_of[cnaChr];
       }     
-      //used total-copynumber tracks...
-      if ( bafEmit.is_set && bafEmit.phi != NULL){
-	int baf_sample = bafEmit.idx_of[cnaEmit.chr[s]];
-	print_phi( baf_utcn_fp,  &myClone, &bafEmit, baf_sample, opts);
+      //print used total-copynumber tracks...
+      if ( bafSample >= 0 && bafEmit.phi != NULL){
+	print_phi( baf_utcn_fp,  &myClone, &bafEmit, bafSample, opts);
       }
-      if (snvEmit.is_set && snvEmit.phi != NULL){
-	int snv_sample = snvEmit.idx_of[cnaEmit.chr[s]];
-	print_phi( snv_utcn_fp,  &myClone, &snvEmit, snv_sample, opts);
+      if (snvSample >= 0 && snvEmit.phi != NULL){
+	print_phi( snv_utcn_fp,  &myClone, &snvEmit, snvSample, opts);
       }
     }
     fclose(cna_fp);
