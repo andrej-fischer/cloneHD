@@ -1,8 +1,8 @@
-# cloneHD and filterHD software
+# How to get cloneHD and filterHD software?
 
 The current stable release, including pre-compiled executable binaries of filterHD and cloneHD for Mac OS X (64bit), can be found at <ftp://ftp.sanger.ac.uk/pub/teams/153/cloneHD/>. 
 
-# Run test with simulated data
+# Run a test with simulated data!
 
 If you download cloneHD from the ftp site above, you can test both filterHD and cloneHD by running
 
@@ -17,7 +17,10 @@ To compile cloneHD yourself, you need the GNU scientific library (GSL) v1.15 or 
 
 `$ make -f Makefile_cloneHD`
 
-in the source directory. The two executables, `filterHD` and `cloneHD`, will be in `./build`.
+in the source directory. The two executables, `filterHD` and
+`cloneHD`, will be in `./build`.
+
+# What are filterHD/cloneHD doing?
 
 # filterHD command line arguments
 
@@ -144,9 +147,10 @@ Format of input files: the first two columns of all three input file
 ### Fuzzy segmentation options
 
 For data with persistence along the genome, a fuzzy segmentation can
-be used based on the filterHD posterior jump probability. Data between
-potential jump sites, with a jump probability of at least `min-jump`, is
-collapsed. The jump probability is used in the HMM transition.
+be used based on the filterHD posterior jump probability (must be
+`*jumps.txt` file). Data between potential jump sites, with a jump
+probability of at least `min-jump`, is collapsed. The jump probability
+is used in the HMM transition.
 
 *    `--cna-jumps [file]`
 *    `--baf-jumps [file]`
@@ -193,9 +197,10 @@ available. Useful in combination with `--clones`.
         30.0 0.64 0.12 0.03
         28.0 0.31 0.23 0.11 
 
-    More than one parameter set can be given (appended below). Then,
-    only likelihoods are computed and output to a file ending
-    `*llh-values.txt`. 
+    More than one parameter set can be given (as continued list). Then,
+    only the likelihoods are computed and output to a file ending
+    `*llh-values.txt`.  Useful for mapping the log-likelihood surface
+    or comparing several given solutions.
 
 *    `--purity [file]`  Fixed purities, lower bounds for the sum of
      subclonal frequencies. One line per sample.
@@ -242,9 +247,11 @@ available. Useful in combination with `--clones`.
 
 ## Bulk options
 
-These options are only needed if the population is a mixture of a
-diverse bulk with known allele frequency profile and a number of
-subclones. Allele frequency data is input with `--snv`.
+These options are only needed if the sequenced cell population is a mixture of a
+diverse bulk, with known allele frequency profile, and a number of
+subclones. Allele frequency data is input with `--snv`. Data
+segmentation can be used with `--snv-jumps`. Read depth data can also
+be specified with `--cna`. 
 
 *    `--bulk-mean [double]`  The bulk allele frequency profile. Must be a filterHD `*posterior.*.txt` file. Only the posterior mean is used.
 
