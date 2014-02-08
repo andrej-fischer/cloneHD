@@ -6,7 +6,9 @@ v1.16.5 / 07.04.2014
 *	fixed bug in Clone::snv_prior_from_cna_baf_post()
 *	fixed bug in posterior output for BAF and SNV
 *	introduced prior masking for all update functions
-* 	introduced --maxcn_mask [file] option to limit total c.n. per chromosome
+* 	introduced --maxcn_mask [file] option to limit total c.n. per
+	chromosome
+*	static linking of both libgcc and libstdc++ for portability
 
 v1.16.4 / 30.01.2014
 

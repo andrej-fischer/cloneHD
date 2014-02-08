@@ -1,8 +1,11 @@
-# How to get cloneHD and filterHD software?
+# How to get cloneHD and filterHD?
 
-The current stable release, including pre-compiled executable binaries of filterHD and cloneHD for Mac OS X (64bit), can be found at <ftp://ftp.sanger.ac.uk/pub/teams/153/cloneHD/>. 
+The current stable release, including pre-compiled executable binaries
+of filterHD and cloneHD for Mac OS X (64bit), can be found at
+<ftp://ftp.sanger.ac.uk/pub/teams/153/cloneHD/>.  The source code can
+also be downloaded here.
 
-# Run a test with simulated data!
+# Run a test with simulated data
 
 If you download cloneHD from the ftp site above, you can test both filterHD and cloneHD by running
 
@@ -13,14 +16,28 @@ data with a matched normal. All command line arguments are explained below.
 
 # Compilation  
 
-To compile cloneHD yourself, you need the GNU scientific library (GSL) v1.15 or later. Change the paths in the Makefile to your GSL installation location (if non-standard). Then type 
+To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to your GSL installation location (if non-standard). Then type 
 
 `$ make -f Makefile_cloneHD`
 
 in the source directory. The two executables, `filterHD` and
 `cloneHD`, will be in `./build`.
 
-# What are filterHD/cloneHD doing?
+# What are cloneHD and filterHD for?
+
+cloneHD is a software for reconstructing the subclonal structure of a
+population from next-generation short-read sequencing data. Read depth
+data, B-allele count data and somatic nucleotide variant (SNV) data can be
+used for the inference. cloneHD can find the number of subclonal
+populations, their copy number profiles, their B-allel status and all
+SNV genotypes with high resolution.
+
+filterHD is a general purpose probabilistic filtering algorithm for
+discrete data, similar to a Kalman filter. It is a continuous state
+space Hidden Markov model with Poisson or Binomial emissions and a
+jump-diffusion propagator. It can be used for scale-free smoothing, 
+fuzzy data segmentation and data filtering. 
+
 
 # filterHD command line arguments
 
@@ -53,8 +70,12 @@ in the source directory. The two executables, `filterHD` and
 
 ## Parameter options
 
-*    `--jump [double]`
-*    `--sigma [double]`
+The HMM underlying filterHD is determined by these four
+parameters. They can all be fixed, otherwise they are learned from the data.
+
+*    `--jump [double]`  The jump probability per length unit. With `--jump 0`, no jumps are possible.
+*    `--sigma [double]`  The diffusion constant. With `--sigma 0`,
+       no diffusion is possible.
 *    `--shape [double]`
 *    `--rnd [double]`
 
