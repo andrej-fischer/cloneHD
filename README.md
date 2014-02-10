@@ -39,6 +39,7 @@ jump-diffusion propagator. It can be used for scale-free smoothing,
 fuzzy data segmentation and data filtering. 
 
 
+
 # filterHD command line arguments
 
 ## Typical usage options
