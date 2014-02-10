@@ -29,7 +29,7 @@ cloneHD is a software for reconstructing the subclonal structure of a
 population from next-generation short-read sequencing data. Read depth
 data, B-allele count data and somatic nucleotide variant (SNV) data can be
 used for the inference. cloneHD can find the number of subclonal
-populations, their copy number profiles, their B-allel status and all
+populations, their copy number profiles, their B-allele status and all
 SNV genotypes with high resolution.
 
 filterHD is a general purpose probabilistic filtering algorithm for
@@ -249,7 +249,8 @@ available. Useful in combination with `--clones`.
 
 *    `--maxcn-mask [file]`  A maximum total copy number for individual
      chromosomes can be specified. This is useful, if large copy
-     numbers are expected in only in part of the genome.
+     numbers are expected in only in part of the genome. In
+     chromosomes not specified in this file, the value of `--maxcn` is used.
 
 *    `--chr [file]`  The normal copy number for every single
      chromosome can be specified. Needed for non-human DNA. If not

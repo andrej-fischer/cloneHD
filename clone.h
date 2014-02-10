@@ -50,7 +50,7 @@ class Clone{
   int nTimes, nClones;
   int maxcn;
   std::map<int,int> maxcn_mask;
-  void get_maxcn_mask(const char * maxcn_mask_fn);
+  void get_maxcn_mask(const char * maxcn_mask_fn, int maxcn_gw);
   int allocated, is_set;
   int maj_ncn;
   double bulk_fix,snv_err,baf_pen,snv_pen, snv_fpr;

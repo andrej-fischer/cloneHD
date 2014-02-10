@@ -231,36 +231,59 @@ void Clone::get_normal_copy(const char * chr_fn){
 
 
 // get the maximum total c.n. mask per chromosome
-void Clone::get_maxcn_mask(const char * mask_fn){
-  if (mask_fn==NULL) abort();
-  ifstream ifs;
-  string line;
-  stringstream line_ss;
-  ifs.open( mask_fn, ios::in);
-  if (ifs.fail()){
-    printf("ERROR: file %s cannot be opened.\n", mask_fn);
-    exit(1);
+void Clone::get_maxcn_mask(const char * mask_fn, int maxcn_gw){
+  if (mask_fn==NULL){//use mxcn genome wide
+    maxcn = maxcn_gw;
   }
-  int chr = 0, mxcn=0;
-  maxcn_mask.clear();
-  while( ifs.good() ){
-    line.clear();
-    getline( ifs, line);
-    if (line.empty()) break;
-    if (line[0] == '#') continue;
-    line_ss.clear();
-    line_ss.str(line);
-    line_ss >> chr >> mxcn;
-    if (chr<0 || chr >= 100) abort();
-    if (maxcn_mask.count(chr) == 0){
-      maxcn_mask.insert(std::pair<int,int>(chr,mxcn));
-    }
-    else{
-      printf("ERROR: in file %s: chr %i appears twice.\n", mask_fn, chr);
+  else{//use explicit upper limit per chromosome, and mxcn elsewhere
+    ifstream ifs;
+    string line;
+    stringstream line_ss;
+    ifs.open( mask_fn, ios::in);
+    if (ifs.fail()){
+      printf("ERROR: file %s cannot be opened.\n", mask_fn);
       exit(1);
     }
+    int chr = 0, chrMxcn=0;
+    maxcn = maxcn_gw;
+    maxcn_mask.clear();
+    while( ifs.good() ){
+      line.clear();
+      getline( ifs, line);
+      if (line.empty()) break;
+      if (line[0] == '#') continue;
+      line_ss.clear();
+      line_ss.str(line);
+      line_ss >> chr >> chrMxcn;
+      if (chr<0 || chr >= 100) abort();
+      if (maxcn_mask.count(chr) == 0){
+	maxcn_mask.insert(std::pair<int,int>(chr,chrMxcn));
+	maxcn = max( maxcn, chrMxcn);
+      }
+      else{
+	printf("ERROR: in file %s: chr %i appears twice.\n", mask_fn, chr);
+	exit(1);
+      }
+    }
+    ifs.close();
+    //insert for all chromosomes not in the file the limit maxcn_gw
+    if (cnaEmit->is_set){
+      for (int s=0; s<cnaEmit->nSamples; s++){
+	int cnaChr = cnaEmit->chr[s];
+	if (maxcn_mask.count(cnaChr) == 0){
+	  maxcn_mask.insert(std::pair<int,int>( cnaChr, maxcn_gw));
+	}
+      }
+    }
+    else if (snvEmit->is_set){
+      for (int s=0; s<snvEmit->nSamples; s++){
+	int snvChr = snvEmit->chr[s];
+	if (maxcn_mask.count(snvChr) == 0){
+	  maxcn_mask.insert(std::pair<int,int>( snvChr, maxcn_gw));
+	}
+      }
+    }
   }
-  ifs.close();
 }
 
 
@@ -1368,10 +1391,10 @@ void Clone::do_cna_Fwd( int sample, double& llh){
     //***PREDICT STEP***
     if (nClones > 0 && cnaEmit->connect && evt > 0){//connect to the left...
       pj = cnaEmit->pjump[sample][idx];
-      if (mx < maxcn){//maximum c.n. mask applies?
+      if (mx < maxcn){//some levels shut down
 	Clone::predict( prior, post, cnaEmit, pj, Trans, mx);
       }
-      else{
+      else{//all levels open
 	Clone::predict( prior, post, cnaEmit, pj, Trans);
       }
     }//connect done.
@@ -1502,6 +1525,7 @@ void Clone::do_snv_Fwd(int sample, double& llh){
     Trans = gsl_matrix_alloc( nLevels, nLevels);
     gsl_matrix_memcpy( Trans, TransMat_snv);
   }
+  int mx = maxcn_mask.count(snvChr) ? maxcn_mask[snvChr]: maxcn;
   double norm = 0.0;
   double pj   = 1.0;
   int ncn     = normal_copy[ snvEmit->chr[sample] ];
@@ -1515,7 +1539,12 @@ void Clone::do_snv_Fwd(int sample, double& llh){
     if (nClones > 0){
       if (snvEmit->connect && evt > 0){//connect to the left...
 	pj = snvEmit->pjump[sample][idx];
-	Clone::predict( prior, post, snvEmit, pj, Trans);
+	if (mx<maxcn){
+	  Clone::predict( prior, post, snvEmit, pj, Trans, mx);
+	}
+	else{
+	  Clone::predict( prior, post, snvEmit, pj, Trans);
+	}
       }//...connect to left done
       if (cnaEmit->is_set){//connect to CNA...
 	if (bafEmit->is_set && bafSample >= 0){//use BAF post
@@ -1620,10 +1649,10 @@ void Clone::do_cna_Bwd(int sample, double& ent){
     if ( cnaEmit->connect && nClones > 0 &&  evt < last_evt){//connect to the right... 
       pj = cnaEmit->pjump[sample][last_idx];
       last_idx = idx;
-      if (mx < maxcn){
+      if (mx < maxcn){//some levels shut down
 	Clone::predict( prior, post, cnaEmit, pj, Trans, mx);
       }
-      else{
+      else{//all levels open
 	Clone::predict( prior, post, cnaEmit, pj, Trans);
       }
     }//connect done.
@@ -1793,6 +1822,7 @@ void Clone::do_snv_Bwd( int sample, double& ent){
     Trans = gsl_matrix_alloc( nLevels, nLevels);
     gsl_matrix_memcpy( Trans, TransMat_snv);
   }
+  int mx = maxcn_mask.count(snvChr) ? maxcn_mask[snvChr]: maxcn;
   gsl_vector_view alph;
   gsl_vector_view cna_post,baf_post;
   double pj = 1.0, norm=0;
@@ -1810,7 +1840,12 @@ void Clone::do_snv_Bwd( int sample, double& ent){
       if ( snvEmit->connect && evt < last_evt){//connect to the right...
 	pj = snvEmit->pjump[sample][last_idx];
 	last_idx = idx;
-	Clone::predict( prior, post, snvEmit, pj, Trans);
+	if (mx<maxcn){
+	  Clone::predict( prior, post, snvEmit, pj, Trans, mx);
+	}
+	else {
+	  Clone::predict( prior, post, snvEmit, pj, Trans);
+	}
       }//...connect to right done
       if (cnaEmit->is_set){//connect to CNA...
 	if (bafEmit->is_set && bafSample >= 0){//use BAF post

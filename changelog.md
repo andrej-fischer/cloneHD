@@ -8,7 +8,7 @@ v1.16.5 / 07.04.2014
 *	introduced prior masking for all update functions
 * 	introduced --maxcn_mask [file] option to limit total c.n. per
 	chromosome
-*	static linking of both libgcc and libstdc++ for portability
+*	static linking of both libgcc and libstdc++ for increased portability
 
 v1.16.4 / 30.01.2014
 
