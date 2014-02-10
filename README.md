@@ -43,6 +43,12 @@ fuzzy data segmentation and data filtering.
 ![baf gof](/images/baf.gof.pdf "BAF goodness of fit")
 ![cna gof](/images/baf.post.pdf "BAF posterior")
 
+Visualization of the cloneHD output for the simulated data set. From
+top to bottom: (i) the bias corrected read depth data and the cloneHD
+posterior mean emission rate (ii) the total copy number posterior
+distribution for subclone 1 with f1=0.52 and subclone 2 with f2=0.07
+(iii) the BAF and (iv) the minor allele posterior.
+
 # filterHD command line arguments
 
 ## Typical usage options
