@@ -38,7 +38,7 @@ space Hidden Markov model with Poisson or Binomial emissions and a
 jump-diffusion propagator. It can be used for scale-free smoothing, 
 fuzzy data segmentation and data filtering. 
 
-
+![cna gof](/images/cna.gof.pdf "CNA goodness of fit")
 
 # filterHD command line arguments
 
