@@ -39,6 +39,9 @@ jump-diffusion propagator. It can be used for scale-free smoothing,
 fuzzy data segmentation and data filtering. 
 
 ![cna gof](/images/cna.gof.pdf "CNA goodness of fit")
+![cna gof](/images/cna.post.pdf "CNA posterior")
+![baf gof](/images/baf.gof.pdf "BAF goodness of fit")
+![cna gof](/images/baf.post.pdf "BAF posterior")
 
 # filterHD command line arguments
 
