@@ -38,10 +38,10 @@ space Hidden Markov model with Poisson or Binomial emissions and a
 jump-diffusion propagator. It can be used for scale-free smoothing, 
 fuzzy data segmentation and data filtering. 
 
-![cna gof](/images/cna.gof.pdf "CNA goodness of fit")
-![cna gof](/images/cna.post.pdf "CNA posterior")
-![baf gof](/images/baf.gof.pdf "BAF goodness of fit")
-![cna gof](/images/baf.post.pdf "BAF posterior")
+![cna gof](/images/cna.gof.png "CNA goodness of fit")
+![cna gof](/images/cna.post.png "CNA posterior")
+![baf gof](/images/baf.gof.png "BAF goodness of fit")
+![cna gof](/images/baf.post.png "BAF posterior")
 
 Visualization of the cloneHD output for the simulated data set. From
 top to bottom: (i) the bias corrected read depth data and the cloneHD
