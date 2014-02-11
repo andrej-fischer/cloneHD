@@ -132,7 +132,6 @@ void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
 
 //get total copynumber tracks from file...
 void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
-  // myEmit->cnmax_seen.clear();//??? needed ???
   ifstream ifs;
   string line;
   stringstream line_ss;
@@ -147,6 +146,7 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
   double mcn, x;
   double * mcn_buff = new double [myEmit->nTimes];
   int sample=-1, perevt=0, persite=0;
+  int wait=0;
   while( ifs.good() ){
     line.clear();
     getline( ifs, line);
@@ -180,9 +180,10 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
     }
     if (chr != old_chr){//new chromosome
       if(myEmit->chrs.count[chr] == 0){
-	printf("ERROR in file %s: chromosome %i not present in data.\n", mntcn_fn, chr);
-	cout<<line<<endl;
-	exit(1);
+	wait=1;
+      }
+      else{
+	wait=0;
       }
       if (old_chr != -1 ){//not the first new chr
 	sample = myEmit->idx_of[old_chr];
@@ -192,13 +193,13 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
 	    for (int t=0; t<myEmit->nTimes; t++){
 	      myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
 	    }
-	    //myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
 	  }
 	}
 	evt = 0;
       }
     }
     old_chr = chr;
+    if (wait) continue;
     sample  = myEmit->idx_of[chr];
     if ( evt >= myEmit->nEvents[sample]) continue;//chromosome is complete!
     locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];//current target locus
@@ -209,13 +210,9 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
       line_ss >> mcn;
       mcn_buff[t] = mcn;
     }
-    //line_ss >> mxcn;
-    //global_mx = max(global_mx,mxcn);
-    //myEmit->cnmax_seen.insert(mxcn);
     //fill
     while(locus <= cn_locusf){
       for (int t=0; t<myEmit->nTimes; t++) myEmit->mean_tcn[t][sample][evt] = mcn_buff[t];
-      //myEmit->cnmax[sample][evt] = mxcn;
       evt++;
       if ( evt >= myEmit->nEvents[sample]) break;
       locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];
@@ -229,12 +226,10 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
       for (int t=0; t<myEmit->nTimes; t++){
 	myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
       }
-      //myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
     }
   }
   //done
   ifs.close();
-  //return(global_mx);
 }
 
 
@@ -245,17 +240,21 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
   ifstream ifs;
   string line;
   stringstream line_ss;
-  ifs.open( mntcn_fn, ios::in);
+  ifs.open( avcn_fn, ios::in);
   if (ifs.fail()){
-    printf("ERROR file %s cannot be opened.\n", mntcn_fn);
+    printf("ERROR file %s cannot be opened.\n", avcn_fn);
     exit(1);
   }
   int chr=0, old_chr = -1;
   int cn_locusi=0, cn_locusf=0, nloci=0, locus=-1;
   int evt=0;
-  double mcn, x;
-  double * mcn_buff = new double [myEmit->nTimes];
+  double frac, x;
+  int nEl = (myClone->maxcn+1)*myClone->nTimes;
+  double ** buff = new double [myClone->nTimes];
+  for (int t=0; t<myClone->nTimes; t++) 
+    buff[t] = new double [myClone->maxcn+1];
   int sample=-1, perevt=0, persite=0;
+  int wait=0;
   while( ifs.good() ){
     line.clear();
     getline( ifs, line);
@@ -266,14 +265,14 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
     if (old_chr == -1 && locus == -1){//check format
       int cols=0;
       while(line_ss >> x) cols++;
-      if (cols == 1 + 3 + myEmit->nTimes){
+      if (cols == 1 + 3 + nEl){
 	perevt = 1;
       }
-      else if (cols == 1 + 1 + myEmit->nTimes){
+      else if (cols == 1 + 1 + nEl){
 	persite = 1;
       }
       else{
-	printf("ERROR: check format in %s.\n", mntcn_fn);
+	printf("ERROR: check format in %s.\n", avcn_fn);
 	exit(1);
       }
       line_ss.clear();//reset
@@ -289,9 +288,10 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
     }
     if (chr != old_chr){//new chromosome
       if(myEmit->chrs.count[chr] == 0){
-	printf("ERROR in file %s: chromosome %i not present in data.\n", mntcn_fn, chr);
-	cout<<line<<endl;
-	exit(1);
+	wait = 1;
+      }
+      else{
+	wait = 0;
       }
       if (old_chr != -1 ){//not the first new chr
 	sample = myEmit->idx_of[old_chr];
@@ -299,32 +299,36 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
 	  int oevt = evt-1;
 	  for (int e=evt; e<myEmit->nEvents[sample]; e++){
 	    for (int t=0; t<myEmit->nTimes; t++){
-	      myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
+	      for (int cn=0; cn<=myClone->maxcn; cn++){
+		myEmit->av_cn[t][sample][e][cn] = myEmit->av_cn[t][sample][oevt][cn];
+	      }
 	    }
-	    //myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
 	  }
 	}
 	evt = 0;
       }
     }
     old_chr = chr;
+    if (wait) continue;
     sample  = myEmit->idx_of[chr];
     if ( evt >= myEmit->nEvents[sample]) continue;//chromosome is complete!
     locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];//current target locus
     if( cn_locusf <  locus) continue;
     // now we are above or at next event...
     for (int t=0; t<myEmit->nTimes; t++){
-      if (line_ss.good() != true) abort();
-      line_ss >> mcn;
-      mcn_buff[t] = mcn;
+      for (int cn=0; cn<=myClone->maxcn; cn++){
+	if (line_ss.good() != true) abort();
+	line_ss >> frac;
+	buff[t][cn] = frac;
+      }
     }
-    //line_ss >> mxcn;
-    //global_mx = max(global_mx,mxcn);
-    //myEmit->cnmax_seen.insert(mxcn);
-    //fill
+    // now fill
     while(locus <= cn_locusf){
-      for (int t=0; t<myEmit->nTimes; t++) myEmit->mean_tcn[t][sample][evt] = mcn_buff[t];
-      //myEmit->cnmax[sample][evt] = mxcn;
+      for (int t=0; t<myEmit->nTimes; t++){
+	for (int cn=0; cn<=myClone->maxcn; cn++){
+	  myEmit->av_cn[t][sample][evt][cn] = buff[t][cn];
+	}
+      }
       evt++;
       if ( evt >= myEmit->nEvents[sample]) break;
       locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];
@@ -336,14 +340,14 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
     int oevt = evt-1;
     for (int e=evt; e<myEmit->nEvents[sample]; e++){
       for (int t=0; t<myEmit->nTimes; t++){
-	myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
+	for (int cn=0; cn<=myClone->maxcn; cn++){
+	  myEmit->av_cn[t][sample][e][cn] = myEmit->av_cn[t][sample][oevt][cn];
+	}
       }
-      //myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
     }
   }
   //done
   ifs.close();
-  //return(global_mx);
 }
 
 

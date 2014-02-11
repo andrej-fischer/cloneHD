@@ -88,7 +88,7 @@ void get_track(const char * track_fn,
 
 void get_maxcn_mask(const char * maxcn_mask_fn, Clone * myClone, int maxcn_gw);
 void get_mean_tcn( const char * mtcn_fn, Clone * myClone, Emission * myEmit);
-void get_avail_tcn( const char * avcn_fn, Clone * myClone, Emission * myEmit);
+void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit);
 void get_purity( const char * purity_fn, gsl_vector *& purity);
 void get_fixed_clones( gsl_matrix *& clones, gsl_vector *& mass, const char * clones_fn, int nTimes);
 void get_jump_probability(  Clone * myClone, cmdl_opts& opts);
