@@ -73,27 +73,80 @@ void get_track(const char * track_fn,
 }
 
 
+// get the maximum total c.n. mask per chromosome
+void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
+  if (mask_fn==NULL){//use mxcn genome wide
+    myClone->maxcn = maxcn_gw;
+  }
+  else{//use explicit upper limit per chromosome, and mxcn elsewhere
+    ifstream ifs;
+    string line;
+    stringstream line_ss;
+    ifs.open( mask_fn, ios::in);
+    if (ifs.fail()){
+      printf("ERROR: file %s cannot be opened.\n", mask_fn);
+      exit(1);
+    }
+    int chr = 0, chrMxcn=0;
+    myClone->maxcn = maxcn_gw;
+    myClone->maxcn_mask.clear();
+    while( ifs.good() ){
+      line.clear();
+      getline( ifs, line);
+      if (line.empty()) break;
+      if (line[0] == '#') continue;
+      line_ss.clear();
+      line_ss.str(line);
+      line_ss >> chr >> chrMxcn;
+      if (chr<0 || chr >= 100) abort();
+      if ( myClone->maxcn_mask.count(chr) == 0){
+	myClone->maxcn_mask.insert(std::pair<int,int>(chr,chrMxcn));
+	myClone->maxcn = max( myClone->maxcn, chrMxcn);
+      }
+      else{
+	printf("ERROR: in file %s: chr %i appears twice.\n", mask_fn, chr);
+	exit(1);
+      }
+    }
+    ifs.close();
+    //insert for all chromosomes not in the file the limit maxcn_gw
+    if ( myClone->cnaEmit->is_set){
+      for (int s=0; s< myClone->cnaEmit->nSamples; s++){
+	int cnaChr = myClone->cnaEmit->chr[s];
+	if ( myClone->maxcn_mask.count(cnaChr) == 0){
+	  myClone->maxcn_mask.insert(std::pair<int,int>( cnaChr, maxcn_gw));
+	}
+      }
+    }
+    else if ( myClone->snvEmit->is_set){
+      for (int s=0; s< myClone->snvEmit->nSamples; s++){
+	int snvChr = myClone->snvEmit->chr[s];
+	if ( myClone->maxcn_mask.count(snvChr) == 0){
+	  myClone->maxcn_mask.insert(std::pair<int,int>( snvChr, maxcn_gw));
+	}
+      }
+    }
+  }
+}
 
 
 //get total copynumber tracks from file...
-int get_phi( const char * phi_fn, Emission * myEmit){
-  myEmit->cnmax_seen.clear();
+void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
+  // myEmit->cnmax_seen.clear();//??? needed ???
   ifstream ifs;
   string line;
   stringstream line_ss;
-  ifs.open( phi_fn, ios::in);
+  ifs.open( mntcn_fn, ios::in);
   if (ifs.fail()){
-    printf("ERROR file %s cannot be opened.\n", phi_fn);
+    printf("ERROR file %s cannot be opened.\n", mntcn_fn);
     exit(1);
   }
-  int chr = 0, old_chr = -1;
+  int chr=0, old_chr = -1;
   int cn_locusi=0, cn_locusf=0, nloci=0, locus=-1;
   int evt=0;
-  double tcn,x;
-  int mxcn;
-  double * tcn_buff = new double [myEmit->nTimes];
-  int global_mx=0;
-  int sample=-1,pevt=0;
+  double mcn, x;
+  double * mcn_buff = new double [myEmit->nTimes];
+  int sample=-1, perevt=0, persite=0;
   while( ifs.good() ){
     line.clear();
     getline( ifs, line);
@@ -104,34 +157,46 @@ int get_phi( const char * phi_fn, Emission * myEmit){
     if (old_chr == -1 && locus == -1){//check format
       int cols=0;
       while(line_ss >> x) cols++;
-      if (cols == 1 + 3 + myEmit->nTimes + 1) pevt=1;
+      if (cols == 1 + 3 + myEmit->nTimes){
+	perevt = 1;
+      }
+      else if (cols == 1 + 1 + myEmit->nTimes){
+	persite = 1;
+      }
+      else{
+	printf("ERROR: check format in %s.\n", mntcn_fn);
+	exit(1);
+      }
       line_ss.clear();//reset
       line_ss.str(line);
     }
     line_ss >> chr >> cn_locusi;
-    if (pevt){
+    if (perevt){
       line_ss >> nloci >> cn_locusf;
     }
     else{
       cn_locusf = cn_locusi;
+      nloci = 1;
     }
-    if (chr != old_chr && (chr > myEmit->maxchr || myEmit->idx_of[chr] < 0)){
-      printf("ERROR in file %s chromosome %i not present in data.\n", phi_fn, chr);
-      cout<<line<<endl;
-      exit(1);
-    }
-    if (old_chr != -1 && chr != old_chr){//new chromosome
-      sample = myEmit->idx_of[old_chr];
-      if ( evt < myEmit->nEvents[sample]){//remaining from last chr
-	int oevt = evt-1;
-	for (int e=evt; e<myEmit->nEvents[sample]; e++){
-	  for (int t=0; t<myEmit->nTimes; t++){
-	    myEmit->phi[t][sample][e] = myEmit->phi[t][sample][oevt];
-	  }
-	  myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
-	}
+    if (chr != old_chr){//new chromosome
+      if(myEmit->chrs.count[chr] == 0){
+	printf("ERROR in file %s: chromosome %i not present in data.\n", mntcn_fn, chr);
+	cout<<line<<endl;
+	exit(1);
       }
-      evt = 0;
+      if (old_chr != -1 ){//not the first new chr
+	sample = myEmit->idx_of[old_chr];
+	if ( evt < myEmit->nEvents[sample]){//remaining from last chr
+	  int oevt = evt-1;
+	  for (int e=evt; e<myEmit->nEvents[sample]; e++){
+	    for (int t=0; t<myEmit->nTimes; t++){
+	      myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
+	    }
+	    //myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
+	  }
+	}
+	evt = 0;
+      }
     }
     old_chr = chr;
     sample  = myEmit->idx_of[chr];
@@ -141,16 +206,16 @@ int get_phi( const char * phi_fn, Emission * myEmit){
     // now we are above or at next event...
     for (int t=0; t<myEmit->nTimes; t++){
       if (line_ss.good() != true) abort();
-      line_ss >> tcn;
-      tcn_buff[t] = tcn;
+      line_ss >> mcn;
+      mcn_buff[t] = mcn;
     }
-    line_ss >> mxcn;
-    global_mx = max(global_mx,mxcn);
-    myEmit->cnmax_seen.insert(mxcn);
+    //line_ss >> mxcn;
+    //global_mx = max(global_mx,mxcn);
+    //myEmit->cnmax_seen.insert(mxcn);
     //fill
     while(locus <= cn_locusf){
-      for (int t=0; t<myEmit->nTimes; t++) myEmit->phi[t][sample][evt] = tcn_buff[t];
-      myEmit->cnmax[sample][evt] = mxcn;
+      for (int t=0; t<myEmit->nTimes; t++) myEmit->mean_tcn[t][sample][evt] = mcn_buff[t];
+      //myEmit->cnmax[sample][evt] = mxcn;
       evt++;
       if ( evt >= myEmit->nEvents[sample]) break;
       locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];
@@ -162,15 +227,127 @@ int get_phi( const char * phi_fn, Emission * myEmit){
     int oevt = evt-1;
     for (int e=evt; e<myEmit->nEvents[sample]; e++){
       for (int t=0; t<myEmit->nTimes; t++){
-	myEmit->phi[t][sample][e] = myEmit->phi[t][sample][oevt];
+	myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
       }
-      myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
+      //myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
     }
   }
   //done
   ifs.close();
-  return(global_mx);
+  //return(global_mx);
 }
+
+
+
+
+//get copy number availability
+void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
+  ifstream ifs;
+  string line;
+  stringstream line_ss;
+  ifs.open( mntcn_fn, ios::in);
+  if (ifs.fail()){
+    printf("ERROR file %s cannot be opened.\n", mntcn_fn);
+    exit(1);
+  }
+  int chr=0, old_chr = -1;
+  int cn_locusi=0, cn_locusf=0, nloci=0, locus=-1;
+  int evt=0;
+  double mcn, x;
+  double * mcn_buff = new double [myEmit->nTimes];
+  int sample=-1, perevt=0, persite=0;
+  while( ifs.good() ){
+    line.clear();
+    getline( ifs, line);
+    if (line.empty()) break;
+    if (line[0] == '#') continue;
+    line_ss.clear();
+    line_ss.str(line);
+    if (old_chr == -1 && locus == -1){//check format
+      int cols=0;
+      while(line_ss >> x) cols++;
+      if (cols == 1 + 3 + myEmit->nTimes){
+	perevt = 1;
+      }
+      else if (cols == 1 + 1 + myEmit->nTimes){
+	persite = 1;
+      }
+      else{
+	printf("ERROR: check format in %s.\n", mntcn_fn);
+	exit(1);
+      }
+      line_ss.clear();//reset
+      line_ss.str(line);
+    }
+    line_ss >> chr >> cn_locusi;
+    if (perevt){
+      line_ss >> nloci >> cn_locusf;
+    }
+    else{
+      cn_locusf = cn_locusi;
+      nloci = 1;
+    }
+    if (chr != old_chr){//new chromosome
+      if(myEmit->chrs.count[chr] == 0){
+	printf("ERROR in file %s: chromosome %i not present in data.\n", mntcn_fn, chr);
+	cout<<line<<endl;
+	exit(1);
+      }
+      if (old_chr != -1 ){//not the first new chr
+	sample = myEmit->idx_of[old_chr];
+	if ( evt < myEmit->nEvents[sample]){//remaining from last chr
+	  int oevt = evt-1;
+	  for (int e=evt; e<myEmit->nEvents[sample]; e++){
+	    for (int t=0; t<myEmit->nTimes; t++){
+	      myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
+	    }
+	    //myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
+	  }
+	}
+	evt = 0;
+      }
+    }
+    old_chr = chr;
+    sample  = myEmit->idx_of[chr];
+    if ( evt >= myEmit->nEvents[sample]) continue;//chromosome is complete!
+    locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];//current target locus
+    if( cn_locusf <  locus) continue;
+    // now we are above or at next event...
+    for (int t=0; t<myEmit->nTimes; t++){
+      if (line_ss.good() != true) abort();
+      line_ss >> mcn;
+      mcn_buff[t] = mcn;
+    }
+    //line_ss >> mxcn;
+    //global_mx = max(global_mx,mxcn);
+    //myEmit->cnmax_seen.insert(mxcn);
+    //fill
+    while(locus <= cn_locusf){
+      for (int t=0; t<myEmit->nTimes; t++) myEmit->mean_tcn[t][sample][evt] = mcn_buff[t];
+      //myEmit->cnmax[sample][evt] = mxcn;
+      evt++;
+      if ( evt >= myEmit->nEvents[sample]) break;
+      locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];
+    }
+  }
+  //last bit
+  sample = myEmit->idx_of[old_chr];
+  if (evt < myEmit->nEvents[sample]){
+    int oevt = evt-1;
+    for (int e=evt; e<myEmit->nEvents[sample]; e++){
+      for (int t=0; t<myEmit->nTimes; t++){
+	myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
+      }
+      //myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
+    }
+  }
+  //done
+  ifs.close();
+  //return(global_mx);
+}
+
+
+
 
 
 //read in frequencies to act as lower limit in minimisations...
@@ -325,7 +502,7 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
     else{
       abort();
     }
-    myClone->cnaEmit->allocate_phi();
+    myClone->cnaEmit->allocate_mntcn();
     myClone->cnaEmit->allocate_cnmax();
     if (myClone->bafEmit->is_set){//CNA + BAF: map CNA events to BAF
       for (int s=0; s<myClone->bafEmit->nSamples; s++){

@@ -34,7 +34,8 @@ struct cmdl_opts{
   const char * snv_fn;
   const char * pre;
   const char * bias_fn;
-  const char * cn_fn;
+  const char * mntcn_fn;
+  const char * avcn_fn; 
   const char * chr_fn;
   const char * bulk_fn;
   const char * clones_fn;
@@ -84,7 +85,10 @@ void get_track(const char * track_fn,
 	       double **& var, 
 	       Emission * myEmit
 	       );
-int get_phi( const char * phi_fn, Emission * myEmit);
+
+void get_maxcn_mask(const char * maxcn_mask_fn, Clone * myClone, int maxcn_gw);
+void get_mean_tcn( const char * mtcn_fn, Clone * myClone, Emission * myEmit);
+void get_avail_tcn( const char * avcn_fn, Clone * myClone, Emission * myEmit);
 void get_purity( const char * purity_fn, gsl_vector *& purity);
 void get_fixed_clones( gsl_matrix *& clones, gsl_vector *& mass, const char * clones_fn, int nTimes);
 void get_jump_probability(  Clone * myClone, cmdl_opts& opts);

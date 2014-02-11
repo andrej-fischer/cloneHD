@@ -230,63 +230,6 @@ void Clone::get_normal_copy(const char * chr_fn){
 }
 
 
-// get the maximum total c.n. mask per chromosome
-void Clone::get_maxcn_mask(const char * mask_fn, int maxcn_gw){
-  if (mask_fn==NULL){//use mxcn genome wide
-    maxcn = maxcn_gw;
-  }
-  else{//use explicit upper limit per chromosome, and mxcn elsewhere
-    ifstream ifs;
-    string line;
-    stringstream line_ss;
-    ifs.open( mask_fn, ios::in);
-    if (ifs.fail()){
-      printf("ERROR: file %s cannot be opened.\n", mask_fn);
-      exit(1);
-    }
-    int chr = 0, chrMxcn=0;
-    maxcn = maxcn_gw;
-    maxcn_mask.clear();
-    while( ifs.good() ){
-      line.clear();
-      getline( ifs, line);
-      if (line.empty()) break;
-      if (line[0] == '#') continue;
-      line_ss.clear();
-      line_ss.str(line);
-      line_ss >> chr >> chrMxcn;
-      if (chr<0 || chr >= 100) abort();
-      if (maxcn_mask.count(chr) == 0){
-	maxcn_mask.insert(std::pair<int,int>(chr,chrMxcn));
-	maxcn = max( maxcn, chrMxcn);
-      }
-      else{
-	printf("ERROR: in file %s: chr %i appears twice.\n", mask_fn, chr);
-	exit(1);
-      }
-    }
-    ifs.close();
-    //insert for all chromosomes not in the file the limit maxcn_gw
-    if (cnaEmit->is_set){
-      for (int s=0; s<cnaEmit->nSamples; s++){
-	int cnaChr = cnaEmit->chr[s];
-	if (maxcn_mask.count(cnaChr) == 0){
-	  maxcn_mask.insert(std::pair<int,int>( cnaChr, maxcn_gw));
-	}
-      }
-    }
-    else if (snvEmit->is_set){
-      for (int s=0; s<snvEmit->nSamples; s++){
-	int snvChr = snvEmit->chr[s];
-	if (maxcn_mask.count(snvChr) == 0){
-	  maxcn_mask.insert(std::pair<int,int>( snvChr, maxcn_gw));
-	}
-      }
-    }
-  }
-}
-
-
 
 
 void Clone::allocate_bulk_mean(){//mean only...

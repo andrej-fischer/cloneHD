@@ -32,7 +32,7 @@ Emission::Emission(){
   mask     = NULL;
   //only needed within cloneHD...
   pjump          = NULL;
-  phi            = NULL;
+  mean_tcn       = NULL;
   cnmax          = NULL;
   idx_of_event   = NULL;
   event_of_idx   = NULL;
@@ -227,29 +227,31 @@ void Emission::allocate_bias(){//only once...
   }
 }
 
-void Emission::allocate_phi(){//repeatedly...
-  if (phi != NULL){//delete old
+void Emission::allocate_mean_tcn(){//repeatedly...
+  if (mean_tcn != NULL){//delete old
     for (int t=0; t<nTimes; t++){
       for (int s=0; s<nSamples; s++){
-	if (phi[t][s] != NULL) delete [] phi[t][s];
+	if (mean_tcn[t][s] != NULL) delete [] mean_tcn[t][s];
       }
-      delete [] phi[t];
+      delete [] mean_tcn[t];
     }
-    delete [] phi;
+    delete [] mean_tcn;
   }
-  phi = new double ** [nTimes];
+  mean_tcn = new double ** [nTimes];
   for (int t=0; t<nTimes; t++){
-    phi[t] = new double * [nSamples];
+    mean_tcn[t] = new double * [nSamples];
     for (int s=0; s<nSamples; s++){
       if (nEvents[s] == 0){ 
-	phi[t][s] = NULL;
+	mean_tcn[t][s] = NULL;
       }
       else{
-	phi[t][s] = new double [nEvents[s]];
+	mean_tcn[t][s] = new double [nEvents[s]];
       }
     }
   }
 }
+
+
 
 void Emission::allocate_cnmax(){//repeatedly...
   if (cnmax != NULL){//delete old
@@ -286,14 +288,14 @@ Emission::~Emission(){
     }
     delete [] cnmax;
   }
-  if (phi != NULL){
+  if (mean_tcn != NULL){
     for (int t=0; t<nTimes; t++){
       for (int s=0; s<nSamples; s++){
-	if (phi[t][s] != NULL) delete [] phi[t][s];
+	if (mean_tcn[t][s] != NULL) delete [] mean_tcn[t][s];
       }
-      delete [] phi[t];
+      delete [] mean_tcn[t];
     }
-    delete [] phi;
+    delete [] mean_tcn;
   }
   if (bias != NULL){
     for (int s=0; s<nSamples; s++) delete [] bias[s];
