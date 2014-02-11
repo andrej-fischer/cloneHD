@@ -30,11 +30,9 @@ Emission::Emission(){
   bias     = NULL;
   log_bias = NULL;
   mask     = NULL;
-  //only needed within cloneHD...
   pjump          = NULL;
   mean_tcn       = NULL;
-  av_cn = NULL;
-  //cnmax          = NULL;
+  av_cn          = NULL;
   idx_of_event   = NULL;
   event_of_idx   = NULL;
   nEvents        = NULL;
@@ -120,7 +118,6 @@ void Emission::init_events(){
 //map each observations to an event in another data track...
 void Emission::map_idx_to_Event(Emission * Emit, int sample){
   if (Emit->is_set == 0) abort(); 
-  // for (int sample=0; sample<nSamples; sample++){
   if ( chr[sample] > Emit->maxchr || Emit->idx_of[ chr[sample] ] < 0 ) abort();
   int Sample = Emit->idx_of[ chr[sample] ];
   int Event = 0;
@@ -149,11 +146,9 @@ void Emission::map_idx_to_Event(Emission * Emit, int sample){
     Event_of_idx[sample][idx]= Emit->nEvents[Sample] - 1;
     idx++;
   }
-  //idx_to_Event_mapped=1;
 }
 
 void Emission::map_jumps(Emission * Emit){
-  //if (idx_to_Event_mapped==0) abort();
   for (int s=0; s<nSamples; s++){
     int Sample = Emit->idx_of[chr[s]];
     for (int idx=0; idx<nSites[s]; idx++) pjump[s][idx]=0;
@@ -170,7 +165,6 @@ void Emission::map_jumps(Emission * Emit){
 }
 
 void Emission::add_break_points_via_jumps(Emission * Emit, double pmin){
-  //if (idx_to_Event_mapped==0) abort();
   for (int s=0; s<nSamples; s++){
     int Sample = Emit->idx_of[chr[s]];
     int old    = Event_of_idx[s][0];
@@ -199,7 +193,7 @@ void Emission::get_events_via_jumps(){
   total_events = 0;
   for (int s=0; s<nSamples; s++){
     nEvents[s] = 1;
-    for (int idx=1; idx<nSites[s]; idx++){//count events
+    for (int idx=1; idx<nSites[s]; idx++){
       if ( pjump[s][idx] > 0.0) nEvents[s]++;
     }
     total_events += nEvents[s];
@@ -228,7 +222,8 @@ void Emission::allocate_bias(){//only once...
   }
 }
 
-void Emission::allocate_mean_tcn(){//repeatedly...
+
+void Emission::allocate_mean_tcn(){
   if (mean_tcn != NULL){//delete old
     for (int t=0; t<nTimes; t++){
       for (int s=0; s<nSamples; s++){
@@ -286,25 +281,6 @@ void Emission::allocate_av_cn(int maxcn){//repeatedly...
 }
 
 
-/*
-void Emission::allocate_cnmax(){//repeatedly...
-  if (cnmax != NULL){//delete old
-    for (int s=0; s<nSamples; s++){
-      if( cnmax[s] != NULL) delete [] cnmax[s];
-    }
-    delete [] cnmax;
-  }
-  cnmax = new int * [nSamples];
-  for (int s=0; s<nSamples; s++){
-    if (nEvents[s] == 0){ 
-      cnmax[s] = NULL;
-    }
-    else{
-      cnmax[s] = new int [nEvents[s]];
-    }
-  }
-}
-*/
 
 
 //Destructor

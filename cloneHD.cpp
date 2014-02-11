@@ -156,23 +156,16 @@ int main (int argc, const char * argv[]){
   }
   //*** GET JUMP PROBABILITY TRACKS and COLLAPSE TO EVENTS***
   get_jump_probability( &myClone, opts);
-  if ( snvEmit.is_set){
+  //...now all segments are fixed and mean_tcn/av_cn allocated.
+  if ( snvEmit.is_set){//for SNV only
     // *** GET TOTAL MEAN COPYNUMBER TRACKS ***  
     if( opts.mntcn_fn != NULL ){
       get_mean_tcn( opts.mntcn_fn, &myClone, &snvEmit);
     } 
     // *** GET AVAILABLE COPYNUMBER TRACKS ***  
-    if ( snvEmit.is_set && opts.avcn_fn != NULL ){
+    if ( opts.avcn_fn != NULL ){
       get_avail_cn( opts.avcn_fn, &myClone, &snvEmit);
     }
-    //check whether this is still needed
-    /*if ( cnaEmit.is_set==0){
-      snvEmit.cnmax_seen.clear();
-      for (int s=0; s<snvEmit.nSamples; s++){//all chromosomes are normal???
-      snvEmit.cnmax_seen.insert(myClone.normal_copy[snvEmit.chr[s]]);
-      }
-      }
-    */
   }
   //*** GET READ DEPTH BIAS FIELD ***
   if (cnaEmit.is_set && opts.bias_fn != NULL){

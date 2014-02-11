@@ -506,13 +506,12 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
     else{
       abort();
     }
-    myClone->cnaEmit->allocate_mntcn();
-    myClone->cnaEmit->allocate_cnmax();
-    if (myClone->bafEmit->is_set){//CNA + BAF: map CNA events to BAF
+    myClone->cnaEmit->allocate_mean_tcn();
+    if (myClone->bafEmit->is_set){//CNA+BAF: map CNA evts to BAF
       for (int s=0; s<myClone->bafEmit->nSamples; s++){
 	myClone->bafEmit->map_idx_to_Event( myClone->cnaEmit, s);
       }
-      if (myClone->snvEmit->is_set){//CNA + BAF + SNV: map CNA events to SNV outside of autosomes
+      if (myClone->snvEmit->is_set){//CNA+BAF+SNV: map CNA evts to SNV outside of autosomes
 	for (int s=0; s<myClone->snvEmit->nSamples; s++){
 	  int snvChr = myClone->snvEmit->chr[s];
 	  if (myClone->bafEmit->chrs.count(snvChr) == 0){
@@ -521,7 +520,7 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
 	}
       }
     }
-    else if (myClone->snvEmit->is_set){//CNA + SNV (no BAF): map CNA events to SNV
+    else if (myClone->snvEmit->is_set){//CNA+SNV (no BAF): map CNA events to SNV
       for (int s=0; s<myClone->snvEmit->nSamples; s++){
 	myClone->snvEmit->map_idx_to_Event( myClone->cnaEmit, s);
       }
@@ -549,10 +548,7 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
     else{
       abort();
     }
-    if (myClone->cnaEmit->is_set || opts.cn_fn != NULL){
-      myClone->bafEmit->allocate_phi();
-      myClone->bafEmit->allocate_cnmax();
-    }
+    myClone->bafEmit->allocate_mean_tcn();
     if (myClone->snvEmit->is_set){//CNA + BAF + SNV: map BAF to SNV for autosomes only
       for (int s=0; s<myClone->snvEmit->nSamples; s++){
 	int snvChr = myClone->snvEmit->chr[s];
@@ -576,10 +572,13 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
     }
     else if (opts.snv_jump >= 0.0){
       myClone->snvEmit->set_pjump(opts.snv_jump);
+    }    
+    if (myClone->cnaEmit->is_set){
+      myClone->snvEmit->allocate_mean_tcn();
     }
-    if (myClone->cnaEmit->is_set || opts.cn_fn != NULL){
-      myClone->snvEmit->allocate_phi();
-      myClone->snvEmit->allocate_cnmax();
+    else{
+      if (opts.mntcn_fn != NULL) myClone->snvEmit->allocate_mean_tcn();
+      if (opts.avcn_fn  != NULL) myClone->snvEmit->allocate_av_cn(myClone->maxcn);
     }
   }
 }
@@ -639,15 +638,7 @@ void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, 
       printf("\r%i", i+1);
       cout<<flush;
       nclones = gsl_matrix_submatrix( clones, i*nT, 0, nT, nC);
-      nmass   = gsl_vector_subvector( mass,   i*nT, nT); 
-      /*for (int t=0;t<nT;t++){
-	printf("%.4f ", gsl_vector_get(&nmass.vector,t));
-	for (int n=0; n<nC;n++){
-	  printf("%.4f ", gsl_matrix_get(&nclones.matrix,t,n));
-	}
-	cout<<endl;
-      }
-      */
+      nmass   = gsl_vector_subvector( mass, i*nT, nT); 
       myClone->set( &nclones.matrix );		
       myClone->set_mass( &nmass.vector );
       myClone->get_all_total_llh();
@@ -734,17 +725,17 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
       }   
       //set trivial (normal) total copynumber...  
       for (int cnaSample=0; cnaSample<myClone->cnaEmit->nSamples; cnaSample++){
-	myClone->get_phi(cnaSample);
+	myClone->get_mean_tcn(cnaSample);
 	int cnaChr = myClone->cnaEmit->chr[cnaSample];
 	if (myClone->bafEmit->is_set && myClone->bafEmit->chrs.count(cnaChr) == 1){
-	  myClone->map_phi( myClone->cnaEmit, cnaSample, myClone->bafEmit);
+	  myClone->map_mean_tcn( myClone->cnaEmit, cnaSample, myClone->bafEmit);
 	  if (myClone->snvEmit->is_set && myClone->snvEmit->chrs.count(cnaChr) == 1){
 	    int bafSample = myClone->bafEmit->idx_of[cnaChr];
-	    myClone->map_phi( myClone->bafEmit, bafSample, myClone->snvEmit);
+	    myClone->map_mean_tcn( myClone->bafEmit, bafSample, myClone->snvEmit);
 	  }
 	}
 	else if (myClone->snvEmit->is_set && myClone->snvEmit->chrs.count(cnaChr) == 1){
-	  myClone->map_phi( myClone->cnaEmit, cnaSample, myClone->snvEmit);
+	  myClone->map_mean_tcn( myClone->cnaEmit, cnaSample, myClone->snvEmit);
 	}
       }
     }
@@ -1080,7 +1071,9 @@ double get_clones_cna( gsl_matrix *& clones,
 	myClone->alpha_cna[cna_sample]=NULL;
 	myClone->gamma_cna[cna_sample]=NULL;
 	myClone->get_cna_posterior(cna_sample);
-	myClone->map_phi( myClone->cnaEmit, cna_sample, myClone->snvEmit);
+	myClone->get_mean_tcn( cna_sample);
+	myClone->map_mean_tcn( myClone->cnaEmit, cna_sample, myClone->snvEmit);
+	//myClone->map_av_cn( myClone->cnaEmit, cna_sample, myClone->snvEmit);
 	double l;
 	myClone->do_snv_Fwd( s, l);
 	#pragma omp critical
@@ -1124,6 +1117,7 @@ double get_clones_cna( gsl_matrix *& clones,
 	else{
 	  break;
 	}
+	//map_mean_tcn missing? CHECK AND FIX
       }
     }
   }
@@ -1155,7 +1149,8 @@ double get_clones_cna( gsl_matrix *& clones,
 	myClone->alpha_cna[cna_sample]=NULL;
 	myClone->gamma_cna[cna_sample]=NULL;
 	myClone->get_cna_posterior(cna_sample);
-	myClone->map_phi( myClone->cnaEmit, cna_sample, myClone->snvEmit);
+	myClone->get_mean_tcn(cna_sample);
+	myClone->map_mean_tcn( myClone->cnaEmit, cna_sample, myClone->snvEmit);
 	double l=0;
 	myClone->do_snv_Fwd(s,l);
 #pragma omp critical
@@ -1868,7 +1863,8 @@ void snv_bulk_update(Clone * myClone){
       myClone->alpha_cna[cna_sample]=NULL;
       myClone->gamma_cna[cna_sample]=NULL;
       myClone->get_cna_posterior(cna_sample);
-      myClone->map_phi( myClone->cnaEmit, cna_sample, myClone->snvEmit);
+      myClone->get_mean_tcn( cna_sample);
+      myClone->map_mean_tcn( myClone->cnaEmit, cna_sample, myClone->snvEmit);
     }
     myClone->update_bulk(s);
     if (myClone->cnaEmit->is_set) gsl_matrix_free(myClone->gamma_cna[cna_sample]);

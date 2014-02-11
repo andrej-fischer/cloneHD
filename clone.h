@@ -125,9 +125,11 @@ class Clone{
   void set_clone_spectrum(const gsl_matrix * freq);
   //
   void get_event_map(Emission * myEmit);
-  void get_phi(int sample);//for cna
-  void map_phi( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
-  int got_gamma, save_cna_alpha,save_baf_alpha,save_snv_alpha;
+  void get_mean_tcn(int sample);//for cna only
+  void map_mean_tcn( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
+  void get_av_cn(int sample);//for cna only
+  void map_av_cn( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
+  int got_gamma, save_cna_alpha, save_baf_alpha, save_snv_alpha;
   //
   void do_cna_Fwd( int sample, double& llh);
   void do_cna_Bwd( int sample, double& ent);
