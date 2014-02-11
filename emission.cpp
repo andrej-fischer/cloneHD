@@ -33,7 +33,8 @@ Emission::Emission(){
   //only needed within cloneHD...
   pjump          = NULL;
   mean_tcn       = NULL;
-  cnmax          = NULL;
+  av_cn = NULL;
+  //cnmax          = NULL;
   idx_of_event   = NULL;
   event_of_idx   = NULL;
   nEvents        = NULL;
@@ -252,7 +253,40 @@ void Emission::allocate_mean_tcn(){//repeatedly...
 }
 
 
+void Emission::allocate_av_cn(int maxcn){//repeatedly...
+  if (av_cn != NULL){//delete old
+    for (int t=0; t<nTimes; t++){
+      for (int s=0; s<nSamples; s++){
+	if (av_cn[t][s] != NULL){
+	  for (int evt=0; evt<nEvents[s]; evt++){
+	    delete [] av_cn[t][s][evt];
+	  }
+	  delete [] av_cn[t][s];
+	}	
+      }
+      delete [] av_cn[t];
+    }
+    delete [] av_cn;
+  }
+  av_cn = new double *** [nTimes];
+  for (int t=0; t<nTimes; t++){
+    av_cn[t] = new double ** [nSamples];
+    for (int s=0; s<nSamples; s++){
+      if (nEvents[s] == 0){ 
+	av_cn[t][s] = NULL;
+      }
+      else{
+	av_cn[t][s] = new double * [nEvents[s]];
+	for (int evt=0; evt<nEvents[s]; evt++){
+	  av_cn[t][s][evt] = new double [maxcn+1];
+	}
+      }
+    }
+  }
+}
 
+
+/*
 void Emission::allocate_cnmax(){//repeatedly...
   if (cnmax != NULL){//delete old
     for (int s=0; s<nSamples; s++){
@@ -270,7 +304,7 @@ void Emission::allocate_cnmax(){//repeatedly...
     }
   }
 }
-
+*/
 
 
 //Destructor
@@ -282,12 +316,6 @@ Emission::~Emission(){
     for (int s=0; s<nSamples; s++) delete [] pjump[s];
     delete [] pjump;
   }
-  if (cnmax != NULL){
-    for (int s=0; s<nSamples; s++){
-      if (cnmax[s] != NULL) delete [] cnmax[s];
-    }
-    delete [] cnmax;
-  }
   if (mean_tcn != NULL){
     for (int t=0; t<nTimes; t++){
       for (int s=0; s<nSamples; s++){
@@ -296,6 +324,20 @@ Emission::~Emission(){
       delete [] mean_tcn[t];
     }
     delete [] mean_tcn;
+  }
+  if (av_cn != NULL){
+    for (int t=0; t<nTimes; t++){
+      for (int s=0; s<nSamples; s++){
+	if (av_cn[t][s] != NULL){
+	  for (int evt=0; evt<nEvents[s]; evt++){
+	    delete [] av_cn[t][s][evt];
+	  }
+	  delete [] av_cn[t][s];
+	}
+      }
+      delete [] av_cn[t];
+    }
+    delete [] av_cn;
   }
   if (bias != NULL){
     for (int s=0; s<nSamples; s++) delete [] bias[s];

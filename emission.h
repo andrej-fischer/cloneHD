@@ -83,7 +83,8 @@ public:
   double ** log_bias;
   void allocate_bias();
   void allocate_mean_tcn();
-  void allocate_cnmax();
+  void allocate_av_cn(int maxcn);
+  // void allocate_cnmax();
   int total_loci, total_events;
   unsigned int total_dist;
   void set_grid();
@@ -97,8 +98,9 @@ public:
   double ** pjump;
   void set_pjump(double jump);
   double *** mean_tcn;//mean total copy number
-  int ** cnmax;//maximum copynumber (across all clones) per site//???
-  std::set<int> cnmax_seen;//???
+  double **** av_cn;//copy number availability
+  //int ** cnmax;//maximum copynumber (across all clones) per site//???
+  //std::set<int> cnmax_seen;//???
   void init_events();
   int * nEvents;
   unsigned int ** Event_of_idx;  // map from idx to cnv-event 
