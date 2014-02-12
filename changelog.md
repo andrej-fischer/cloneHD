@@ -7,6 +7,15 @@ v1.17.0 / ???
 	[file]` to available copy numbers from `--avail-cn [file]` and
 	mean total copy numbers from `--mean-tcn [file]`. 
 
+v1.16.6 / 12.02.2014
+
+*  fixed major bug for SNV false positive emission rate and prior
+*  introduced new functions update_snv_site_ncorr/fixed/nfixed()
+*  fixed bug in SNV prior from CNA/BAF posterior computation
+*  false positive SNV prior now includes P(c=all-zero)
+*  fixed bug in used cn output
+*  all-zero "observations" in SNV input are ignored (and not printed!)
+
 v1.16.5 / 07.04.2014
 
 *  fixed major bug when CNA, BAF and SNV data used with males (X,Y with only one copy)

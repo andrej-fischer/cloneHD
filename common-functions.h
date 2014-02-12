@@ -25,7 +25,7 @@ class Emission;
 
 using namespace std;
 
-void get_dims( const char * data_fn, int& nTimes, vector<int>& chrs, vector<int>& nSites);
+void get_dims( const char * data_fn, int& nTimes, vector<int>& chrs, vector<int>& nSites, int keep);
 void get_data( const char * data_fn, Emission * myEmit);
 void get_bias( const char * bias_fn, Emission * myEmit);
 double get_mean( gsl_vector * dist, double xmin, double xmax);

@@ -85,7 +85,7 @@ class Clone{
   void get_baf_prior_from_cna_post(gsl_vector * prior, gsl_vector * post);
   void get_snv_prior_from_cna_post(gsl_vector * prior, gsl_vector * post);
   void get_snv_prior_from_cna_baf_post(gsl_vector * prior, gsl_vector * cnapost, gsl_vector * bafpost);
-  void apply_snv_prpc( gsl_vector * prior, gsl_matrix * snv_prpc);
+  void apply_snv_prpc( gsl_vector * prior, gsl_matrix * snv_prpc, double pc0);
   //
   int ** copynumber;
   void set_copynumbers();
@@ -164,10 +164,12 @@ class Clone{
   void update_baf_event( gsl_vector * prior, gsl_vector * post, int sample, int evt);
   void update_baf_site( gsl_vector * prior, gsl_vector * post, int sample, int site);
   //
-  void update_snv( gsl_vector * prior, gsl_vector * post, int sample, int site);
-  void update_snv_event( gsl_vector * prior, gsl_vector * post,int sample,int evt);
-  void update_snv_fixed(  gsl_vector * prior, gsl_vector * post, int sample, int site);
-  void update_snv_nfixed( gsl_vector * prior, gsl_vector * post, int sample, int site);	  
+  void update_snv( gsl_vector * prior, gsl_vector * post, int sample, int evt);
+  void update_snv_event( gsl_vector * prior, gsl_vector * post, int sample, int evt);
+  void update_snv_site_ncorr( gsl_vector * prior, gsl_vector * post, int sample, int site);
+  void update_snv_site_fixed( gsl_vector * prior, gsl_vector * post, int sample, int site);
+  void update_snv_site_nfixed( gsl_vector * prior, gsl_vector * post, int sample, int site);	
+  //  
   double get_interpolation(double x, double xmin, double xmax, double dx, gsl_vector * emit);
   double get_interpolation(double x, double xmin, double xmax,
 			   double y, double ymin, double ymax,

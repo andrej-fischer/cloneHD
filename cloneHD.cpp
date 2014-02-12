@@ -60,24 +60,18 @@ int main (int argc, const char * argv[]){
   int nTimes=0, nT=0;
   //*** EMITTED DATA OBJECTS ***
   Emission cnaEmit, bafEmit, snvEmit;
-  if (opts.cna_fn != NULL){//CNA DATA
-    get_dims( opts.cna_fn, nTimes, chrs, nSites);
+  if (opts.cna_fn != NULL){//CNA DATA   
     cnaEmit.mode = (opts.cna_shape > 0.0) ? 4 : 3;
     cnaEmit.shape = opts.cna_shape;
     cnaEmit.log_shape = (opts.cna_shape > 0.0) ? log(opts.cna_shape) : 0.0;
     cnaEmit.rnd_emit  = opts.cna_rnd;
     if (opts.cna_jump >= 0.0)      cnaEmit.connect = 1;
     if (opts.cna_jumps_fn != NULL) cnaEmit.connect = 1;
+    get_dims( opts.cna_fn, nTimes, chrs, nSites, cnaEmit.connect);
     cnaEmit.set( nTimes, chrs, nSites, opts.grid);
     get_data( opts.cna_fn, &cnaEmit);
   }
   if (opts.baf_fn != NULL){//BAF DATA
-    get_dims( opts.baf_fn, nT, chrs, nSites);
-    if (nTimes > 0 && nT != nTimes){
-      cout<<"ERROR-1a in cloneHD main(): incompatible sample sizes in CNA and BAF data.\n";
-      exit(1);
-    }
-    nTimes = nT;
     bafEmit.mode = (opts.baf_shape > 0.0) ? 2 : 1;//shape?
     bafEmit.shape = opts.baf_shape;
     bafEmit.log_shape = (opts.baf_shape > 0.0) ? log(opts.baf_shape) : 0.0;
@@ -87,17 +81,17 @@ int main (int argc, const char * argv[]){
     if (opts.baf_jump >= 0.0)    bafEmit.connect = 1;
     if (opts.baf_jumps_fn!=NULL) bafEmit.connect = 1;
     if (opts.cna_jumps_fn!=NULL) bafEmit.connect = 1;
+    get_dims( opts.baf_fn, nT, chrs, nSites, bafEmit.connect);
+    if (nTimes > 0 && nT != nTimes){
+      cout<<"ERROR-1a in cloneHD main(): incompatible sample sizes in CNA and BAF data.\n";
+      exit(1);
+    }
+    nTimes = nT;
     bafEmit.set( nTimes, chrs, nSites, opts.grid);
     get_data( opts.baf_fn, &bafEmit);
     bafEmit.set_EmitProb(-1);
   }
   if (opts.snv_fn != NULL){//SNV DATA
-    get_dims( opts.snv_fn, nT, chrs, nSites);
-    if (nTimes>0 && nT != nTimes){
-      cout<<"ERROR-1b in cloneHD:main(): incompatible sample sizes CNA and SNV data.\n";
-      exit(1);
-    }
-    nTimes = nT;
     snvEmit.mode = (opts.snv_shape > 0.0) ? 2 : 1;
     snvEmit.shape = opts.snv_shape;
     snvEmit.log_shape = (opts.snv_shape > 0.0) ? log(opts.snv_shape) : 0.0;
@@ -106,6 +100,12 @@ int main (int argc, const char * argv[]){
     snvEmit.reflect = 0;
     if (opts.snv_jump >= 0.0)    snvEmit.connect = 1;
     if (opts.snv_jumps_fn!=NULL) snvEmit.connect = 1;
+    get_dims( opts.snv_fn, nT, chrs, nSites, snvEmit.connect);
+    if (nTimes>0 && nT != nTimes){
+      cout<<"ERROR-1b in cloneHD:main(): incompatible sample sizes CNA and SNV data.\n";
+      exit(1);
+    }
+    nTimes = nT;
     snvEmit.set( nTimes, chrs, nSites, opts.grid);
     get_data( opts.snv_fn, &snvEmit);
     snvEmit.set_EmitProb(-1);
@@ -282,6 +282,7 @@ int main (int argc, const char * argv[]){
 	bafSample = bafEmit.idx_of[cnaChr];
 	if (snvEmit.is_set && snvEmit.chrs.count(cnaChr) == 1){
 	  myClone.map_phi( &bafEmit, bafSample, &snvEmit);
+	  snvSample = snvEmit.idx_of[cnaChr];
 	}
       }
       else if (snvEmit.is_set && snvEmit.chrs.count(cnaChr) == 1){

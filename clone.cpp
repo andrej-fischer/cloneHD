@@ -754,12 +754,14 @@ void Clone::set_baf_prior_map(){
 void Clone::set_snv_prior_map(){//either via BAF or else via CNA
   if (nClones == 0) abort();
   if (cnaEmit->is_set == 0) abort();
-  if ( snv_prior_from_cna_baf_map == NULL){//allocate
+  //allocate
+  if ( snv_prior_from_cna_baf_map == NULL){
     snv_prior_from_cna_baf_map = new gsl_matrix * [maxcn+1];
     for (int cn=0; cn <= maxcn; cn++){ 
       snv_prior_from_cna_baf_map[cn] = gsl_matrix_alloc( maxcn+1, maxcn+1);
     }
   }
+  //via CNA + BAF posterior...
   double p = snv_pen;//penalty for SNVs in cn higher than max BAF cn (multiple hits)
   for (int cn=0; cn <= maxcn; cn++){
     gsl_matrix_set_zero( snv_prior_from_cna_baf_map[cn]); 
@@ -775,7 +777,7 @@ void Clone::set_snv_prior_map(){//either via BAF or else via CNA
       gsl_vector_scale( &col.vector, 1.0 / norm);
     }
   } 
-  //via CNA posterior only
+  //via CNA posterior only...
   if ( snv_prior_from_cna_map == NULL){//allocate
     snv_prior_from_cna_map = gsl_matrix_alloc( maxcn+1, maxcn+1);
   }
@@ -832,7 +834,7 @@ void Clone::get_snv_prior_from_cna_post(gsl_vector * prior, gsl_vector * cnapost
     prpc = gsl_matrix_row( snv_prpc, i);
     gsl_blas_dgemv( CblasNoTrans, 1.0, snv_prior_from_cna_map, &cnappc.vector, 0.0, &prpc.vector);
   }
-  Clone::apply_snv_prpc(prior,snv_prpc);
+  Clone::apply_snv_prpc( prior, snv_prpc, cnapost->data[0]);
   gsl_matrix_free(snv_prpc);
   gsl_vector_free(cnapostpc);
 }
@@ -864,7 +866,7 @@ void Clone::get_snv_prior_from_cna_baf_post(gsl_vector * prior, gsl_vector * cna
       gsl_blas_dgemv( CblasNoTrans, pcna, snv_prior_from_cna_baf_map[cn], bafppc, 1.0, &prpc.vector);
     }
   }
-  Clone::apply_snv_prpc( prior, snv_prpc);
+  Clone::apply_snv_prpc( prior, snv_prpc, cnapost->data[0]);
   gsl_matrix_free(snv_prpc);
   gsl_vector_free(cnapostpc);
   gsl_vector_free(bafpostpc);
@@ -872,24 +874,27 @@ void Clone::get_snv_prior_from_cna_baf_post(gsl_vector * prior, gsl_vector * cna
 }
   
 //CNA (+BAF) + SNV mode...
-void Clone::apply_snv_prpc( gsl_vector * prior, gsl_matrix * snv_prpc){
+void Clone::apply_snv_prpc( gsl_vector * prior, gsl_matrix * snv_prpc,  double pc0){
   gsl_vector_set_all( prior, 1.0);
-  int level=0;
-  if (snvEmit->connect == 0){
-    prior->data[0] = snv_fpr;//SNV false positive rate
-    level = 1;
-  }
-  while (level<nLevels){
+  for (int level=0; level<nLevels; level++){
     for (int j=0; j<nClones; j++){
       prior->data[level] *= gsl_matrix_get( snv_prpc, j, copynumber[level][j]);
     }
-    level++;
   }
   //normalize...
-  double norm = gsl_blas_dasum(prior);
-  if (norm <=0.0 || norm!= norm) abort();
-  gsl_vector_scale(prior,1.0/norm);
-  if (snvEmit->log_space){//log-transform?
+  if ( !snvEmit->connect ){
+    prior->data[0] = 0.0;
+    double norm = gsl_blas_dasum(prior);
+    if (norm > 0.0 ) gsl_vector_scale(prior, (1.0-snv_fpr)*(1.0-pc0) / norm);
+    prior->data[0] = 1.0 - (1.0-snv_fpr)*(1.0-pc0);//SNV false positive rate
+  }
+  else{
+    double norm = gsl_blas_dasum(prior);
+    if (norm <=0.0 || norm!= norm) abort();
+    gsl_vector_scale(prior, 1.0 / norm);
+  }
+  //log-transform?
+  if (snvEmit->log_space){
     for (int l=0; l<nLevels; l++){
       prior->data[l] = prior->data[l] > 0.0 ? log(prior->data[l]) : - 1.0e10;
     }
@@ -2279,11 +2284,14 @@ void Clone::update_snv( gsl_vector * prior, gsl_vector * post, int sample, int e
   if (snvEmit->coarse_grained){
     Clone::update_snv_event( prior, post, sample, evt);
   }
+  else if ( !snvEmit->connect ){
+    Clone::update_snv_site_ncorr( prior, post, sample, evt);
+  }
   else if ( bulk_fix >= 0.0 || (bulk_mean != NULL && bulk_dist == NULL)){
-    Clone::update_snv_fixed( prior, post, sample, evt);
+    Clone::update_snv_site_fixed( prior, post, sample, evt);
   }
   else{
-    Clone::update_snv_nfixed( prior, post, sample, evt);
+    Clone::update_snv_site_nfixed( prior, post, sample, evt);
   }
 }
 
@@ -2310,11 +2318,11 @@ void Clone::update_snv_event( gsl_vector * prior, gsl_vector * post, int sample,
   }
 }
 
-//Dirac-Delta bulk prior distribution (maybe fixed at zero)...
-void Clone::update_snv_fixed( gsl_vector * prior, gsl_vector * post, int sample, int site){
+
+void Clone::update_snv_site_ncorr( gsl_vector * prior, gsl_vector * post, int sample, int site){
   gsl_vector_set_all( post, 1.0);
   int ncn = normal_copy[snvEmit->chr[sample]];
-  double x,y,val=0;
+  double x,val=0;
   unsigned int N,n;
   int evt = snvEmit->event_of_idx[sample][site];
   double dx = snvEmit->dx;
@@ -2329,13 +2337,13 @@ void Clone::update_snv_fixed( gsl_vector * prior, gsl_vector * post, int sample,
     double rnd  = snvEmit->rnd_emit / double(N+1);
     double nrnd = 1.0 - snvEmit->rnd_emit;
     double total_cn = (snvEmit->phi == NULL) ? double(ncn) : snvEmit->phi[t][sample][evt];
-    double bfix = (bulk_fix >= 0.0) ? bulk_fix : bulk_mean[t][sample][site];
-    y =  bfix * (1.0-purity[t]) * double(ncn) / total_cn;//for cancer app, this is usually 0.0!
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= 0.0) continue;
-      x = y + clone_spectrum[t][level] / total_cn; 
-      if (snv_err>0.0){//frequency of erroneous reads
-	x = snv_err + (1.0-snv_err)*x;
+      if (level==0){//allele frequency of false positives
+	x = snv_err; 
+      }
+      else{
+	x = clone_spectrum[t][level] / total_cn; 
       }
       if (x > 1.0){//outside range...
 	val = 0.0;
@@ -2363,8 +2371,58 @@ void Clone::update_snv_fixed( gsl_vector * prior, gsl_vector * post, int sample,
 
 
 
+//Dirac-Delta bulk prior distribution (maybe fixed at zero)...
+void Clone::update_snv_site_fixed( gsl_vector * prior, gsl_vector * post, int sample, int site){
+  gsl_vector_set_all( post, 1.0);
+  int ncn = normal_copy[snvEmit->chr[sample]];
+  double x,y,val=0;
+  unsigned int N,n;
+  int evt = snvEmit->event_of_idx[sample][site];
+  double dx = snvEmit->dx;
+  gsl_vector * emit = NULL;
+  for (int t=0; t<nTimes; t++){
+    N = snvEmit->depths[t][sample][site];
+    n = snvEmit->reads[t][sample][site];
+    if (N==0){
+      continue;
+    }
+    emit = snvEmit->EmitLog[N][n];
+    double rnd  = snvEmit->rnd_emit / double(N+1);
+    double nrnd = 1.0 - snvEmit->rnd_emit;
+    double total_cn = (snvEmit->phi == NULL) ? double(ncn) : snvEmit->phi[t][sample][evt];
+    double bfix = (bulk_fix >= 0.0) ? bulk_fix : bulk_mean[t][sample][site];
+    y =  bfix * (1.0-purity[t]) * double(ncn) / total_cn;//for cancer app, this is usually 0.0!
+    for (int level=0; level<nLevels; level++){
+      if (prior->data[level] <= 0.0) continue;
+      x = y + clone_spectrum[t][level] / total_cn; 
+      if (x > 1.0){//outside range...
+	val = 0.0;
+      }
+      else if (x<1.0 && x>0.0){//inside range...
+	val = Clone::get_interpolation( x, 0.0, 1.0, dx, emit);
+	val = exp(val);
+      }
+      else if ( x==1.0 ){//edges...
+	val = (n==N) ? 1.0 : 0.0;
+      }
+      else if ( x==0.0 ){
+	val = (n==0) ? 1.0 : 0.0;
+      }
+      else{
+	abort();
+      }
+      if (val != val || val < 0.0) abort();
+      if (rnd > 0.0) val = val*nrnd + rnd;
+      post->data[level] *= val;
+    }
+  }
+}
+
+
+
+
 //non-trivial case with one or more clones
-void Clone::update_snv_nfixed( gsl_vector * prior, gsl_vector * post, int sample, int site){
+void Clone::update_snv_site_nfixed( gsl_vector * prior, gsl_vector * post, int sample, int site){
   gsl_vector_set_all(post, 1.0);
   int ncn = normal_copy[snvEmit->chr[sample]];
   double val=0;

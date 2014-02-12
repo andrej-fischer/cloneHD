@@ -94,7 +94,8 @@ int main (int argc, const char * argv[]){
   vector<int> chrs;
   vector<int> nSites;
   int nTimes;
-  get_dims( opts.data_fn, nTimes, chrs, nSites);
+  int keepzero=1;
+  get_dims( opts.data_fn, nTimes, chrs, nSites, keepzero);
   int nSamples = (int) chrs.size();
   int total_nLoci=0;
   for (int s=0; s<nSamples; s++){

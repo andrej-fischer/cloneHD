@@ -13,7 +13,8 @@ using namespace std;
 void get_dims( const char * data_fn, 
 	       int& nTimes,
 	       vector<int>& chrs,
-	       vector<int>& nSites
+	       vector<int>& nSites,
+	       int keep
 	       ){
   ifstream data_ifs;
   string line;
@@ -37,20 +38,25 @@ void get_dims( const char * data_fn,
     //check first entry for nTimes
     if (old == -1 && ct == 0){
       line_ss >> chr >> l; 
-      while(line_ss>>r>>d){
+      while(line_ss >> r >> d){
 	nT++;
       }
+      line_ss.clear();
+      line_ss.str(line);      
     }
-    else{
-      line_ss >> chr;
-    }
+    line_ss >> chr >> l;
     if (chr != old ){//new chromosome encounter
       if (ct>0) nSites.push_back(ct);
       chrs.push_back(chr);
       ct=0;
     }
     old=chr;
-    ct++;
+    r = 0;
+    for( int t=0;t<nT; t++){
+      line_ss >> r >> d;
+      if (r>0) break;
+    }
+    if (keep || r>0) ct++;
   }
   nSites.push_back(ct);
   nTimes = nT;
@@ -69,8 +75,8 @@ void get_data( const char * data_fn, Emission * myEmit){
     exit(1);
   }
   int ct=0,l;
-  int chr=0,old=-1;
-  int d,r;
+  int chr=0,old=-1, sample=0;
+  int d,r, keep=0;
   //now collect all data...
   while( data_ifs.good()){
     line.clear();
@@ -81,19 +87,22 @@ void get_data( const char * data_fn, Emission * myEmit){
     line_ss.str(line);
     line_ss >> chr >> l;//chromosome and locus
     if (chr != old){
+      if (myEmit->chrs.count(chr) == 0){
+	cout<<"ERROR in get_data(): chr "<<chr<<" was not expected"<<endl<<line<<endl;
+	for (int s=0; s<myEmit->nSamples; s++){
+	  printf("sample %i = chr %i, idx = %i\n", 
+		 s+1, myEmit->chr[s], myEmit->idx_of[myEmit->chr[s]]);
+	}
+	exit(1);
+      }
+      sample = myEmit->idx_of[chr];
       ct  = 0;
       old = chr;
     }
-    if( chr > myEmit->maxchr || myEmit->idx_of[chr] < 0){
-      cout<<"ERROR in get_data(): chr "<<chr<<" was not expected"<<endl<<line<<endl;
-      for (int s=0; s<myEmit->nSamples; s++){
-	printf("sample %i = chr %i, idx = %i\n", 
-	       s+1, myEmit->chr[s], myEmit->idx_of[myEmit->chr[s]]);
-      }
-      exit(1);
-    }
+    if (ct >= myEmit->nSites[sample]) continue;
+    keep = 0;
     for (int t=0; t<myEmit->nTimes; t++){
-      myEmit->loci[ myEmit->idx_of[chr] ][ct] = l;//set locus
+      myEmit->loci[sample][ct] = l;//set locus
       line_ss >> r >> d;//get read and depth
       if (d == 0 && r > 0){
 	printf("ERROR: depth = 0 in chr %i locus %i\n", chr, l);
@@ -103,8 +112,9 @@ void get_data( const char * data_fn, Emission * myEmit){
       //set read and depth
       myEmit->reads[t][  myEmit->idx_of[chr] ][ct] = r;
       myEmit->depths[t][ myEmit->idx_of[chr] ][ct] = d;
+      if (r>0) keep=1;
     }
-    ct++;
+    if (keep || myEmit->connect) ct++;
   }  
   data_ifs.close();
   // set the distances between loci
