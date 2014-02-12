@@ -157,7 +157,7 @@ int main (int argc, const char * argv[]){
   //*** GET JUMP PROBABILITY TRACKS and COLLAPSE TO EVENTS***
   get_jump_probability( &myClone, opts);
   //...now all segments are fixed and mean_tcn/av_cn allocated.
-  if ( snvEmit.is_set){//for SNV only
+  if ( snvEmit.is_set && !cnaEmit.is_set ){//for SNV only
     // *** GET TOTAL MEAN COPYNUMBER TRACKS ***  
     if( opts.mntcn_fn != NULL ){
       get_mean_tcn( opts.mntcn_fn, &myClone, &snvEmit);

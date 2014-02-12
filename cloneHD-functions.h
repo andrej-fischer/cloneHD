@@ -62,9 +62,10 @@ void read_opts( const char * opts_fn, cmdl_opts& opts);
 void default_opts(cmdl_opts& opts);
 void test_opts(cmdl_opts& opts);
 void print_opts();
-void print_clonal_header( FILE * fp, Clone * myClone,  Emission * myEmit, cmdl_opts& opts);
-void print_posterior( FILE * cna_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts);
-void print_phi( FILE * phi_fp, Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
+void print_clonal_header( FILE * fp,  Clone * myClone, Emission * myEmit, cmdl_opts& opts);
+void print_posterior( FILE * cna_fp,  Clone * myClone, Emission * myEmit,  int s, cmdl_opts& opts);
+void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
+void print_avail_cn( FILE * avcn_fp,  Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
 
 void get_dims( const char * data_fn,
 	       int& nTimes,
