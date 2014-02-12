@@ -215,14 +215,14 @@ int main (int argc, const char * argv[]){
   else{
     // ****** INFERENCE STARTS HERE ******
     bestn = infer_clones( clones, mass, &myClone, opts);
-    // ****** INFERENCE COMPLETED  ******
+    // ****** INFERENCE COMPLETED ********
   }
   printf("cloneHD found support for %i sub-clone(s) in the data.\n", bestn);
   bafEmit.connect = 0;
   // NOTE: at the end, best solution is inserted
   //
-  // *** PRINT CLONAL RESULTS ***
-  // margin-map to get posterior per clone...
+  // *** PRINT ALL RESULTS ***
+  // margin-map to get the posterior per clone...
   char buff[1024]; 
   sprintf( buff, "%s.clonal.margin_map.txt", opts.pre);
   FILE * margin_fp = fopen( buff, "w");
@@ -236,72 +236,86 @@ int main (int argc, const char * argv[]){
   // used total copynumber...
   FILE * baf_utcn_fp=NULL, * snv_utcn_fp=NULL; 
   if ( bafEmit.is_set ){
-    sprintf( buff, "%s.baf.used-tcn.txt", opts.pre);
+    sprintf( buff, "%s.baf.used_mean_tcn.txt", opts.pre);
     baf_utcn_fp = fopen( buff, "w");
-    fprintf( baf_utcn_fp, "#sample site used-total-copynumber\n");
+    fprintf( baf_utcn_fp, "#sample site used-mean-total-copynumber\n");
   }
   if (snvEmit.is_set){
-    sprintf( buff, "%s.snv.used-tcn.txt", opts.pre);
+    sprintf( buff, "%s.snv.used_mean_tcn.txt", opts.pre);
     snv_utcn_fp = fopen( buff, "w");
-    fprintf( snv_utcn_fp, "#sample site used-total-copynumber\n");
+    fprintf( snv_utcn_fp, "#sample site used-mean-total-copynumber\n");
   }
   // print CNA posterior distributions..
   if (cnaEmit.is_set){
     sprintf( buff, "%s.cna.posterior.txt", opts.pre);
     FILE * cna_fp = fopen( buff, "w");
     print_clonal_header( cna_fp, &myClone, &cnaEmit, opts);
-    sprintf( buff,"%s.copynumber.txt", opts.pre); 
-    FILE * phi_fp =  fopen(buff,"w");
-    fprintf( phi_fp, "#sample site total-copynumber max-copynumber\n");
+    sprintf( buff,"%s.mean_tcn.txt", opts.pre); 
+    FILE * mntcn_fp =  fopen(buff,"w");
+    fprintf( mntcn_fp, "#sample site mean-total-copynumber\n");
+    sprintf( buff,"%s.available_cn.txt", opts.pre); 
+    FILE * avcn_fp =  fopen(buff,"w");
+    fprintf( avcn_fp, "#sample site copynumber-availability\n");
     //allocate space for the posterior
     myClone.alpha_cna = new gsl_matrix * [cnaEmit.nSamples];
     myClone.gamma_cna = new gsl_matrix * [cnaEmit.nSamples];
+    if (!bafEmit.is_set) cnaEmit.allocate_av_cn(myClone.maxcn);
     for (int s=0; s < cnaEmit.nSamples; s++){//print each chromosome...
       myClone.alpha_cna[s] = NULL;
       myClone.gamma_cna[s] = NULL;
       myClone.get_cna_posterior(s);
       print_posterior( cna_fp, &myClone, &cnaEmit, s, opts);
-      //get, map and print total copynumber...
-      myClone.get_phi(s);
-      print_phi( phi_fp, &myClone, &cnaEmit, s, opts);
+      //get and print mean total copynumber...
+      myClone.get_mean_tcn(s);
+      print_mean_tcn( mntcn_fp, &myClone, &cnaEmit, s, opts);
+      if (!bafEmit.is_set){//get cn availability via CNA...
+	myClone.get_av_cn( &cnaEmit, s);      
+	print_av_cn( avcn_fp, &myClone, &cnaEmit, s, opts);
+      }
       int cnaChr = cnaEmit.chr[s];
       int bafSample = -1;
       int snvSample = -1;
+      //map mean total cn...
       if (bafEmit.is_set && bafEmit.chrs.count(cnaChr) == 1){
-	myClone.map_phi( &cnaEmit, s, &bafEmit);
+	myClone.map_mean_tcn( &cnaEmit, s, &bafEmit);
 	bafSample = bafEmit.idx_of[cnaChr];
 	if (snvEmit.is_set && snvEmit.chrs.count(cnaChr) == 1){
-	  myClone.map_phi( &bafEmit, bafSample, &snvEmit);
+	  myClone.map_mean_tcn( &bafEmit, bafSample, &snvEmit);
 	}
       }
       else if (snvEmit.is_set && snvEmit.chrs.count(cnaChr) == 1){
-	myClone.map_phi( &cnaEmit, s, &snvEmit);
+	myClone.map_mean_tcn( &cnaEmit, s, &snvEmit);
 	snvSample = snvEmit.idx_of[cnaChr];
       }     
       //print used total-copynumber tracks...
       if ( bafSample >= 0 && bafEmit.phi != NULL){
-	print_phi( baf_utcn_fp,  &myClone, &bafEmit, bafSample, opts);
+	print_mean_tcn( baf_utcn_fp,  &myClone, &bafEmit, bafSample, opts);
       }
-      if (snvSample >= 0 && snvEmit.phi != NULL){
-	print_phi( snv_utcn_fp,  &myClone, &snvEmit, snvSample, opts);
+      if ( snvSample >= 0 && snvEmit.phi != NULL){
+	print_mean_tcn( snv_utcn_fp,  &myClone, &snvEmit, snvSample, opts);
       }
-    }
-    fclose(cna_fp);
-    fclose(phi_fp);
+    }//...all CNA posteriors printed.
     if (bafEmit.is_set){//print BAF posterior...
       sprintf( buff, "%s.baf.posterior.txt", opts.pre);
       FILE * baf_fp = fopen( buff, "w");
       print_clonal_header( baf_fp, &myClone, &bafEmit, opts);
       myClone.alpha_baf = new gsl_matrix * [myClone.bafEmit->nSamples];
-      myClone.gamma_baf = new gsl_matrix * [myClone.bafEmit->nSamples];    
+      myClone.gamma_baf = new gsl_matrix * [myClone.bafEmit->nSamples];  
+      bafEmit.allocate_av_cn(myClone.maxcn);  
       for (int s=0; s < bafEmit.nSamples; s++){
 	myClone.alpha_baf[s] = NULL;
 	myClone.gamma_baf[s] = NULL;
 	myClone.get_baf_posterior(s);
 	print_posterior( baf_fp, &myClone, &bafEmit, s, opts);
+	//get cn availability via BAF...
+	myClone.get_av_cn( &bafEmit, s);      
+	print_av_cn( avcn_fp, &myClone, &bafEmit, s, opts);
       }
       fclose(baf_fp);
     }
+    fclose(cna_fp);
+    fclose(mntcn_fp);
+    fclose(avcn_fp);
     if (snvEmit.is_set){//print SNV posterior...
       sprintf( buff, "%s.snv.posterior.txt", opts.pre);
       FILE * snv_fp = fopen( buff, "w");
@@ -313,7 +327,6 @@ int main (int argc, const char * argv[]){
 	myClone.gamma_snv[s] = NULL;
 	myClone.get_snv_posterior(s);
 	print_posterior( snv_fp, &myClone, &snvEmit, s, opts);
-	//cleanup
 	gsl_matrix_free(myClone.gamma_snv[s]);
 	myClone.gamma_snv[s] = NULL;
       }
@@ -342,11 +355,10 @@ int main (int argc, const char * argv[]){
       myClone.gamma_snv[s] = NULL;
       myClone.get_snv_posterior(s);
       print_posterior( snv_fp, &myClone, &snvEmit, s, opts);
-      //cleanup
       gsl_matrix_free( myClone.gamma_snv[s]);
       myClone.gamma_snv[s] = NULL;
-      //total copynumber...
-      print_phi( snv_utcn_fp,  &myClone, &snvEmit, s, opts);
+      //used mean total copynumber...
+      print_mean_tcn( snv_utcn_fp,  &myClone, &snvEmit, s, opts);
     }
     fclose(snv_fp);
     delete [] myClone.gamma_snv;
@@ -649,8 +661,7 @@ void test_opts(cmdl_opts& opts){
 }
 
 void print_opts(){
-  cout<<endl<<"./build/cloneHD --cna [file] --snv [file] --baf [file] --pre [string:./out] --clones [file] --purity $purity --chr [file] --bias [file] --mean-tcn [file] --avail-cn [file] --grid [int:300] --seed [int:time(0)] --trials [int:1] --restarts [int:10] --nmax [int:3] --force [int] --maxcn [int:4] --maxcn-mask [file] --cna-jump [double] --baf-jump [double] --snv-jump [double] --cna-jumps [files] --baf-jumps [file] --snv-jumps [file] --cna-rnd [double:0] --baf-rnd [double:0] --snv-rnd [double:0] --snv-err [double] --snv-fpr [double] --cna-shape [double:inf] --baf-shape [double:inf] --snv-shape [double:inf] --baf-pen [double:1.0] --snv-pen [double:0.01] --min-occ [double:0.01] --min-jump [double:0.01] --learn-priors [0/1:0] --mass-gauging [0/1:1] ";
-  //cout<<"--bulk-prior [file] --bulk-mean [file] --bulk-fix [double:0] --bulk-sigma [double] --bulk-updates [int:0]";
+  cout<<endl<<"./build/cloneHD --cna [file] --snv [file] --baf [file] --pre [string:./out] --clones [file] --purity $purity --chr [file] --bias [file] --mean-tcn [file] --avail-cn [file] --grid [int:300] --seed [int:time(0)] --trials [int:1] --restarts [int:10] --nmax [int:3] --force [int] --maxcn [int:4] --maxcn-mask [file] --cna-jump [double] --baf-jump [double] --snv-jump [double] --cna-jumps [files] --baf-jumps [file] --snv-jumps [file] --cna-rnd [double:0] --baf-rnd [double:0] --snv-rnd [double:0] --snv-err [double] --snv-fpr [double] --cna-shape [double:inf] --baf-shape [double:inf] --snv-shape [double:inf] --baf-pen [double:1.0] --snv-pen [double:0.01] --min-occ [double:0.01] --min-jump [double:0.01] --learn-priors [0/1:0] --mass-gauging [0/1:1] --bulk-prior [file] --bulk-mean [file] --bulk-fix [double:0] --bulk-sigma [double] --bulk-updates [int:0]";
   cout<<endl;
   exit(0);
 }
@@ -720,25 +731,48 @@ void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * myEmit, int s,
 	  double tcn = (myEmit->mntcn==NULL) ? ncn : myEmit->mntcn[t][s][evt];
 	  fprintf( mntcn_fp, " %.3f", tcn);
 	}
-	//int mcn = (myEmit->cnmax==NULL) ? int(ncn) : myEmit->cnmax[s][evt];//???
-	//fprintf( phi_fp, " %i\n", mcn);
-	fprintf( phi_fp, "\n");
+	fprintf( mntcn_fp, "\n");
       }
     }
     else{
-      fprintf( phi_fp, "%i %6i %6i %6i", myEmit->chr[s], 
+      fprintf( mntcn_fp, "%i %6i %6i %6i", myEmit->chr[s], 
 	       myEmit->loci[s][first], last-first+1, myEmit->loci[s][last]
 	       );
       for (int t=0; t<myEmit->nTimes; t++){
 	double tcn = (myEmit->mntcn==NULL) ? ncn : myEmit->mntcn[t][s][evt];
 	fprintf( mntcn_fp, " %.3f", tcn);
       }
-      //int mcn = (myEmit->cnmax==NULL) ? int(ncn) : myEmit->cnmax[s][evt];//???
-      //fprintf( phi_fp, " %i\n", mcn);
-      fprintf( phi_fp, "\n");
+      fprintf( mntcn_fp, "\n");
     }
   }
 }
 
-//TODO
-//void print_avail_cn( FILE * avcn_fp, Clone * myClone, int s, cmdl_opts& opts){}
+
+void print_avail_cn( FILE * avcn_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts){
+  for (int evt=0; evt < myEmit->nEvents[s]; evt++){   
+    int first = myEmit->idx_of_event[s][evt];     
+    int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1] - 1 : myEmit->nSites[s]-1; 
+    if( opts.print_all || !myEmit->coarse_grained ){
+      for (int idx=first; idx<=last; idx++){
+      	fprintf( avcn_fp, "%i %6i", myEmit->chr[s], myEmit->loci[s][idx]);
+	for (int t=0; t<myEmit->nTimes; t++){
+	  for (int cn=0; cn<=myClone->maxcn; cn++){
+	    fprintf( avcn_fp, " %.3f", myEmit->av_cn[t][s][evt][cn]);
+	  }
+	}
+	fprintf( avcn_fp, "\n");
+      }
+    }
+    else{
+      fprintf( avcn_fp, "%i %6i %6i %6i", myEmit->chr[s], 
+	       myEmit->loci[s][first], last-first+1, myEmit->loci[s][last]
+	       );
+      for (int t=0; t<myEmit->nTimes; t++){
+	for (int cn=0; cn<=myClone->maxcn; cn++){
+	  fprintf( avcn_fp, " %.3f", myEmit->av_cn[t][s][evt][cn]);
+	}
+      }
+      fprintf( avcn_fp, "\n");
+    }
+  }
+}
