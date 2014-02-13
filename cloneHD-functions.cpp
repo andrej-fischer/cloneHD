@@ -878,7 +878,7 @@ double get_clones( gsl_matrix *& clones,
   if (myClone->cnaEmit->is_set){
     llh = get_clones_cna( clones, Clones, mass, Mass, myClone, opts, cna_llh, baf_llh, snv_llh);
   }
-  /*else if (myClone->bafEmit->is_set){
+  /*else if (myClone->bafEmit->is_set){//not supported!
     llh = get_clones_baf( clones, Clones, myClone, opts);
     baf_llh = llh;
     }*/
@@ -1205,8 +1205,10 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
   double llh=0;
   gsl_vector * mem = gsl_vector_alloc(nC);
   //STEP 1: learn clones with fixed priors...
-  myClone->initialize_cn_prior_snv();// initialize SNV copynumber prior
-  gsl_matrix_memcpy( priors, myClone->init_cn_prior_snv);
+  if (myClone->snvEmit->av_cn == NULL){
+    myClone->initialize_cn_prior_snv();// initialize SNV copynumber prior
+    gsl_matrix_memcpy( priors, myClone->init_cn_prior_snv);
+  }
   if ( Clones == NULL ){
     for (int t=0; t<nT; t++){
       set_random_start_freq( mem, (myClone->min_purity)->data[t]);
@@ -1221,13 +1223,13 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
     gsl_matrix_memcpy( clones, Clones);
     myClone->set(Clones);
   }     
-  //STEP 2: for uncorrelated SNV data, learn cn-priors as well...
-  if (opts.learn_priors){
-    gsl_matrix * npriors = gsl_matrix_alloc(priors->size1,priors->size2);
+  //STEP 2: for uncorrelated SNV data, learn clones and cn-priors...
+  if ( myClone->snvEmit->av_cn == NULL && opts.learn_priors){
+    gsl_matrix * npriors = gsl_matrix_alloc( priors->size1, priors->size2);
     gsl_matrix_memcpy(npriors,priors);
     if (Clones == NULL){//STEP 3a: learn clones and priors jointly...
       gsl_matrix * nclones = gsl_matrix_alloc(nT,nC);
-      gsl_matrix_memcpy(nclones,clones);
+      gsl_matrix_memcpy( nclones, clones);
       steps=0;
       double nllh = snv_clones_priors( nclones, npriors, myClone, opts.restarts, steps);
       if (nllh>llh){
@@ -1268,6 +1270,8 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
 }
 
 
+
+//SNV-only, w/ correlation
 double get_clones_snv_wcorr( gsl_matrix *& clones, 
 			     gsl_matrix *& Clones, 
 			     Clone * myClone,
@@ -1515,7 +1519,8 @@ void get_candidate_masses( gsl_matrix * clones,
   int ct=0;
   for (int i=0; i< nL; i++){//loop through the candidate masses...
     int level = myClone->levels_sorted[i];
-    if (myClone->majcn_post->data[level] < min_occ || i>=15) break;//***THRESHOLD OCCUPANCY***
+    //***THRESHOLD OCCUPANCY***
+    if (myClone->majcn_post->data[level] < min_occ || i>=15 ) break;
     //test whether new masses are sufficiently different from everything sofar...
     int found=0;
     for (int j=0; j<i; j++){
@@ -1540,7 +1545,7 @@ void get_candidate_masses( gsl_matrix * clones,
 }
 
 
-
+//NOT SUPPORTED!
 double baf_clones( gsl_matrix*& clones, Clone * myClone, int restarts, int& steps){
   int nT = myClone->nTimes;
   int nC = myClone->nClones;
@@ -1809,10 +1814,10 @@ double Q( const gsl_vector * x, void * p){
       //LLH = cna_llh_all_fixed(Qpar->myClone);
       LLH = Qpar->myClone->get_all_total_llh();
     }
-    else if (Qpar->baf == 1){
+    /*else if (Qpar->baf == 1){//NOT SUPPORTED
       // get the total llh for BAF *only*
       LLH = Qpar->myClone->get_baf_total_llh();
-    }
+      }*/
     else if (Qpar->snv == 1){
       // get the total llh for SNV *only*
       LLH = Qpar->myClone->get_snv_total_llh();
@@ -1848,16 +1853,18 @@ void snv_bulk_update(Clone * myClone){
   int s;
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
   for ( s=0; s<myClone->snvEmit->nSamples; s++){  
-    if (myClone->cnaEmit->is_set){
-      cna_sample = myClone->cnaEmit->idx_of[myClone->snvEmit->chr[s]];
-      myClone->alpha_cna[cna_sample]=NULL;
-      myClone->gamma_cna[cna_sample]=NULL;
+    int snvChr = myClone->snvEmit->chr[s];
+    if (myClone->cnaEmit->is_set && myClone->cnaEmit->chrs.count(snvChr) == 1){
+      cna_sample = myClone->cnaEmit->idx_of[snvChr];
+      myClone->alpha_cna[cna_sample] = NULL;
+      myClone->gamma_cna[cna_sample] = NULL;
       myClone->get_cna_posterior(cna_sample);
       myClone->get_mean_tcn( cna_sample);
       myClone->map_mean_tcn( myClone->cnaEmit, cna_sample, myClone->snvEmit);
     }
     myClone->update_bulk(s);
-    if (myClone->cnaEmit->is_set) gsl_matrix_free(myClone->gamma_cna[cna_sample]);
+    if (myClone->gamma_cna[cna_sample] != NULL)
+      gsl_matrix_free(myClone->gamma_cna[cna_sample]);
   }  
   myClone->set_bulk_to_post();
   //clean up...
@@ -1873,6 +1880,8 @@ void snv_bulk_update(Clone * myClone){
   myClone->alpha_snv = NULL;	
 }
 
+
+//random points within simplex
 void set_random_start_freq(gsl_vector *& freq, double lower){
   if (freq->size == 1){
     double p = double(rand()) / double(RAND_MAX);
