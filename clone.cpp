@@ -42,6 +42,7 @@ Clone::Clone(){
   copynumber       = NULL;
   copynumber_post  = NULL;
   init_cn_prior_snv= NULL;
+  cn_prior_snv = NULL;
   clone_spectrum   = NULL;
   majcn_post  = NULL;
   bulk_fix  = -1.0;
@@ -527,7 +528,7 @@ void Clone::get_complexity(){
 }
 
 
-
+// CNA prior (only used for chr entry or w/o correlations)...
 void Clone::set_cn_prior_cna( gsl_vector * prior, int sample){
   double pncn = 0.5; //penalty for being  different from the normal copy number
   double pdif = 0.01;//penalty for having different copynumbers in clones
@@ -552,61 +553,42 @@ void Clone::set_cn_prior_cna( gsl_vector * prior, int sample){
 }
 
 
-//used in SNV-only mode, w/o cn-info...
+
+
+//used in SNV-only mode, w/o correlation and w/o cn-info...
 void Clone::initialize_cn_prior_snv(){// SNV prior, conditional on max-cn
   if (init_cn_prior_snv != NULL) gsl_matrix_free(init_cn_prior_snv);
   init_cn_prior_snv = gsl_matrix_calloc( maxcn+1, maxcn+1);
-  gsl_matrix_set( init_cn_prior_snv, 0, 0, snv_fpr);//snv_fpr: hopefully small (default:1.0e-4)
-  int nprior = 1;
+  gsl_matrix_set( init_cn_prior_snv, 0, 0, snv_fpr);//default:1.0e-4
   double p   = 0.5;// initial penalty for higher genotypes
   for (int cn=1; cn <= maxcn; cn++){
+    if ( !maxcns.exists(cn) ) continue;
     gsl_vector_view subrow = gsl_matrix_subrow( init_cn_prior_snv, cn, 0, cn+1);
-    if (!snvEmit->connect ){
-      //if( snvEmit->cnmax_seen.count(cn) != 0){//un-correlated SNV data
-      gsl_vector_set( &subrow.vector, 0, p);
-      for (int i=1; i<=cn; i++) gsl_vector_set( &subrow.vector, i, pow( p, i));
-      gsl_vector_scale( &subrow.vector, 1.0 / gsl_blas_dasum(&subrow.vector) );
-      //}
-    }
-    else{//flat prior for correlated SNV data (Transition matrix will be used)
-      gsl_vector_set_all( &subrow.vector, 1.0/double(cn+1));
-    }
-    nprior++;
+    gsl_vector_set( &subrow.vector, 0, p);//P0=P1>P2>... or P00=P10=P10=P11>P20...
+    for (int i=1; i<=cn; i++) gsl_vector_set( &subrow.vector, i, pow( p, i));
+    gsl_vector_scale( &subrow.vector, 1.0 / gsl_blas_dasum(&subrow.vector) );
   }
-  /*printf("Using SNV copynumber priors per clone (combinations have multiplicative priors)\n");
-  for (int i=0; i<(int) init_cn_prior_snv->size1; i++){
-    for (int j=0; j<(int) init_cn_prior_snv->size2; j++){
-      printf("%.3f ", gsl_matrix_get( init_cn_prior_snv, i, j));
-    }
-    cout<<endl;
-    }*/
   //set above fixed priors
+  if (cn_prior_snv != NULL) gsl_matrix_free(cn_prior_snv);
+  cn_prior_snv = gsl_matrix_allocate(maxcn+1,nLevels);
   Clone::set_cn_prior_snv(init_cn_prior_snv);
 }
 
 
 
 //SNV-only mode, w/o cn-info...
-void Clone::set_cn_prior_snv( gsl_matrix * prior_per_clone){
+void Clone::set_cn_prior_snv( gsl_matrix * snv_prior_by_maxcn){
   if (snvEmit->is_set == 0) abort();
-  // delete old ones...
-  map<int,gsl_vector*>::iterator it;
-  if ( !cn_prior_snv.empty() ){
-    for (it=cn_prior_snv.begin(); it != cn_prior_snv.end(); ++it){
-      gsl_vector_free(cn_prior_snv[it->first]);
-    }
-    cn_prior_snv.clear();
-  }
-  //set new ones...
+  if ((int) cn_prior_snv->size2 != nLevels) abort();
   //cn==0
-  gsl_vector * pr = gsl_vector_calloc(nLevels); 
-  gsl_vector_set( pr, 0, 1.0);
+  gsl_matrix_set( cn_prior_snv, 0, 0, 1.0);
+  double val;
   if (snvEmit->log_space){//log-transform?
     for (int l=0; l<nLevels; l++){
-      pr->data[l] = (pr->data[l] > 0.0) ? log(pr->data[l]) : logzero;
+      val = gsl_matrix_get(cn_prior_snv,0,l);
+      gsl_matrix_set( cn_prior_snv, 0, l, val>0.0 ? log(val) : logzero);
     }
   }
-  cn_prior_snv.insert(pair<int,gsl_vector*>(0,pr));
   //cn>0
   for (int cn=1; cn<=maxcn; cn++){//if total c.n. = cn...
     gsl_vector_view row = gsl_matrix_row(prior_per_clone,cn);

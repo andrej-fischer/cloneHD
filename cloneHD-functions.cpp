@@ -75,10 +75,11 @@ void get_track(const char * track_fn,
 
 // get the maximum total c.n. mask per chromosome
 void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
-  if (mask_fn==NULL){//use mxcn genome wide
-    myClone->maxcn = maxcn_gw;
-  }
-  else{//use explicit upper limit per chromosome, and mxcn elsewhere
+  myClone->maxcn_mask.clear();
+  myClone->maxcns.clear();
+  myClone->maxcn = maxcn_gw;
+  //use explicit upper limit per chromosome, and mxcn_gw elsewhere
+  if (mask_fn != NULL){
     ifstream ifs;
     string line;
     stringstream line_ss;
@@ -87,9 +88,7 @@ void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
       printf("ERROR: file %s cannot be opened.\n", mask_fn);
       exit(1);
     }
-    int chr = 0, chrMxcn=0;
-    myClone->maxcn = maxcn_gw;
-    myClone->maxcn_mask.clear();
+    int chr = 0, chrMxcn=0;   
     while( ifs.good() ){
       line.clear();
       getline( ifs, line);
@@ -101,6 +100,7 @@ void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
       if (chr<0 || chr >= 100) abort();
       if ( myClone->maxcn_mask.count(chr) == 0){
 	myClone->maxcn_mask.insert(std::pair<int,int>(chr,chrMxcn));
+	myClone->maxcns.insert(chrMxcn);
 	myClone->maxcn = max( myClone->maxcn, chrMxcn);
       }
       else{
@@ -109,23 +109,28 @@ void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
       }
     }
     ifs.close();
-    //insert for all chromosomes not in the file the limit maxcn_gw
-    if ( myClone->cnaEmit->is_set){
-      for (int s=0; s< myClone->cnaEmit->nSamples; s++){
-	int cnaChr = myClone->cnaEmit->chr[s];
-	if ( myClone->maxcn_mask.count(cnaChr) == 0){
-	  myClone->maxcn_mask.insert(std::pair<int,int>( cnaChr, maxcn_gw));
-	}
+  }
+  //insert for all chromosomes fixed the limit maxcn_gw
+  if ( myClone->cnaEmit->is_set){
+    for (int s=0; s< myClone->cnaEmit->nSamples; s++){
+      int cnaChr = myClone->cnaEmit->chr[s];
+      if ( myClone->maxcn_mask.count(cnaChr) == 0){
+	myClone->maxcn_mask.insert(std::pair<int,int>( cnaChr, maxcn_gw));
+	myClone->maxcns.insert(maxcn_gw);
       }
     }
-    else if ( myClone->snvEmit->is_set){
-      for (int s=0; s< myClone->snvEmit->nSamples; s++){
-	int snvChr = myClone->snvEmit->chr[s];
-	if ( myClone->maxcn_mask.count(snvChr) == 0){
-	  myClone->maxcn_mask.insert(std::pair<int,int>( snvChr, maxcn_gw));
-	}
+  }
+  else if ( myClone->snvEmit->is_set){
+    for (int s=0; s< myClone->snvEmit->nSamples; s++){
+      int snvChr = myClone->snvEmit->chr[s];
+      if ( myClone->maxcn_mask.count(snvChr) == 0){
+	myClone->maxcn_mask.insert(std::pair<int,int>( snvChr, maxcn_gw));
+	myClone->maxcns.insert(maxcn_gw);
       }
     }
+  }
+  else{
+    abort();
   }
 }
 
@@ -875,14 +880,14 @@ double get_clones( gsl_matrix *& clones,
   gsl_matrix_set_all( clones, 1.0/double(nC));
   myClone->set( clones );
   double llh=0;
-  if (myClone->cnaEmit->is_set){
+  if (myClone->cnaEmit->is_set){//CNA+
     llh = get_clones_cna( clones, Clones, mass, Mass, myClone, opts, cna_llh, baf_llh, snv_llh);
   }
   /*else if (myClone->bafEmit->is_set){//not supported!
     llh = get_clones_baf( clones, Clones, myClone, opts);
     baf_llh = llh;
     }*/
-  else if (myClone->snvEmit->is_set){
+  else if (myClone->snvEmit->is_set){//SNV-only
     if (myClone->snvEmit->connect){
       llh = get_clones_snv_wcorr( clones, Clones, myClone, opts);
     }
@@ -1226,6 +1231,7 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
   //STEP 2: for uncorrelated SNV data, learn clones and cn-priors...
   if ( myClone->snvEmit->av_cn == NULL && opts.learn_priors){
     gsl_matrix * npriors = gsl_matrix_alloc( priors->size1, priors->size2);
+    //irrelevant columns of 'priors' should be set to zero
     gsl_matrix_memcpy(npriors,priors);
     if (Clones == NULL){//STEP 3a: learn clones and priors jointly...
       gsl_matrix * nclones = gsl_matrix_alloc(nT,nC);

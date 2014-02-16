@@ -50,6 +50,7 @@ class Clone{
   int nTimes, nClones;
   int maxcn;
   std::map<int,int> maxcn_mask;
+  std::set<int> maxcns;
   int allocated, is_set;
   int maj_ncn;
   double bulk_fix,snv_err,baf_pen,snv_pen, snv_fpr;
@@ -89,11 +90,11 @@ class Clone{
   int ** copynumber;
   void set_copynumbers();
   int * normal_copy; //copy number of normal human DNA
-  std::map<int,gsl_vector*> cn_prior_snv;
-  std::map<int,gsl_vector*> cn_prior_baf;
+  gsl_matrix * cn_prior_snv;
+  //std::map<int,gsl_vector*> cn_prior_baf;
+  //void set_cn_prior_baf();
   void set_cn_prior_cna( gsl_vector * cn_prior, int sample);
   void set_cn_prior_snv( gsl_matrix * prior_per_clone);
-  //void set_cn_prior_baf();
   gsl_matrix * init_cn_prior_snv;
   void initialize_cn_prior_snv();
   gsl_matrix * copynumber_post;
