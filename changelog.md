@@ -15,6 +15,7 @@ v1.16.6 / 12.02.2014
 *  false positive SNV prior now includes P(c=all-zero)
 *  fixed bug in used cn output
 *  all-zero "observations" in SNV input are ignored (and not printed!)
+*  fixed bug in filterHD: all-zero obs are always retained.
 
 v1.16.5 / 07.04.2014
 

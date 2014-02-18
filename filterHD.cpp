@@ -123,6 +123,7 @@ int main (int argc, const char * argv[]){
   myEmit.shape   = opts.shape;
   myEmit.get_log = 1;
   myEmit.reflect = opts.reflect;
+  myEmit.connect = 1;//all data will be retained
   myEmit.set( nTimes, chrs, nSites, opts.grid);
   get_data( opts.data_fn, &myEmit);
   // *** BIAS FIELD *** emission bias field
