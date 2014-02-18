@@ -1,6 +1,6 @@
 CC		= g++-mp-4.7
 GSL		= /opt/local/lib/libgsl.a /opt/local/lib/libgslcblas.a 
-CC_FLAGS	= -Wall -ggdb -DHAVE_INLINE -static-libgcc -static-libstdc++ -fopenmp
+CC_FLAGS	= -Wall -O3 -DHAVE_INLINE -static-libgcc -static-libstdc++ -fopenmp
 LD_FLAGS	= ${GSL} -fopenmp
 EMISSION	= emission
 FUNCTIONS	= common-functions

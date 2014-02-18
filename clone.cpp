@@ -73,6 +73,10 @@ Clone::Clone(){
   bulk_mean       = NULL; 
   bulk_min = NULL;
   logzero = -1.0e6;
+  cnaGrid  = 300;
+  bafGrid  = 100;
+  snvGrid  = 100;
+  bulkGrid = 100;
 }
 
 void Clone::allocate( Emission * cna, Emission * baf, Emission * snv, const char * chr_fn){
@@ -321,7 +325,7 @@ void Clone::allocate_bulk_dist(){//distribution and mean...
   bulk_prior      = new gsl_matrix * [snvEmit->nSamples];
   bulk_prior_mean = new double * [snvEmit->nSamples];
   for (int s=0; s<snvEmit->nSamples; s++){
-    bulk_prior[s] = gsl_matrix_calloc( snvEmit->nSites[s], snvEmit->gridSize+1);
+    bulk_prior[s] = gsl_matrix_calloc( snvEmit->nSites[s], bulkGrid + 1);
     bulk_prior_mean[s] = new double [ snvEmit->nSites[s] ];
   }
   //allocate posterior...
@@ -331,7 +335,7 @@ void Clone::allocate_bulk_dist(){//distribution and mean...
     bulk_post[t] = new gsl_matrix * [snvEmit->nSamples];   
     bulk_post_mean[t] = new double * [snvEmit->nSamples];   
     for (int s=0; s<snvEmit->nSamples; s++){
-      bulk_post[t][s] = gsl_matrix_calloc( snvEmit->nSites[s], snvEmit->gridSize+1);
+      bulk_post[t][s] = gsl_matrix_calloc( snvEmit->nSites[s], bulkGrid + 1);
       bulk_post_mean[t][s] = new double [snvEmit->nSites[s]];
     }
   }
@@ -2092,12 +2096,12 @@ void Clone::update_cna_event( gsl_vector * prior, gsl_vector * post, int sample,
   double x,dx,val;
   for (int t=0; t<nTimes; t++){
     emit = gsl_matrix_row( cnaEmitLog[t][sample], evt);
-    dx   = (cna_xmax[t] - cna_xmin[t]) / double(cnaEmit->gridSize);
+    dx   = (cna_xmax[t] - cna_xmin[t]) / double(cnaGrid);
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= logzero) continue;
       x = tcn[t][sample][level] * mass->data[t];
       if ( x < cna_xmin[t] || x > cna_xmax[t]){//outside range...
-	val = -1.0e10;
+	val = logzero;
       }
       else{//inside range...
 	val = Clone::get_interpolation( x, cna_xmin[t], cna_xmax[t], dx, &emit.vector);
@@ -2204,7 +2208,7 @@ void Clone::update_baf( gsl_vector * prior, gsl_vector * post, int sample, int e
 void Clone::update_baf_event( gsl_vector * prior, gsl_vector * post, int sample, int evt){
   gsl_vector_set_all( post, 0.0);//log-space!
   double x,y,val,total_cn;
-  double dx = bafEmit->dx;
+  double dx = 1.0 / double(bafGrid);
   gsl_vector_view emit;
   for (int t=0; t<nTimes; t++){
     total_cn = (bafEmit->phi == NULL) ? 2.0 : bafEmit->phi[t][sample][evt];//only diploid chromosomes!
@@ -2310,6 +2314,10 @@ void Clone::update_snv_event( gsl_vector * prior, gsl_vector * post, int sample,
 	int nidx = (evt < snvEmit->nEvents[sample]-1) ? snvEmit->idx_of_event[sample][evt+1] : snvEmit->nSites[sample];
 	val = logzero * double(nidx-idx);
       }
+      else if (bulk_fix == 0.0){
+	gsl_vector_view col = gsl_matrix_column( snvEmitLog[t][sample][evt], 0);
+	val = Clone::get_interpolation( a, 0.0, 1.0, 1.0/double((&col.vector)->size-1), &col.vector);
+      }
       else{//inside range...
 	val = Clone::get_interpolation( a, 0.0, 1.0, b, 0.0, 1.0/bulk_min[t][sample][evt], snvEmitLog[t][sample][evt]);
       }
@@ -2391,7 +2399,7 @@ void Clone::update_snv_site_fixed( gsl_vector * prior, gsl_vector * post, int sa
     double nrnd = 1.0 - snvEmit->rnd_emit;
     double total_cn = (snvEmit->phi == NULL) ? double(ncn) : snvEmit->phi[t][sample][evt];
     double bfix = (bulk_fix >= 0.0) ? bulk_fix : bulk_mean[t][sample][site];
-    y =  bfix * (1.0-purity[t]) * double(ncn) / total_cn;//for cancer app, this is usually 0.0!
+    y =  bfix * (1.0-purity[t]) * double(ncn) / total_cn;
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= 0.0) continue;
       x = y + clone_spectrum[t][level] / total_cn; 
@@ -2505,11 +2513,14 @@ double Clone::get_interpolation(double x, double xmin, double xmax, double dx, g
   double nu = (x-xmin)/dx - double(idx);
   double f1,f2;
   int gs = (int) emit->size - 1;
-  if (idx > 0 && idx < gs){//use log-emission probability
+  if (idx >= 0 && idx <= gs){//use log-emission probability
     f1 = emit->data[idx];
-    f2 = emit->data[idx+1];
+    f2 = emit->data[min(gs,idx+1)];
   }
-  else if (idx==0){//else use linear extra-polation of log
+  else{
+    abort();
+  }
+  /*else if (idx==0){//else use linear extra-polation of log
     if (x>xmin){
       f1 = emit->data[1];
       f2 = emit->data[2];
@@ -2530,7 +2541,7 @@ double Clone::get_interpolation(double x, double xmin, double xmax, double dx, g
       f1=logzero;
       f2=logzero;
     }
-  }
+    }*/
   double val = (1.0-nu)*f1 + nu*f2;//linear interpolation (in log-space)
   return(val);
 }
@@ -2782,6 +2793,8 @@ void Clone::get_bafEmitLog(){//only ever used for BAF data
 
 void Clone::get_snvEmitLog(){//only ever used for SNV data
   if (!snvEmit->is_set) abort();
+  int s1 = snvEmit->gridSize+1;
+  int s2 = (bulk_fix == 0.0) ? 1 : (snvEmit->gridSize+1);
   if (snvEmitLog==NULL){//first allocation
     snvEmitLog = new gsl_matrix *** [nTimes];
     for (int t=0;t<nTimes; t++){
@@ -2789,7 +2802,7 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
       for (int s=0; s<snvEmit->nSamples; s++){
 	snvEmitLog[t][s] = new gsl_matrix * [snvEmit->nEvents[s]];
 	for (int evt=0; evt< snvEmit->nEvents[s]; evt++){
-	  snvEmitLog[t][s][evt] = gsl_matrix_calloc(snvEmit->gridSize+1,snvEmit->gridSize+1);
+	  snvEmitLog[t][s][evt] = gsl_matrix_calloc( s1, s2);
 	}
       }
     }
@@ -2802,8 +2815,8 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
       int evt;
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
       for (evt=0; evt<snvEmit->nEvents[s]; evt++){
-	gsl_matrix * mem     = gsl_matrix_calloc(snvEmit->gridSize+1,snvEmit->gridSize+1);
-	gsl_matrix * rnd_vec = gsl_matrix_calloc(snvEmit->gridSize+1,snvEmit->gridSize+1);
+	gsl_matrix * mem     = gsl_matrix_calloc(s1,s2);
+	gsl_matrix * rnd_vec = gsl_matrix_calloc(s1,s2);
 	gsl_matrix_set_zero(snvEmitLog[t][s][evt]);
 	int idxi = snvEmit->idx_of_event[s][evt];
 	int idxf = (evt<snvEmit->nEvents[s]-1) ? snvEmit->idx_of_event[s][evt+1] - 1: snvEmit->nSites[s]-1;
@@ -2820,30 +2833,44 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
 	  if (bulk_prior != NULL) blk = gsl_matrix_row( bulk_dist[t][s], idx);
 	  for (int i=0; i<=snvEmit->gridSize; i++){
 	    double a = double(i) / double(snvEmit->gridSize);
-	    for (int j=0; j<=snvEmit->gridSize; j++){
-	      double b = double(j) / (double(snvEmit->gridSize) * bulk_min[t][s][evt]);
-	      if( b > (1.0-a) / bulk_min[t][s][evt]){
-		val = logzero;
+	    if (bulk_fix == 0.0){//bulk fixed at zero	      
+	      if (a>0.0 && a<1.0){//inside range...
+		val = emit->data[i];
 	      }
-	      else if (bulk_prior==NULL){//bulk point estimate...	      
-		double x =  a + bfix * b;
-		if (x > 1.0){//outside range...
+	      else if ( a==1.0 ){//edges...
+		val = (n==N) ? 0.0 : logzero;
+	      }
+	      else if ( a==0.0 ){
+		val = (n==0) ? 0.0 : logzero;
+	      }
+	      gsl_matrix_set( mem, i, 0, val);
+	    }
+	    else{
+	      for (int j=0; j<=snvEmit->gridSize; j++){
+		double b = double(j) / (double(snvEmit->gridSize) * bulk_min[t][s][evt]);
+		if( b > (1.0-a) / bulk_min[t][s][evt]){
 		  val = logzero;
 		}
-		else if (x>0.0 && x<1.0){//inside range...
-		  val = Clone::get_interpolation( x, 0.0, 1.0, dx, emit);
+		else if (bulk_prior==NULL){//bulk point estimate...	      
+		  double x =  a + bfix * b;
+		  if (x > 1.0){//outside range...
+		    val = logzero;
+		  }
+		  else if (x>0.0 && x<1.0){//inside range...
+		    val = Clone::get_interpolation( x, 0.0, 1.0, dx, emit);
+		  }
+		  else if ( x==1.0 ){//edges...
+		    val = (n==N) ? 0.0 : logzero;
+		  }
+		  else if ( x==0.0 ){
+		    val = (n==0) ? 0.0 : logzero;
+		  }
 		}
-		else if ( x==1.0 ){//edges...
-		  val = (n==N) ? 0.0 : logzero;
-		}
-		else if ( x==0.0 ){
-		  val = (n==0) ? 0.0 : logzero;
-		}
+		else{//bulk full distribution...		
+		  val = Clone::trapezoidal( &blk.vector, a, b, emit, 1);//log-space
+		}	
+		gsl_matrix_set( mem, i, j, val);
 	      }
-	      else{//bulk full distribution...		
-		val = Clone::trapezoidal( &blk.vector, a, b, emit, 1);//log-space
-	      }	
-	      gsl_matrix_set( mem, i, j, val);
 	    }
 	  }
 	  // mutiply into posterior...
@@ -2870,8 +2897,8 @@ void Clone::update_bulk(int sample){
   if (bulk_mean == NULL) abort();
   gsl_vector * bpost=NULL, *flat=NULL, *emit=NULL;
   gsl_vector_view bprior;
-  bpost = gsl_vector_alloc(snvEmit->gridSize+1);
-  flat  = gsl_vector_alloc(snvEmit->gridSize+1);
+  bpost = gsl_vector_alloc(bulkGrid+1);
+  flat  = gsl_vector_alloc(bulkGrid+1);
   gsl_vector_set_all(flat,1.0);
   //get SNV posterior...
   alpha_snv[sample]=NULL;
@@ -2918,23 +2945,22 @@ void Clone::get_bulk_post_dist( gsl_vector * bprior, gsl_vector * bpost, gsl_vec
   double dx = snvEmit->dx;
   double prob=0, x=0, y=0, val=0 , f1=0, f2=0, nu=0;
   int old=-1, i1=0, i2=0;
-  int gS = snvEmit->gridSize;
   double ncn = (double) normal_copy[snvEmit->chr[sample]];
   int evt = snvEmit->event_of_idx[sample][idx];
   double total_cn = (snvEmit->phi==NULL) ? ncn : snvEmit->phi[time][sample][evt];
   gsl_vector_set_zero(bpost);
-  for (int i=0; i <= gS; i++){
-    y = double(i)*dx * (1.0 - purity[time]) * ncn;
+  for (int i=0; i <= bulkGrid; i++){
+    y = double(i)*dx * (1.0 - purity[time]) * ncn / total_cn;
     prob=0.0;
     old = -1;
     for (int j=0; j<nLevels; j++){
-      x = (y + clone_spectrum[time][j]) / total_cn;
+      x = y + clone_spectrum[time][j] / total_cn;
       if (x > 1.0) continue;
       i1 = int(x/dx);
       nu = x/dx - double(i1);
       if (i1 != old){
 	f1 = emit->data[i1];
-	i2 = (i1<gS) ? i1+1 : i1;
+	i2 = (i1<bulkGrid) ? i1+1 : i1;
 	f2 = emit->data[i2];
 	old=i1;
       }
@@ -2945,15 +2971,16 @@ void Clone::get_bulk_post_dist( gsl_vector * bprior, gsl_vector * bpost, gsl_vec
     if (prob != prob) abort();
     gsl_vector_set( bpost, i, prob);
   }
-  gsl_vector_mul(bpost,bprior);
-  double norm = gsl_blas_dasum(bpost) - 0.5*(bpost->data[0] + bpost->data[gS]);
-  norm *= dx;
-  gsl_vector_scale(bpost,1.0/norm);
+  gsl_vector_mul( bpost, bprior);
+  double norm = gsl_blas_dasum(bpost) - 0.5*(bpost->data[0] + bpost->data[bulkGrid]);
+  norm *= 1.0/double(bulkGrid);
+  if (norm<= 0.0) abort();
+  gsl_vector_scale( bpost, 1.0/norm);
 }
 
-
+//get the minimum mean bulk freq for all segments
 void Clone::get_bulk_min(){
-  if (bulk_min==NULL){
+  if (bulk_min==NULL){//allocate
     bulk_min = new double ** [nTimes];
     for (int t=0; t<nTimes; t++){
       bulk_min[t] = new double * [snvEmit->nSamples];
@@ -2965,11 +2992,20 @@ void Clone::get_bulk_min(){
   for (int t=0; t<nTimes; t++){
     for (int s=0; s<snvEmit->nSamples; s++){
       for (int evt=0; evt < snvEmit->nEvents[s]; evt++){
-	bulk_min[t][s][evt] = 1.1;
-	int idxi = snvEmit->idx_of_event[s][evt];
-	int idxf = (evt<snvEmit->nEvents[s]-1) ? snvEmit->idx_of_event[s][evt+1]-1 : snvEmit->nSites[s]-1;
-	for (int idx=idxi; idx<=idxf; idx++){
-	  bulk_min[t][s][evt] = min( bulk_min[t][s][evt], bulk_mean[t][s][idx]);
+	if (bulk_fix >= 0.0){
+	  bulk_min[t][s][evt] = bulk_fix;
+	}
+	else if (bulk_mean != NULL){
+	  bulk_min[t][s][evt] = 1.1;
+	  int idxi = snvEmit->idx_of_event[s][evt];
+	  int idxf = (evt<snvEmit->nEvents[s]-1) ? snvEmit->idx_of_event[s][evt+1]-1 : snvEmit->nSites[s]-1;
+	  for (int idx=idxi; idx<=idxf; idx++){
+	    bulk_min[t][s][evt] = min( bulk_min[t][s][evt], bulk_mean[t][s][idx]);
+	  }
+	  bulk_min[t][s][evt] = max( bulk_min[t][s][evt], 1.0e-3);
+	}
+	else{
+	  abort();
 	}
       }
     }

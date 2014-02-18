@@ -1,12 +1,18 @@
 # changelog for cloneHD/filterHD
 
-v1.17.0 / ???
+v1.17.0 / to come
 
 *  major release
 *  changed the SNV prior computation from `--copynumber
 	[file]` to available copy numbers from `--avail-cn [file]` and
 	mean total copy numbers from `--mean-tcn [file]`. 
 
+v1.16.7 / 18.02.2014
+
+*  fixed bug in SNV+corr mode when --bulk-fix is used
+*  introduced different grid sizes for CNA, BAF and SNV
+*  fixed bug in Cone::get_interpolation(), at the boundaries.
+	
 v1.16.6 / 12.02.2014
 
 *  fixed major bug for SNV false positive emission rate and prior

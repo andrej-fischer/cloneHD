@@ -68,7 +68,7 @@ int main (int argc, const char * argv[]){
     if (opts.cna_jump >= 0.0)      cnaEmit.connect = 1;
     if (opts.cna_jumps_fn != NULL) cnaEmit.connect = 1;
     get_dims( opts.cna_fn, nTimes, chrs, nSites, cnaEmit.connect);
-    cnaEmit.set( nTimes, chrs, nSites, opts.grid);
+    cnaEmit.set( nTimes, chrs, nSites, opts.cnaGrid);
     get_data( opts.cna_fn, &cnaEmit);
   }
   if (opts.baf_fn != NULL){//BAF DATA
@@ -87,7 +87,7 @@ int main (int argc, const char * argv[]){
       exit(1);
     }
     nTimes = nT;
-    bafEmit.set( nTimes, chrs, nSites, opts.grid);
+    bafEmit.set( nTimes, chrs, nSites, opts.bafGrid);
     get_data( opts.baf_fn, &bafEmit);
     bafEmit.set_EmitProb(-1);
   }
@@ -106,7 +106,7 @@ int main (int argc, const char * argv[]){
       exit(1);
     }
     nTimes = nT;
-    snvEmit.set( nTimes, chrs, nSites, opts.grid);
+    snvEmit.set( nTimes, chrs, nSites, opts.snvGrid);
     get_data( opts.snv_fn, &snvEmit);
     snvEmit.set_EmitProb(-1);
   }
@@ -133,6 +133,10 @@ int main (int argc, const char * argv[]){
   myClone.snv_err  = (opts.snv_err >= 0.0) ? opts.snv_err : 0.0;   //SNV frequency of false positives
   myClone.snv_pen  = (opts.snv_pen > 0.0)  ? opts.snv_pen : (bafEmit.is_set ? 0.01 : 0.5);//penalty for SNV genotypes higher than max
   myClone.bulk_fix = opts.bulk_fix;
+  myClone.cnaGrid  = opts.cnaGrid;
+  myClone.bafGrid  = opts.bafGrid;
+  myClone.snvGrid  = opts.snvGrid;
+  myClone.bulkGrid = opts.bulkGrid;
   //mask for maximum total c.n. per chromosome or genomwide
   myClone.get_maxcn_mask( opts.maxcn_mask_fn,  opts.maxcn);
   // *** GET SNV BULK PRIOR ***
@@ -203,7 +207,7 @@ int main (int argc, const char * argv[]){
     snvEmit.coarse_grained = 1;
     printf("Collapsed SNV data to %5i sites based on potential jump events.\n", snvEmit.total_events);
     cout<<"Precomputing for SNV..."<<flush;
-    myClone.get_snvEmitLog();//TBD
+    myClone.get_snvEmitLog();
     cout<<"done."<<endl;
   }
   cout<<endl;
@@ -381,11 +385,11 @@ int main (int argc, const char * argv[]){
 	for (int idx=0; idx<snvEmit.nSites[s]; idx++){
 	  double bmean = myClone.bulk_mean[t][s][idx];
 	  fprintf( bulk_fp, "%i %i %.3f", snvEmit.chr[s], snvEmit.loci[s][idx], bmean);
-	  if (myClone.bulk_prior!=NULL){
+	  if (myClone.bulk_prior != NULL){
 	    gsl_vector_view bdist = gsl_matrix_row( myClone.bulk_dist[t][s], idx);
 	    double var = get_var( &bdist.vector, 0.0, 1.0, bmean);
 	    fprintf( bulk_fp, " %.3f", sqrt(var));
-	    for (int i=0; i<=snvEmit.gridSize; i++){
+	    for (int i=0; i<= myClone.bulkGrid; i++){
 	      fprintf( bulk_fp, " %.3f", (&bdist.vector)->data[i]);
 	    }
 	  }
@@ -452,8 +456,17 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--chr") == 0){
       opts.chr_fn = argv[opt_idx];
     }
-    else if ( opt_switch.compare("--grid") == 0){
-      opts.grid = atoi(argv[opt_idx]);
+    else if ( opt_switch.compare("--cna-grid") == 0){
+      opts.cnaGrid = atoi(argv[opt_idx]);
+    }
+    else if ( opt_switch.compare("--baf-grid") == 0){
+      opts.bafGrid = atoi(argv[opt_idx]);
+    }
+    else if ( opt_switch.compare("--snv-grid") == 0){
+      opts.snvGrid = atoi(argv[opt_idx]);
+    }
+    else if ( opt_switch.compare("--bulk-grid") == 0){
+      opts.bulkGrid = atoi(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--seed") == 0){
       opts.seed = atoi(argv[opt_idx]);
@@ -532,7 +545,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     }
     else if ( opt_switch.compare("--print-all") == 0){
       opts.print_all = atoi(argv[opt_idx]);
-      if (opts.print_all>0) opts.print_all = 1;
+      if (opts.print_all > 0) opts.print_all = 1;
     }
     else if ( opt_switch.compare("--mass-gauging") == 0){
       opts.mass_gauging = atoi(argv[opt_idx]);
@@ -551,7 +564,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
       if (opts.learn_priors>0) opts.learn_priors = 1;
     }   
     else{
-      cout<<"Usage:"<<endl;
+      cout<<"Usage see:"<<endl;
       cout<<"cloneHD --print-options"<<endl;
       exit(0);
     }
@@ -577,7 +590,10 @@ void default_opts(cmdl_opts& opts){
   opts.snv_jumps_fn   = NULL;
   opts.maxcn_mask_fn   = NULL;
   opts.pre      = "./out";
-  opts.grid     = 300;
+  opts.cnaGrid     = 300;
+  opts.bafGrid     = 100;
+  opts.snvGrid     = 100;
+  opts.bulkGrid    = 100;
   opts.cna_jump = -1.0;//negative values mean NO correlations
   opts.baf_jump = -1.0;
   opts.snv_jump = -1.0;
@@ -642,13 +658,6 @@ void test_opts(cmdl_opts& opts){
   if ( opts.cna_fn != NULL && opts.cna_jump < 0.0 && opts.cna_jumps_fn == NULL ){
     cout<<"With --cna [file], --cna-jump [double] or --cna-jumps [file] must be given.\n";
     exit(1);
-  }
-  /*if ( opts.cna_fn == NULL && opts.baf_fn != NULL && opts.baf_jump < 0.0 && opts.baf_jumps_fn == NULL ){
-    cout<<"With --baf [file] (no CNA), --baf-jump [double] or --baf-jumps [file] must be given.\n";
-    exit(1);
-    }*/
-  if (opts.bulk_fix == 0.0 && opts.snv_rnd == 0.0){
-    opts.snv_rnd = 1.0e-9;
   }
   //some settings...
   if (opts.clones_fn != NULL){

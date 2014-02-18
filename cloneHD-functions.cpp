@@ -60,7 +60,7 @@ void get_track(const char * track_fn,
     if (distribution == NULL) continue;
     double p;
     line_ss >> jp;
-    for (int i=0; i <= myEmit->gridSize; i++){
+    for (int i=0; i < (int) (distribution[ myEmit->idx_of[chr] ])->size2; i++){
       if (line_ss.good() != true){
 	printf("ERROR 3 in get_track()\n");
 	exit(1);
@@ -1122,7 +1122,7 @@ double get_clones_snv_wcorr( gsl_matrix *& clones,
       gsl_matrix_set_row( clones, t, mem);
     }
     steps=0;
-    llh = snv_clones_fixed_priors( clones, myClone, 0, steps);
+    llh = snv_clones_fixed_priors( clones, myClone, opts.restarts, steps);
     report_results( 0., 0., llh, steps, NULL, clones);
     myClone->set(clones);
   }

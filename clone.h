@@ -184,6 +184,7 @@ class Clone{
   void get_snvEmitLog();
   double * cna_xmin;
   double * cna_xmax;
+  int snvGrid, bafGrid, cnaGrid, bulkGrid;
   //precomputed variables for cna update 
   double *** tcn;
   double *** log_tcn;

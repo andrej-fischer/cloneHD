@@ -44,7 +44,7 @@ struct cmdl_opts{
   const char * snv_jumps_fn;
   const char * maxcn_mask_fn;
   //
-  int grid, force, trials, restarts, nmax, seed, maxcn, print_all, learn_priors;
+  int force, trials, restarts, nmax, seed, maxcn, print_all, learn_priors;
   int mass_gauging;
   double cna_jump, baf_jump, snv_jump;
   double cna_shape, baf_shape, snv_shape;
@@ -53,6 +53,7 @@ struct cmdl_opts{
   double bulk_fix, bulk_sigma, bulk_rnd;
   double min_occ,min_jump;
   int bulk_mean, bulk_prior, bulk_updates;
+  int cnaGrid, bafGrid, snvGrid, bulkGrid;
 };
 
 
