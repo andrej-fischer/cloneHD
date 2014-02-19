@@ -1614,8 +1614,10 @@ void Clone::do_snv_Fwd(int sample, double& llh){
     //***UPDATE STEP***
     norm = Clone::update( prior, post, snvEmit, sample, evt);
     llh += norm;
+    //printf("%i %e\n", snvEmit->loci[sample][idx], llh);
     if (save_snv_alpha == 1) gsl_matrix_set_row( alpha_snv[sample], evt, post);
   }
+  //exit(0);
   // cleanup    
   gsl_vector_free(mem);
   gsl_vector_free(prior);
@@ -2570,21 +2572,23 @@ double Clone::get_interpolation(double x, double xmin, double xmax,
 //only ever used on snvEmit!
 double Clone::trapezoidal( gsl_vector * blk, double a, double b, gsl_vector * emit, int get_log){
   int olow = -1;
-  double dx = snvEmit->dx;
-  double dy = dx * b;
-  double y = a - dy;
+  int gsb = (int) blk->size  - 1;
+  int gse = (int) emit->size - 1;
+  double dxb = 1.0 / double(gsb);
+  double dxe = 1.0 / double(gse);
+  double y;
   double f1=0,f2=0,nu=0,pre=0;
   int low,high;
-  int gs = snvEmit->gridSize;
+  //both blk and emit are defined on [0,1].
   if ( gsl_vector_isnull(blk) ) abort();
   double val = 0.0, dval=0;
-  for (int j=0; j <= gs; j++){
-    y += dy;
+  for (int j=0; j <= gsb; j++){
+    y = a + double(j)*dxb*b;
     if (y > 1.0) break;
-    low  = int( y / dx);
+    low  = int( y / dxe);
     if ( low != olow){
       f1 = emit->data[low];
-      if (low < gs){
+      if (low < gse){
 	high = low+1;
 	f2   = emit->data[high];
       }
@@ -2595,13 +2599,13 @@ double Clone::trapezoidal( gsl_vector * blk, double a, double b, gsl_vector * em
       olow = low;
     }
     // linear interpolation of 1-D distribution between two grid-points...
-    pre = (j==0 || j==gs) ? 0.5 : 1.0;
-    nu = y / dx - double(low);
+    pre = (j==0 || j==gsb) ? 0.5 : 1.0;
+    nu = y / dxe - double(low);
     dval = pre * blk->data[j] * ( (1.0-nu)*f1 + nu*f2 );
     val += dval;
-    if (dval < 1.0e-6*val) break;
+    //if (dval < 1.0e-6*val) break;
   }
-  val *= dx;
+  val *= dxb;
   if (val != val) abort();
   if (get_log==1) val = (val > 0.0) ? log(val) : logzero;
   return(val);
@@ -2808,10 +2812,13 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
     }
   }
   Clone::get_bulk_min();
-  double dx = snvEmit->dx;
+  //double dx = snvEmit->dx;
   double lnrnd = log(1.0 - snvEmit->rnd_emit);
+  cout<<endl;
   for (int t=0; t<nTimes; t++){   
-    for (int s=0; s<snvEmit->nSamples; s++){      
+    for (int s=0; s<snvEmit->nSamples; s++){   
+      printf("\r%2i/%2i %2i/%2i...",t+1,nTimes,s+1,snvEmit->nSamples);
+      cout<<flush;
       int evt;
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
       for (evt=0; evt<snvEmit->nEvents[s]; evt++){
@@ -2826,11 +2833,13 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
 	  if (N==0) continue;//no observation
 	  unsigned int n = snvEmit->reads[t][s][idx];
 	  gsl_vector * emit = (bulk_prior==NULL) ? snvEmit->EmitLog[N][n] : snvEmit->EmitProb[N][n];
+	  double dx = 1.0/double(emit->size-1);
 	  double lrnd  = (snvEmit->rnd_emit>0.0) ? log(snvEmit->rnd_emit/double(N+1)) : 0.0;	  
 	  //evaluate likelihood function at a finite grid of clonal frequencies
 	  double bfix = (bulk_fix >= 0.0) ? bulk_fix : bulk_mean[t][s][idx];
 	  gsl_vector_view blk;
 	  if (bulk_prior != NULL) blk = gsl_matrix_row( bulk_dist[t][s], idx);
+	  //printf("\nbmin = %e\n", bulk_min[t][s][evt]);
 	  for (int i=0; i<=snvEmit->gridSize; i++){
 	    double a = double(i) / double(snvEmit->gridSize);
 	    if (bulk_fix == 0.0){//bulk fixed at zero	      
@@ -2848,10 +2857,7 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
 	    else{
 	      for (int j=0; j<=snvEmit->gridSize; j++){
 		double b = double(j) / (double(snvEmit->gridSize) * bulk_min[t][s][evt]);
-		if( b > (1.0-a) / bulk_min[t][s][evt]){
-		  val = logzero;
-		}
-		else if (bulk_prior==NULL){//bulk point estimate...	      
+		if (bulk_prior==NULL){//bulk point estimate...	      
 		  double x =  a + bfix * b;
 		  if (x > 1.0){//outside range...
 		    val = logzero;
@@ -2870,7 +2876,9 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
 		  val = Clone::trapezoidal( &blk.vector, a, b, emit, 1);//log-space
 		}	
 		gsl_matrix_set( mem, i, j, val);
+		//printf("%e ", val);
 	      }
+	      //cout<<endl;
 	    }
 	  }
 	  // mutiply into posterior...
@@ -2886,6 +2894,7 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
       }
     }  
   }
+  cout<<endl;
 }
 
 
