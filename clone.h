@@ -49,11 +49,14 @@ class Clone{
   void clean();
   int nTimes, nClones;
   int maxcn;
-  std::map<int,int> maxcn_mask;
-  std::set<int> maxcns;
+  std::map<int,vector<int>> maxcn_mask;
+  std::map<int,vector<int>> maxcn_per_clone;
+  std::set<int> all_maxcn;
   int allocated, is_set;
   int maj_ncn;
-  double bulk_fix,snv_err,baf_pen,snv_pen, snv_fpr;
+  double bulk_fix;
+  double baf_pen,snv_pen;
+  double snv_fpr,snv_fpf;
   int total_loci;
   //SNV bulk contribution
   void allocate_bulk_dist();

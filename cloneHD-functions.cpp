@@ -76,7 +76,7 @@ void get_track(const char * track_fn,
 // get the maximum total c.n. mask per chromosome
 void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
   myClone->maxcn_mask.clear();
-  myClone->maxcns.clear();
+  myClone->all_maxcn.clear();
   myClone->maxcn = maxcn_gw;
   //use explicit upper limit per chromosome, and mxcn_gw elsewhere
   if (mask_fn != NULL){
@@ -96,12 +96,17 @@ void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
       if (line[0] == '#') continue;
       line_ss.clear();
       line_ss.str(line);
-      line_ss >> chr >> chrMxcn;
+      line_ss >> chr;
       if (chr<0 || chr >= 100) abort();
       if ( myClone->maxcn_mask.count(chr) == 0){
-	myClone->maxcn_mask.insert(std::pair<int,int>(chr,chrMxcn));
-	myClone->maxcns.insert(chrMxcn);
-	myClone->maxcn = max( myClone->maxcn, chrMxcn);
+	vector<int> mx;
+	while( line_ss.good() ){
+	  line_ss >> chrMxcn;
+	  mx.push_back(chrMxcn);
+	  myClone->all_maxcn.insert(chrMxcn);
+	  myClone->maxcn = max( myClone->maxcn, chrMxcn);
+	}
+	myClone->maxcn_mask.insert(std::pair<int, vector<int> >(chr,mx) );
       }
       else{
 	printf("ERROR: in file %s: chr %i appears twice.\n", mask_fn, chr);
@@ -115,8 +120,10 @@ void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
     for (int s=0; s< myClone->cnaEmit->nSamples; s++){
       int cnaChr = myClone->cnaEmit->chr[s];
       if ( myClone->maxcn_mask.count(cnaChr) == 0){
-	myClone->maxcn_mask.insert(std::pair<int,int>( cnaChr, maxcn_gw));
-	myClone->maxcns.insert(maxcn_gw);
+	vector<int> mx;
+	mx.push_back(maxcn_gw);
+	myClone->maxcn_mask.insert(std::pair<int, vector<int> >(cnaChr,mx));
+	myClone->all_maxcn.insert(maxcn_gw);
       }
     }
   }
@@ -124,8 +131,10 @@ void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
     for (int s=0; s< myClone->snvEmit->nSamples; s++){
       int snvChr = myClone->snvEmit->chr[s];
       if ( myClone->maxcn_mask.count(snvChr) == 0){
-	myClone->maxcn_mask.insert(std::pair<int,int>( snvChr, maxcn_gw));
-	myClone->maxcns.insert(maxcn_gw);
+	vector<int> mx;
+	mx.push_back(maxcn_gw);
+	myClone->maxcn_mask.insert(std::pair<int, vector<int> >(snvChr,mx));
+	myClone->all_maxcn.insert(maxcn_gw);
       }
     }
   }

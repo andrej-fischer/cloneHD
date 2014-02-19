@@ -2273,7 +2273,7 @@ void Clone::update_snv_site_ncorr( gsl_vector * prior, gsl_vector * post, int sa
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= 0.0) continue;
       if (level==0){//allele frequency of false positives
-	x = snv_err; 
+	x = snv_fpf; 
       }
       else{
 	x = clone_spectrum[t][level] / total_cn; 

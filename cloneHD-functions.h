@@ -49,8 +49,9 @@ struct cmdl_opts{
   int mass_gauging;
   double cna_jump, baf_jump, snv_jump;
   double cna_shape, baf_shape, snv_shape;
-  double cna_rnd, baf_rnd, snv_rnd, snv_err;
-  double baf_pen, snv_pen, snv_fpr;
+  double cna_rnd, baf_rnd, snv_rnd;
+  double baf_pen, snv_pen;
+  double snv_fpr, snv_fpf;
   double bulk_fix, bulk_sigma, bulk_rnd;
   double min_occ,min_jump;
   int bulk_mean, bulk_prior, bulk_updates;

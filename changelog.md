@@ -7,6 +7,7 @@ v1.17.0 / to come
 	[file]` to available copy numbers from `--avail-cn [file]` and
 	mean total copy numbers from `--mean-tcn [file]`.
 *  slimmed down output of `--print-options`.
+*  `--snv-err` to `--snv-fpfreq` and `--snv-fpr` to `--snv-fprate`
 
 v1.16.7 / 19.02.2014
 

@@ -128,10 +128,10 @@ int main (int argc, const char * argv[]){
   // *** ALLOCATE CLONE ***
   Clone myClone;
   myClone.allocate( &cnaEmit, &bafEmit, &snvEmit, opts.chr_fn);
-  myClone.baf_pen  = (opts.baf_pen > 0.0)  ? opts.baf_pen : 1.0;// BAF penalty for complex chr status
-  myClone.snv_fpr  = (opts.snv_fpr > 0.0)  ? opts.snv_fpr : 1.0e-4;//SNV false-positive rate
-  myClone.snv_err  = (opts.snv_err >= 0.0) ? opts.snv_err : 0.0;   //SNV frequency of false positives
-  myClone.snv_pen  = (opts.snv_pen > 0.0)  ? opts.snv_pen : (bafEmit.is_set ? 0.01 : 0.5);//penalty for high SNV genotypes
+  myClone.baf_pen  = opts.baf_pen;// BAF penalty for complex chr status
+  myClone.snv_fpr  = opts.snv_fpr;//SNV false-positive rate
+  myClone.snv_fpf  = opts.snv_fpf;//SNV frequency of false positives
+  myClone.snv_pen  = (bafEmit.is_set ? opts.snv_pen : 0.5);//penalty for high SNV genotypes
   myClone.bulk_fix = opts.bulk_fix;
   myClone.cnaGrid  = opts.cnaGrid;
   myClone.bafGrid  = opts.bafGrid;
@@ -500,10 +500,10 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--snv-rnd") == 0){
       opts.snv_rnd = atof(argv[opt_idx]);
     }
-    else if ( opt_switch.compare("--snv-err") == 0){
-      opts.snv_err = atof(argv[opt_idx]);
+    else if ( opt_switch.compare("--snv-fpfreq") == 0){
+      opts.snv_fpf = atof(argv[opt_idx]);
     }
-    else if ( opt_switch.compare("--snv-fpr") == 0){
+    else if ( opt_switch.compare("--snv-fprate") == 0){
       opts.snv_fpr = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--cna-jump") == 0){
@@ -606,14 +606,14 @@ void default_opts(cmdl_opts& opts){
   opts.cna_rnd = 0.0;//random error rate
   opts.baf_rnd = 0.0;
   opts.snv_rnd = 0.0;
-  opts.snv_err = -1.0;
-  opts.snv_fpr = -1.0;
+  opts.snv_fpf = 0.01;
+  opts.snv_fpr = 0.001;
   opts.cna_shape = -1.0;//shape parameters
   opts.baf_shape = -1.0;
   opts.snv_shape = -1.0;
-  opts.baf_pen   = -1.0;
-  opts.snv_pen   = -1.0;
-  opts.bulk_fix  = -1.0;//constant bulk for SNV
+  opts.baf_pen   = 1.0;
+  opts.snv_pen   = 0.01;
+  opts.bulk_fix   = -1.0;//constant bulk for SNV
   opts.bulk_sigma = -1.0;
   opts.force    = -1;
   opts.trials   = 1;
@@ -643,7 +643,7 @@ void test_opts(cmdl_opts& opts){
 	cout<<"With --snv [file] with correlations, one of --bulk-(prior/mean) [file] or --bulk-fix [double] must be given.\n";
 	exit(1);
       }
-      opts.snv_err = 0.0;
+      opts.snv_fpf = 0.0;//there are no false positives
     }
     else{//no SNV persistence
       opts.bulk_fix = 0.0;
@@ -678,7 +678,7 @@ void test_opts(cmdl_opts& opts){
 }
 
 void print_opts(){
-  cout<<endl<<"./build/cloneHD --cna [file] --snv [file] --baf [file] --pre [string:./out] --clones [file] --purity $purity --chr [file] --bias [file] --mean-tcn [file] --avail-cn [file] --grid [int:300] --seed [int:time(0)] --trials [int:1] --restarts [int:10] --nmax [int:3] --force [int] --maxcn [int:4] --maxcn-mask [file] --cna-jump [double] --baf-jump [double] --snv-jump [double] --cna-jumps [files] --baf-jumps [file] --snv-jumps [file] --cna-rnd [double:0] --baf-rnd [double:0] --snv-rnd [double:0] --snv-err [double] --snv-fpr [double] --cna-shape [double:inf] --baf-shape [double:inf] --snv-shape [double:inf] --baf-pen [double:1.0] --snv-pen [double:0.01] --min-occ [double:0.01] --min-jump [double:0.01] --learn-priors [0/1:0] --mass-gauging [0/1:1] --bulk-prior [file] --bulk-mean [file] --bulk-fix [double:0] --bulk-sigma [double] --bulk-updates [int:0]";
+  cout<<endl<<"./build/cloneHD --cna [file] --snv [file] --baf [file] --pre [string:./out] --clones [file] --purity [file] --chr [file] --bias [file] --mean-tcn [file] --avail-cn [file] --grid [int:300] --seed [int:time(0)] --trials [int:1] --restarts [int:10] --nmax [int:3] --force [int] --maxcn [int:4] --maxcn-mask [file] --cna-jump [double] --baf-jump [double] --snv-jump [double] --cna-jumps [files] --baf-jumps [file] --snv-jumps [file] --cna-rnd [double:0] --baf-rnd [double:0] --snv-rnd [double:0] --snv-fpfreq [double:0.01] --snv-fprate [double:0.001] --cna-shape [double:inf] --baf-shape [double:inf] --snv-shape [double:inf] --baf-pen [double:1.0] --snv-pen [double:0.01] --min-occ [double:0.01] --min-jump [double:0.01] --learn-priors [0/1:0] --mass-gauging [0/1:1] --bulk-prior [file] --bulk-mean [file] --bulk-fix [double:0] --bulk-sigma [double] --bulk-updates [int:0]";
   cout<<endl;
   exit(0);
 }
