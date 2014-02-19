@@ -73,27 +73,85 @@ void get_track(const char * track_fn,
 }
 
 
+// get the maximum total c.n. mask per chromosome
+void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
+  myClone->maxcn_mask.clear();
+  myClone->maxcns.clear();
+  myClone->maxcn = maxcn_gw;
+  //use explicit upper limit per chromosome, and mxcn_gw elsewhere
+  if (mask_fn != NULL){
+    ifstream ifs;
+    string line;
+    stringstream line_ss;
+    ifs.open( mask_fn, ios::in);
+    if (ifs.fail()){
+      printf("ERROR: file %s cannot be opened.\n", mask_fn);
+      exit(1);
+    }
+    int chr = 0, chrMxcn=0;   
+    while( ifs.good() ){
+      line.clear();
+      getline( ifs, line);
+      if (line.empty()) break;
+      if (line[0] == '#') continue;
+      line_ss.clear();
+      line_ss.str(line);
+      line_ss >> chr >> chrMxcn;
+      if (chr<0 || chr >= 100) abort();
+      if ( myClone->maxcn_mask.count(chr) == 0){
+	myClone->maxcn_mask.insert(std::pair<int,int>(chr,chrMxcn));
+	myClone->maxcns.insert(chrMxcn);
+	myClone->maxcn = max( myClone->maxcn, chrMxcn);
+      }
+      else{
+	printf("ERROR: in file %s: chr %i appears twice.\n", mask_fn, chr);
+	exit(1);
+      }
+    }
+    ifs.close();
+  }
+  //insert for all chromosomes fixed the limit maxcn_gw
+  if ( myClone->cnaEmit->is_set){
+    for (int s=0; s< myClone->cnaEmit->nSamples; s++){
+      int cnaChr = myClone->cnaEmit->chr[s];
+      if ( myClone->maxcn_mask.count(cnaChr) == 0){
+	myClone->maxcn_mask.insert(std::pair<int,int>( cnaChr, maxcn_gw));
+	myClone->maxcns.insert(maxcn_gw);
+      }
+    }
+  }
+  else if ( myClone->snvEmit->is_set){
+    for (int s=0; s< myClone->snvEmit->nSamples; s++){
+      int snvChr = myClone->snvEmit->chr[s];
+      if ( myClone->maxcn_mask.count(snvChr) == 0){
+	myClone->maxcn_mask.insert(std::pair<int,int>( snvChr, maxcn_gw));
+	myClone->maxcns.insert(maxcn_gw);
+      }
+    }
+  }
+  else{
+    abort();
+  }
+}
 
 
 //get total copynumber tracks from file...
-int get_phi( const char * phi_fn, Emission * myEmit){
-  myEmit->cnmax_seen.clear();
+void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
   ifstream ifs;
   string line;
   stringstream line_ss;
-  ifs.open( phi_fn, ios::in);
+  ifs.open( mntcn_fn, ios::in);
   if (ifs.fail()){
-    printf("ERROR file %s cannot be opened.\n", phi_fn);
+    printf("ERROR file %s cannot be opened.\n", mntcn_fn);
     exit(1);
   }
-  int chr = 0, old_chr = -1;
+  int chr=0, old_chr = -1;
   int cn_locusi=0, cn_locusf=0, nloci=0, locus=-1;
   int evt=0;
-  double tcn,x;
-  int mxcn;
-  double * tcn_buff = new double [myEmit->nTimes];
-  int global_mx=0;
-  int sample=-1,pevt=0;
+  double mcn, x;
+  double * mcn_buff = new double [myEmit->nTimes];
+  int sample=-1, perevt=0, persite=0;
+  int wait=0;
   while( ifs.good() ){
     line.clear();
     getline( ifs, line);
@@ -104,36 +162,49 @@ int get_phi( const char * phi_fn, Emission * myEmit){
     if (old_chr == -1 && locus == -1){//check format
       int cols=0;
       while(line_ss >> x) cols++;
-      if (cols == 1 + 3 + myEmit->nTimes + 1) pevt=1;
+      if (cols == 1 + 3 + myEmit->nTimes){
+	perevt = 1;
+      }
+      else if (cols == 1 + 1 + myEmit->nTimes){
+	persite = 1;
+      }
+      else{
+	printf("ERROR: check format in %s.\n", mntcn_fn);
+	exit(1);
+      }
       line_ss.clear();//reset
       line_ss.str(line);
     }
     line_ss >> chr >> cn_locusi;
-    if (pevt){
+    if (perevt){
       line_ss >> nloci >> cn_locusf;
     }
     else{
       cn_locusf = cn_locusi;
+      nloci = 1;
     }
-    if (chr != old_chr && (chr > myEmit->maxchr || myEmit->idx_of[chr] < 0)){
-      printf("ERROR in file %s chromosome %i not present in data.\n", phi_fn, chr);
-      cout<<line<<endl;
-      exit(1);
-    }
-    if (old_chr != -1 && chr != old_chr){//new chromosome
-      sample = myEmit->idx_of[old_chr];
-      if ( evt < myEmit->nEvents[sample]){//remaining from last chr
-	int oevt = evt-1;
-	for (int e=evt; e<myEmit->nEvents[sample]; e++){
-	  for (int t=0; t<myEmit->nTimes; t++){
-	    myEmit->phi[t][sample][e] = myEmit->phi[t][sample][oevt];
-	  }
-	  myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
-	}
+    if (chr != old_chr){//new chromosome
+      if(myEmit->chrs.count[chr] == 0){
+	wait=1;
       }
-      evt = 0;
+      else{
+	wait=0;
+      }
+      if (old_chr != -1 ){//not the first new chr
+	sample = myEmit->idx_of[old_chr];
+	if ( evt < myEmit->nEvents[sample]){//remaining from last chr
+	  int oevt = evt-1;
+	  for (int e=evt; e<myEmit->nEvents[sample]; e++){
+	    for (int t=0; t<myEmit->nTimes; t++){
+	      myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
+	    }
+	  }
+	}
+	evt = 0;
+      }
     }
     old_chr = chr;
+    if (wait) continue;
     sample  = myEmit->idx_of[chr];
     if ( evt >= myEmit->nEvents[sample]) continue;//chromosome is complete!
     locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];//current target locus
@@ -141,16 +212,12 @@ int get_phi( const char * phi_fn, Emission * myEmit){
     // now we are above or at next event...
     for (int t=0; t<myEmit->nTimes; t++){
       if (line_ss.good() != true) abort();
-      line_ss >> tcn;
-      tcn_buff[t] = tcn;
+      line_ss >> mcn;
+      mcn_buff[t] = mcn;
     }
-    line_ss >> mxcn;
-    global_mx = max(global_mx,mxcn);
-    myEmit->cnmax_seen.insert(mxcn);
     //fill
     while(locus <= cn_locusf){
-      for (int t=0; t<myEmit->nTimes; t++) myEmit->phi[t][sample][evt] = tcn_buff[t];
-      myEmit->cnmax[sample][evt] = mxcn;
+      for (int t=0; t<myEmit->nTimes; t++) myEmit->mean_tcn[t][sample][evt] = mcn_buff[t];
       evt++;
       if ( evt >= myEmit->nEvents[sample]) break;
       locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];
@@ -162,15 +229,134 @@ int get_phi( const char * phi_fn, Emission * myEmit){
     int oevt = evt-1;
     for (int e=evt; e<myEmit->nEvents[sample]; e++){
       for (int t=0; t<myEmit->nTimes; t++){
-	myEmit->phi[t][sample][e] = myEmit->phi[t][sample][oevt];
+	myEmit->mean_tcn[t][sample][e] = myEmit->mean_tcn[t][sample][oevt];
       }
-      myEmit->cnmax[sample][e] = myEmit->cnmax[sample][oevt];
     }
   }
   //done
   ifs.close();
-  return(global_mx);
 }
+
+
+
+
+//get copy number availability
+void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
+  ifstream ifs;
+  string line;
+  stringstream line_ss;
+  ifs.open( avcn_fn, ios::in);
+  if (ifs.fail()){
+    printf("ERROR file %s cannot be opened.\n", avcn_fn);
+    exit(1);
+  }
+  int chr=0, old_chr = -1;
+  int cn_locusi=0, cn_locusf=0, nloci=0, locus=-1;
+  int evt=0;
+  double frac, x;
+  int nEl = (myClone->maxcn+1)*myClone->nTimes;
+  double ** buff = new double [myClone->nTimes];
+  for (int t=0; t<myClone->nTimes; t++) 
+    buff[t] = new double [myClone->maxcn+1];
+  int sample=-1, perevt=0, persite=0;
+  int wait=0;
+  while( ifs.good() ){
+    line.clear();
+    getline( ifs, line);
+    if (line.empty()) break;
+    if (line[0] == '#') continue;
+    line_ss.clear();
+    line_ss.str(line);
+    if (old_chr == -1 && locus == -1){//check format
+      int cols=0;
+      while(line_ss >> x) cols++;
+      if (cols == 1 + 3 + nEl){
+	perevt = 1;
+      }
+      else if (cols == 1 + 1 + nEl){
+	persite = 1;
+      }
+      else{
+	printf("ERROR: check format in %s.\n", avcn_fn);
+	exit(1);
+      }
+      line_ss.clear();//reset
+      line_ss.str(line);
+    }
+    line_ss >> chr >> cn_locusi;
+    if (perevt){
+      line_ss >> nloci >> cn_locusf;
+    }
+    else{
+      cn_locusf = cn_locusi;
+      nloci = 1;
+    }
+    if (chr != old_chr){//new chromosome
+      if(myEmit->chrs.count[chr] == 0){
+	wait = 1;
+      }
+      else{
+	wait = 0;
+      }
+      if (old_chr != -1 ){//not the first new chr
+	sample = myEmit->idx_of[old_chr];
+	if ( evt < myEmit->nEvents[sample]){//remaining from last chr
+	  int oevt = evt-1;
+	  for (int e=evt; e<myEmit->nEvents[sample]; e++){
+	    for (int t=0; t<myEmit->nTimes; t++){
+	      for (int cn=0; cn<=myClone->maxcn; cn++){
+		myEmit->av_cn[t][sample][e][cn] = myEmit->av_cn[t][sample][oevt][cn];
+	      }
+	    }
+	  }
+	}
+	evt = 0;
+      }
+    }
+    old_chr = chr;
+    if (wait) continue;
+    sample  = myEmit->idx_of[chr];
+    if ( evt >= myEmit->nEvents[sample]) continue;//chromosome is complete!
+    locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];//current target locus
+    if( cn_locusf <  locus) continue;
+    // now we are above or at next event...
+    for (int t=0; t<myEmit->nTimes; t++){
+      for (int cn=0; cn<=myClone->maxcn; cn++){
+	if (line_ss.good() != true) abort();
+	line_ss >> frac;
+	buff[t][cn] = frac;
+      }
+    }
+    // now fill
+    while(locus <= cn_locusf){
+      for (int t=0; t<myEmit->nTimes; t++){
+	for (int cn=0; cn<=myClone->maxcn; cn++){
+	  myEmit->av_cn[t][sample][evt][cn] = buff[t][cn];
+	}
+      }
+      evt++;
+      if ( evt >= myEmit->nEvents[sample]) break;
+      locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];
+    }
+  }
+  //last bit
+  sample = myEmit->idx_of[old_chr];
+  if (evt < myEmit->nEvents[sample]){
+    int oevt = evt-1;
+    for (int e=evt; e<myEmit->nEvents[sample]; e++){
+      for (int t=0; t<myEmit->nTimes; t++){
+	for (int cn=0; cn<=myClone->maxcn; cn++){
+	  myEmit->av_cn[t][sample][e][cn] = myEmit->av_cn[t][sample][oevt][cn];
+	}
+      }
+    }
+  }
+  //done
+  ifs.close();
+}
+
+
+
 
 
 //read in frequencies to act as lower limit in minimisations...
@@ -325,13 +511,12 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
     else{
       abort();
     }
-    myClone->cnaEmit->allocate_phi();
-    myClone->cnaEmit->allocate_cnmax();
-    if (myClone->bafEmit->is_set){//CNA + BAF: map CNA events to BAF
+    myClone->cnaEmit->allocate_mean_tcn();
+    if (myClone->bafEmit->is_set){//CNA+BAF: map CNA evts to BAF
       for (int s=0; s<myClone->bafEmit->nSamples; s++){
 	myClone->bafEmit->map_idx_to_Event( myClone->cnaEmit, s);
       }
-      if (myClone->snvEmit->is_set){//CNA + BAF + SNV: map CNA events to SNV outside of autosomes
+      if (myClone->snvEmit->is_set){//CNA+BAF+SNV: map CNA evts to SNV outside of autosomes
 	for (int s=0; s<myClone->snvEmit->nSamples; s++){
 	  int snvChr = myClone->snvEmit->chr[s];
 	  if (myClone->bafEmit->chrs.count(snvChr) == 0){
@@ -340,7 +525,7 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
 	}
       }
     }
-    else if (myClone->snvEmit->is_set){//CNA + SNV (no BAF): map CNA events to SNV
+    else if (myClone->snvEmit->is_set){//CNA+SNV (no BAF): map CNA events to SNV
       for (int s=0; s<myClone->snvEmit->nSamples; s++){
 	myClone->snvEmit->map_idx_to_Event( myClone->cnaEmit, s);
       }
@@ -368,10 +553,7 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
     else{
       abort();
     }
-    if (myClone->cnaEmit->is_set || opts.cn_fn != NULL){
-      myClone->bafEmit->allocate_phi();
-      myClone->bafEmit->allocate_cnmax();
-    }
+    myClone->bafEmit->allocate_mean_tcn();
     if (myClone->snvEmit->is_set){//CNA + BAF + SNV: map BAF to SNV for autosomes only
       for (int s=0; s<myClone->snvEmit->nSamples; s++){
 	int snvChr = myClone->snvEmit->chr[s];
@@ -395,10 +577,13 @@ void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
     }
     else if (opts.snv_jump >= 0.0){
       myClone->snvEmit->set_pjump(opts.snv_jump);
+    }    
+    if (myClone->cnaEmit->is_set){
+      myClone->snvEmit->allocate_mean_tcn();
     }
-    if (myClone->cnaEmit->is_set || opts.cn_fn != NULL){
-      myClone->snvEmit->allocate_phi();
-      myClone->snvEmit->allocate_cnmax();
+    else{
+      if (opts.mntcn_fn != NULL) myClone->snvEmit->allocate_mean_tcn();
+      if (opts.avcn_fn  != NULL) myClone->snvEmit->allocate_av_cn(myClone->maxcn);
     }
   }
 }
@@ -458,15 +643,7 @@ void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, 
       printf("\r%i", i+1);
       cout<<flush;
       nclones = gsl_matrix_submatrix( clones, i*nT, 0, nT, nC);
-      nmass   = gsl_vector_subvector( mass,   i*nT, nT); 
-      /*for (int t=0;t<nT;t++){
-	printf("%.4f ", gsl_vector_get(&nmass.vector,t));
-	for (int n=0; n<nC;n++){
-	  printf("%.4f ", gsl_matrix_get(&nclones.matrix,t,n));
-	}
-	cout<<endl;
-      }
-      */
+      nmass   = gsl_vector_subvector( mass, i*nT, nT); 
       myClone->set( &nclones.matrix );		
       myClone->set_mass( &nmass.vector );
       myClone->get_all_total_llh();
@@ -542,28 +719,28 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     if (myClone->cnaEmit->is_set){// ***CNA***
       //with CNA data, the mass must be found even for n=0...
       best_mass[0] = gsl_vector_alloc(nT);
-      if ( Mass == NULL){//need to get masses...
+      if ( Mass == NULL ){//need to get masses...
 	cna_llh = cna_only_mass_noclones(  best_mass[0], myClone, 0, steps);
 	myClone->set_mass(best_mass[0]);	
       }
-      else if ( Mass != NULL){//masses are fixed...
+      else if ( Mass != NULL ){//masses are fixed...
 	gsl_vector_memcpy( best_mass[0],  Mass);
 	myClone->set_mass( best_mass[0]);
 	cna_llh = myClone->get_cna_total_llh();
       }   
-      //set trivial (normal) total copynumber...  
+      //set trivial (normal) mean total copynumber...  
       for (int cnaSample=0; cnaSample<myClone->cnaEmit->nSamples; cnaSample++){
-	myClone->get_phi(cnaSample);
+	myClone->get_mean_tcn(cnaSample);
 	int cnaChr = myClone->cnaEmit->chr[cnaSample];
 	if (myClone->bafEmit->is_set && myClone->bafEmit->chrs.count(cnaChr) == 1){
-	  myClone->map_phi( myClone->cnaEmit, cnaSample, myClone->bafEmit);
+	  myClone->map_mean_tcn( myClone->cnaEmit, cnaSample, myClone->bafEmit);
 	  if (myClone->snvEmit->is_set && myClone->snvEmit->chrs.count(cnaChr) == 1){
 	    int bafSample = myClone->bafEmit->idx_of[cnaChr];
-	    myClone->map_phi( myClone->bafEmit, bafSample, myClone->snvEmit);
+	    myClone->map_mean_tcn( myClone->bafEmit, bafSample, myClone->snvEmit);
 	  }
 	}
 	else if (myClone->snvEmit->is_set && myClone->snvEmit->chrs.count(cnaChr) == 1){
-	  myClone->map_phi( myClone->cnaEmit, cnaSample, myClone->snvEmit);
+	  myClone->map_mean_tcn( myClone->cnaEmit, cnaSample, myClone->snvEmit);
 	}
       }
     }
@@ -576,10 +753,11 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
 	myClone->set_bulk_to_post();
       }
       snv_llh = myClone->get_snv_total_llh();
-      if (myClone->bulk_prior != NULL) myClone->set_bulk_to_prior();
+      if (myClone->bulk_mean != NULL)
+	myClone->set_bulk_to_prior();
     }
-    llh = cna_llh + baf_llh + snv_llh;   
-    max_bic = 2.0*llh;
+    llh = cna_llh + baf_llh + snv_llh;//n==0 total LLH
+    max_bic = 2.0*llh;//n==0 BIC...
     if (myClone->cnaEmit->is_set){//no. parameters
       double complexity = double(myClone->nTimes)*log( double(myClone->total_loci) );
       max_bic -= complexity;
@@ -661,15 +839,6 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
       }
       fprintf(clonal_fp, "\n");
     }
-    /*if (best_priors[n] != NULL){//print priors???
-      for (int i=0; i< (int) best_priors[n]->size1; i++){
-      for (int j=0; j< (int) best_priors[n]->size2; j++){
-      fprintf(clonal_fp, "%.3e ", gsl_matrix_get( best_priors[n], i, j));
-      }
-      fprintf(clonal_fp, "\n");
-      }
-      }
-    */
   }
   //insert the best solutions...
   myClone->nClones = bestn;
@@ -680,10 +849,6 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
   if (best_priors[bestn] != NULL && bestn > 0){
     myClone->set_cn_prior_snv( best_priors[bestn] );
   }
-  /*if (myClone->cnaEmit->is_set==0 && myClone->bafEmit->is_set){
-    myClone->set_cn_prior_baf();
-  }
-  */
   //cleanup
   for (int n=0; n<=opts.nmax; n++){
     if (best_mass[n] != NULL)   gsl_vector_free(best_mass[n]);
@@ -715,14 +880,14 @@ double get_clones( gsl_matrix *& clones,
   gsl_matrix_set_all( clones, 1.0/double(nC));
   myClone->set( clones );
   double llh=0;
-  if (myClone->cnaEmit->is_set){
+  if (myClone->cnaEmit->is_set){//CNA+
     llh = get_clones_cna( clones, Clones, mass, Mass, myClone, opts, cna_llh, baf_llh, snv_llh);
   }
-  else if (myClone->bafEmit->is_set){
+  /*else if (myClone->bafEmit->is_set){//not supported!
     llh = get_clones_baf( clones, Clones, myClone, opts);
     baf_llh = llh;
-  }
-  else if (myClone->snvEmit->is_set){
+    }*/
+  else if (myClone->snvEmit->is_set){//SNV-only
     if (myClone->snvEmit->connect){
       llh = get_clones_snv_wcorr( clones, Clones, myClone, opts);
     }
@@ -791,7 +956,7 @@ double get_clones_cna( gsl_matrix *& clones,
 	  printf("%.3e ", gsl_matrix_get(candidate_masses, i, t));
 	}
 	cout<<endl;
-	//fix candidate mass...
+	//fix candidate masses...
 	myClone->set_mass( &cmass.vector );
 	//find new clones, given this mass...
 	for (int t=0; t<nT; t++){//random initial clones
@@ -883,7 +1048,7 @@ double get_clones_cna( gsl_matrix *& clones,
     }
     gsl_vector_free(nmass);
     myClone->set_mass(mass);
-    //SNV bulk update, if required...
+    //SNV bulk update (just one!), if required...
     if (opts.bulk_updates>0){
       snv_bulk_update(myClone);
       myClone->set_bulk_to_post();
@@ -899,7 +1064,8 @@ double get_clones_cna( gsl_matrix *& clones,
 	myClone->alpha_cna[cna_sample]=NULL;
 	myClone->gamma_cna[cna_sample]=NULL;
 	myClone->get_cna_posterior(cna_sample);
-	myClone->map_phi( myClone->cnaEmit, cna_sample, myClone->snvEmit);
+	myClone->get_mean_tcn( cna_sample);
+	myClone->map_mean_tcn( myClone->cnaEmit, cna_sample, myClone->snvEmit);
 	double l;
 	myClone->do_snv_Fwd( s, l);
 	#pragma omp critical
@@ -974,7 +1140,8 @@ double get_clones_cna( gsl_matrix *& clones,
 	myClone->alpha_cna[cna_sample]=NULL;
 	myClone->gamma_cna[cna_sample]=NULL;
 	myClone->get_cna_posterior(cna_sample);
-	myClone->map_phi( myClone->cnaEmit, cna_sample, myClone->snvEmit);
+	myClone->get_mean_tcn(cna_sample);
+	myClone->map_mean_tcn( myClone->cnaEmit, cna_sample, myClone->snvEmit);
 	double l=0;
 	myClone->do_snv_Fwd(s,l);
 #pragma omp critical
@@ -993,6 +1160,8 @@ double get_clones_cna( gsl_matrix *& clones,
   return(llh);
 }
 
+
+/*
 double get_clones_baf( gsl_matrix *& clones, 
 		       gsl_matrix *& Clones, 
 		       Clone * myClone,
@@ -1024,23 +1193,27 @@ double get_clones_baf( gsl_matrix *& clones,
   }
   return(llh);
 }
+*/
 
 
-//***SNV ONLY CLONE INFERENCE***
+
+//***SNV ONLY INFERENCE***
 double get_clones_snv_ncorr( gsl_matrix *& clones, 
 			     gsl_matrix *& Clones, 
 			     gsl_matrix *& priors, 
 			     Clone * myClone,
 			     cmdl_opts& opts
-			     ){
+			     ){//no correlations
   int nT = myClone->nTimes;
   int nC = myClone->nClones;
   int steps;
   double llh=0;
   gsl_vector * mem = gsl_vector_alloc(nC);
   //STEP 1: learn clones with fixed priors...
-  myClone->initialize_cn_prior_snv();// initialize SNV copynumber prior
-  gsl_matrix_memcpy( priors, myClone->init_cn_prior_snv);
+  if (myClone->snvEmit->av_cn == NULL){
+    myClone->initialize_cn_prior_snv();// initialize SNV copynumber prior
+    gsl_matrix_memcpy( priors, myClone->init_cn_prior_snv);
+  }
   if ( Clones == NULL ){
     for (int t=0; t<nT; t++){
       set_random_start_freq( mem, (myClone->min_purity)->data[t]);
@@ -1055,13 +1228,14 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
     gsl_matrix_memcpy( clones, Clones);
     myClone->set(Clones);
   }     
-  //STEP 2: for uncorrelated SNV data, learn cn-priors as well...
-  if (opts.learn_priors){
-    gsl_matrix * npriors = gsl_matrix_alloc(priors->size1,priors->size2);
+  //STEP 2: for uncorrelated SNV data, learn clones and cn-priors...
+  if ( myClone->snvEmit->av_cn == NULL && opts.learn_priors){
+    gsl_matrix * npriors = gsl_matrix_alloc( priors->size1, priors->size2);
+    //irrelevant columns of 'priors' should be set to zero
     gsl_matrix_memcpy(npriors,priors);
     if (Clones == NULL){//STEP 3a: learn clones and priors jointly...
       gsl_matrix * nclones = gsl_matrix_alloc(nT,nC);
-      gsl_matrix_memcpy(nclones,clones);
+      gsl_matrix_memcpy( nclones, clones);
       steps=0;
       double nllh = snv_clones_priors( nclones, npriors, myClone, opts.restarts, steps);
       if (nllh>llh){
@@ -1102,6 +1276,8 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
 }
 
 
+
+//SNV-only, w/ correlation
 double get_clones_snv_wcorr( gsl_matrix *& clones, 
 			     gsl_matrix *& Clones, 
 			     Clone * myClone,
@@ -1349,7 +1525,8 @@ void get_candidate_masses( gsl_matrix * clones,
   int ct=0;
   for (int i=0; i< nL; i++){//loop through the candidate masses...
     int level = myClone->levels_sorted[i];
-    if (myClone->majcn_post->data[level] < min_occ || i>=15) break;//***THRESHOLD OCCUPANCY***
+    //***THRESHOLD OCCUPANCY***
+    if (myClone->majcn_post->data[level] < min_occ || i>=15 ) break;
     //test whether new masses are sufficiently different from everything sofar...
     int found=0;
     for (int j=0; j<i; j++){
@@ -1374,7 +1551,7 @@ void get_candidate_masses( gsl_matrix * clones,
 }
 
 
-
+//NOT SUPPORTED!
 double baf_clones( gsl_matrix*& clones, Clone * myClone, int restarts, int& steps){
   int nT = myClone->nTimes;
   int nC = myClone->nClones;
@@ -1643,10 +1820,10 @@ double Q( const gsl_vector * x, void * p){
       //LLH = cna_llh_all_fixed(Qpar->myClone);
       LLH = Qpar->myClone->get_all_total_llh();
     }
-    else if (Qpar->baf == 1){
+    /*else if (Qpar->baf == 1){//NOT SUPPORTED
       // get the total llh for BAF *only*
       LLH = Qpar->myClone->get_baf_total_llh();
-    }
+      }*/
     else if (Qpar->snv == 1){
       // get the total llh for SNV *only*
       LLH = Qpar->myClone->get_snv_total_llh();
@@ -1682,15 +1859,18 @@ void snv_bulk_update(Clone * myClone){
   int s;
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
   for ( s=0; s<myClone->snvEmit->nSamples; s++){  
-    if (myClone->cnaEmit->is_set){
-      cna_sample = myClone->cnaEmit->idx_of[myClone->snvEmit->chr[s]];
-      myClone->alpha_cna[cna_sample]=NULL;
-      myClone->gamma_cna[cna_sample]=NULL;
+    int snvChr = myClone->snvEmit->chr[s];
+    if (myClone->cnaEmit->is_set && myClone->cnaEmit->chrs.count(snvChr) == 1){
+      cna_sample = myClone->cnaEmit->idx_of[snvChr];
+      myClone->alpha_cna[cna_sample] = NULL;
+      myClone->gamma_cna[cna_sample] = NULL;
       myClone->get_cna_posterior(cna_sample);
-      myClone->map_phi( myClone->cnaEmit, cna_sample, myClone->snvEmit);
+      myClone->get_mean_tcn( cna_sample);
+      myClone->map_mean_tcn( myClone->cnaEmit, cna_sample, myClone->snvEmit);
     }
     myClone->update_bulk(s);
-    if (myClone->cnaEmit->is_set) gsl_matrix_free(myClone->gamma_cna[cna_sample]);
+    if (myClone->gamma_cna[cna_sample] != NULL)
+      gsl_matrix_free(myClone->gamma_cna[cna_sample]);
   }  
   myClone->set_bulk_to_post();
   //clean up...
@@ -1706,6 +1886,8 @@ void snv_bulk_update(Clone * myClone){
   myClone->alpha_snv = NULL;	
 }
 
+
+//random points within simplex
 void set_random_start_freq(gsl_vector *& freq, double lower){
   if (freq->size == 1){
     double p = double(rand()) / double(RAND_MAX);

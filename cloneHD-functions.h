@@ -34,7 +34,8 @@ struct cmdl_opts{
   const char * snv_fn;
   const char * pre;
   const char * bias_fn;
-  const char * cn_fn;
+  const char * mntcn_fn;
+  const char * avcn_fn; 
   const char * chr_fn;
   const char * bulk_fn;
   const char * clones_fn;
@@ -62,9 +63,10 @@ void read_opts( const char * opts_fn, cmdl_opts& opts);
 void default_opts(cmdl_opts& opts);
 void test_opts(cmdl_opts& opts);
 void print_opts();
-void print_clonal_header( FILE * fp, Clone * myClone,  Emission * myEmit, cmdl_opts& opts);
-void print_posterior( FILE * cna_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts);
-void print_phi( FILE * phi_fp, Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
+void print_clonal_header( FILE * fp,  Clone * myClone, Emission * myEmit, cmdl_opts& opts);
+void print_posterior( FILE * cna_fp,  Clone * myClone, Emission * myEmit,  int s, cmdl_opts& opts);
+void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
+void print_avail_cn( FILE * avcn_fp,  Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
 
 void get_dims( const char * data_fn,
 	       int& nTimes,
@@ -85,7 +87,10 @@ void get_track(const char * track_fn,
 	       double **& var, 
 	       Emission * myEmit
 	       );
-int get_phi( const char * phi_fn, Emission * myEmit);
+
+void get_maxcn_mask(const char * maxcn_mask_fn, Clone * myClone, int maxcn_gw);
+void get_mean_tcn( const char * mtcn_fn, Clone * myClone, Emission * myEmit);
+void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit);
 void get_purity( const char * purity_fn, gsl_vector *& purity);
 void get_fixed_clones( gsl_matrix *& clones, gsl_vector *& mass, const char * clones_fn, int nTimes);
 void get_jump_probability(  Clone * myClone, cmdl_opts& opts);

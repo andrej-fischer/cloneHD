@@ -50,7 +50,7 @@ class Clone{
   int nTimes, nClones;
   int maxcn;
   std::map<int,int> maxcn_mask;
-  void get_maxcn_mask(const char * maxcn_mask_fn, int maxcn_gw);
+  std::set<int> maxcns;
   int allocated, is_set;
   int maj_ncn;
   double bulk_fix,snv_err,baf_pen,snv_pen, snv_fpr;
@@ -90,11 +90,11 @@ class Clone{
   int ** copynumber;
   void set_copynumbers();
   int * normal_copy; //copy number of normal human DNA
-  std::map<int,gsl_vector*> cn_prior_snv;
-  std::map<int,gsl_vector*> cn_prior_baf;
+  gsl_matrix * cn_prior_snv;
+  //std::map<int,gsl_vector*> cn_prior_baf;
+  //void set_cn_prior_baf();
   void set_cn_prior_cna( gsl_vector * cn_prior, int sample);
   void set_cn_prior_snv( gsl_matrix * prior_per_clone);
-  //void set_cn_prior_baf();
   gsl_matrix * init_cn_prior_snv;
   void initialize_cn_prior_snv();
   gsl_matrix * copynumber_post;
@@ -126,9 +126,11 @@ class Clone{
   void set_clone_spectrum(const gsl_matrix * freq);
   //
   void get_event_map(Emission * myEmit);
-  void get_phi(int sample);//for cna
-  void map_phi( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
-  int got_gamma, save_cna_alpha,save_baf_alpha,save_snv_alpha;
+  void get_mean_tcn(int sample);//for cna only
+  void map_mean_tcn( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
+  void get_av_cn(int sample);//for cna only
+  void map_av_cn( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
+  int got_gamma, save_cna_alpha, save_baf_alpha, save_snv_alpha;
   //
   void do_cna_Fwd( int sample, double& llh);
   void do_cna_Bwd( int sample, double& ent);

@@ -82,8 +82,8 @@ public:
   double ** bias;
   double ** log_bias;
   void allocate_bias();
-  void allocate_phi();
-  void allocate_cnmax();
+  void allocate_mean_tcn();
+  void allocate_av_cn(int maxcn);
   int total_loci, total_events;
   unsigned int total_dist;
   void set_grid();
@@ -91,19 +91,15 @@ public:
   int range_set;
   void reset_mask();
   double get_pval(int time, int sample, int site, double mean);
-  //
-  //only needed in cloneHD...
   void coarse_grain_jumps( int sample, double plow, int range);
   double ** pjump;
   void set_pjump(double jump);
-  double *** phi;//total copy number
-  int ** cnmax; //maximum copynumber (across all clones) per site
-  std::set<int> cnmax_seen;
+  double *** mean_tcn;//mean total copy number
+  double **** av_cn;//copy number availability
   void init_events();
   int * nEvents;
-  unsigned int ** Event_of_idx;  // map from idx to cnv-event 
+  unsigned int ** Event_of_idx;// map from idx to cnv-event 
   void map_idx_to_Event(Emission * Emit, int sample);
-  //void get_events_via_evt_map();
   void map_jumps(Emission * Emit);
   void add_break_points_via_jumps(Emission * Emit, double pmin);
   void get_events_via_jumps();

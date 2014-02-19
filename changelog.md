@@ -5,7 +5,8 @@ v1.17.0 / to come
 *  major release
 *  changed the SNV prior computation from `--copynumber
 	[file]` to available copy numbers from `--avail-cn [file]` and
-	mean total copy numbers from `--mean-tcn [file]`. 
+	mean total copy numbers from `--mean-tcn [file]`.
+*  slimmed down output of `--print-options`.
 
 v1.16.7 / 19.02.2014
 

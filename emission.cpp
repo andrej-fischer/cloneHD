@@ -30,10 +30,9 @@ Emission::Emission(){
   bias     = NULL;
   log_bias = NULL;
   mask     = NULL;
-  //only needed within cloneHD...
   pjump          = NULL;
-  phi            = NULL;
-  cnmax          = NULL;
+  mean_tcn       = NULL;
+  av_cn          = NULL;
   idx_of_event   = NULL;
   event_of_idx   = NULL;
   nEvents        = NULL;
@@ -119,7 +118,6 @@ void Emission::init_events(){
 //map each observations to an event in another data track...
 void Emission::map_idx_to_Event(Emission * Emit, int sample){
   if (Emit->is_set == 0) abort(); 
-  // for (int sample=0; sample<nSamples; sample++){
   if ( chr[sample] > Emit->maxchr || Emit->idx_of[ chr[sample] ] < 0 ) abort();
   int Sample = Emit->idx_of[ chr[sample] ];
   int Event = 0;
@@ -148,11 +146,9 @@ void Emission::map_idx_to_Event(Emission * Emit, int sample){
     Event_of_idx[sample][idx]= Emit->nEvents[Sample] - 1;
     idx++;
   }
-  //idx_to_Event_mapped=1;
 }
 
 void Emission::map_jumps(Emission * Emit){
-  //if (idx_to_Event_mapped==0) abort();
   for (int s=0; s<nSamples; s++){
     int Sample = Emit->idx_of[chr[s]];
     for (int idx=0; idx<nSites[s]; idx++) pjump[s][idx]=0;
@@ -169,7 +165,6 @@ void Emission::map_jumps(Emission * Emit){
 }
 
 void Emission::add_break_points_via_jumps(Emission * Emit, double pmin){
-  //if (idx_to_Event_mapped==0) abort();
   for (int s=0; s<nSamples; s++){
     int Sample = Emit->idx_of[chr[s]];
     int old    = Event_of_idx[s][0];
@@ -198,7 +193,7 @@ void Emission::get_events_via_jumps(){
   total_events = 0;
   for (int s=0; s<nSamples; s++){
     nEvents[s] = 1;
-    for (int idx=1; idx<nSites[s]; idx++){//count events
+    for (int idx=1; idx<nSites[s]; idx++){
       if ( pjump[s][idx] > 0.0) nEvents[s]++;
     }
     total_events += nEvents[s];
@@ -227,47 +222,64 @@ void Emission::allocate_bias(){//only once...
   }
 }
 
-void Emission::allocate_phi(){//repeatedly...
-  if (phi != NULL){//delete old
+
+void Emission::allocate_mean_tcn(){
+  if (mean_tcn != NULL){//delete old
     for (int t=0; t<nTimes; t++){
       for (int s=0; s<nSamples; s++){
-	if (phi[t][s] != NULL) delete [] phi[t][s];
+	if (mean_tcn[t][s] != NULL) delete [] mean_tcn[t][s];
       }
-      delete [] phi[t];
+      delete [] mean_tcn[t];
     }
-    delete [] phi;
+    delete [] mean_tcn;
   }
-  phi = new double ** [nTimes];
+  mean_tcn = new double ** [nTimes];
   for (int t=0; t<nTimes; t++){
-    phi[t] = new double * [nSamples];
+    mean_tcn[t] = new double * [nSamples];
     for (int s=0; s<nSamples; s++){
       if (nEvents[s] == 0){ 
-	phi[t][s] = NULL;
+	mean_tcn[t][s] = NULL;
       }
       else{
-	phi[t][s] = new double [nEvents[s]];
+	mean_tcn[t][s] = new double [nEvents[s]];
       }
     }
   }
 }
 
-void Emission::allocate_cnmax(){//repeatedly...
-  if (cnmax != NULL){//delete old
-    for (int s=0; s<nSamples; s++){
-      if( cnmax[s] != NULL) delete [] cnmax[s];
+
+void Emission::allocate_av_cn(int maxcn){//repeatedly...
+  if (av_cn != NULL){//delete old
+    for (int t=0; t<nTimes; t++){
+      for (int s=0; s<nSamples; s++){
+	if (av_cn[t][s] != NULL){
+	  for (int evt=0; evt<nEvents[s]; evt++){
+	    delete [] av_cn[t][s][evt];
+	  }
+	  delete [] av_cn[t][s];
+	}	
+      }
+      delete [] av_cn[t];
     }
-    delete [] cnmax;
+    delete [] av_cn;
   }
-  cnmax = new int * [nSamples];
-  for (int s=0; s<nSamples; s++){
-    if (nEvents[s] == 0){ 
-      cnmax[s] = NULL;
-    }
-    else{
-      cnmax[s] = new int [nEvents[s]];
+  av_cn = new double *** [nTimes];
+  for (int t=0; t<nTimes; t++){
+    av_cn[t] = new double ** [nSamples];
+    for (int s=0; s<nSamples; s++){
+      if (nEvents[s] == 0){ 
+	av_cn[t][s] = NULL;
+      }
+      else{
+	av_cn[t][s] = new double * [nEvents[s]];
+	for (int evt=0; evt<nEvents[s]; evt++){
+	  av_cn[t][s][evt] = new double [maxcn+1];
+	}
+      }
     }
   }
 }
+
 
 
 
@@ -280,20 +292,28 @@ Emission::~Emission(){
     for (int s=0; s<nSamples; s++) delete [] pjump[s];
     delete [] pjump;
   }
-  if (cnmax != NULL){
-    for (int s=0; s<nSamples; s++){
-      if (cnmax[s] != NULL) delete [] cnmax[s];
-    }
-    delete [] cnmax;
-  }
-  if (phi != NULL){
+  if (mean_tcn != NULL){
     for (int t=0; t<nTimes; t++){
       for (int s=0; s<nSamples; s++){
-	if (phi[t][s] != NULL) delete [] phi[t][s];
+	if (mean_tcn[t][s] != NULL) delete [] mean_tcn[t][s];
       }
-      delete [] phi[t];
+      delete [] mean_tcn[t];
     }
-    delete [] phi;
+    delete [] mean_tcn;
+  }
+  if (av_cn != NULL){
+    for (int t=0; t<nTimes; t++){
+      for (int s=0; s<nSamples; s++){
+	if (av_cn[t][s] != NULL){
+	  for (int evt=0; evt<nEvents[s]; evt++){
+	    delete [] av_cn[t][s][evt];
+	  }
+	  delete [] av_cn[t][s];
+	}
+      }
+      delete [] av_cn[t];
+    }
+    delete [] av_cn;
   }
   if (bias != NULL){
     for (int s=0; s<nSamples; s++) delete [] bias[s];
