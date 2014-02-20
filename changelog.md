@@ -3,13 +3,15 @@
 v1.17.0 / to come
 
 *  major release
-*  changed the SNV prior computation from `--copynumber
+*  for SNV mode: changed the SNV prior computation from `--copynumber
 	[file]` to available copy numbers from `--avail-cn [file]` and
 	mean total copy numbers from `--mean-tcn [file]`.
 *  slimmed down output of `--print-options`.
 *  `--snv-err` to `--snv-fpfreq` and `--snv-fpr` to `--snv-fprate`
 *  normal_copy: int* -> map<int,int>
 *  introduced maxcn_per_clone
+*  split clone.cpp into components clone-*.cpp
+*  new Makefile
 
 v1.16.7 / 19.02.2014
 
