@@ -2,38 +2,21 @@ CC		= g++-mp-4.7
 GSL		= /opt/local/lib/libgsl.a /opt/local/lib/libgslcblas.a 
 CC_FLAGS	= -Wall -O3 -DHAVE_INLINE -static-libgcc -static-libstdc++ -fopenmp
 LD_FLAGS	= ${GSL} -fopenmp
-EMISSION	= emission
-FUNCTIONS	= common-functions
-JUMPDIFF	= jump-diffusion
-FILTER		= filterHD
-MINIMIZE	= minimization
-LOGSPACE	= log-space
-CLONE		= clone
-CHDFUNCTIONS	= cloneHD-functions
-CLONEHD		= cloneHD
-OBJECTS      	= $(EMISSION).o $(FILTER).o $(MINIMIZE).o $(LOGSPACE).o $(JUMPDIFF).o $(CLONE).o $(FUNCTIONS).o $(CHDFUNCTIONS).o $(CLONEHD).o 
-all:	$(OBJECTS)
-	$(CC) $(CC_FLAGS) $(EMISSION).o $(FUNCTIONS).o $(FILTER).o $(MINIMIZE).o $(JUMPDIFF).o -o ./build/$(FILTER) $(LD_FLAGS)
-	$(CC) $(CC_FLAGS) $(EMISSION).o $(FUNCTIONS).o $(MINIMIZE).o $(LOGSPACE).o $(CLONE).o $(CHDFUNCTIONS).o $(CLONEHD).o -o ./build/$(CLONEHD) $(LD_FLAGS)
+#
+filterHDobj	= emission.o common-functions.o jump-diffusion.o minimization.o
+cloneobj	= clone.o clone-*.o
+cloneHDobj	= $(cloneobj) emission.o common-functions.o minimization.o log-space.o cloneHD-functions.o
+#
+all:	filterHD cloneHD
 	rm -f ./*.o
-$(FILTER).o: $(FILTER).cpp
-	$(CC) $(CC_FLAGS) -c $(FILTER).cpp
-$(EMISSION).o: $(EMISSION).cpp $(EMISSION).h
-	$(CC) $(CC_FLAGS) -c $(EMISSION).cpp 
-$(JUMPDIFF).o: $(JUMPDIFF).cpp $(JUMPDIFF).h
-	$(CC) $(CC_FLAGS) -c $(JUMPDIFF).cpp 
-$(LOGSPACE).o: $(LOGSPACE).cpp $(LOGSPACE).h
-	$(CC) $(CC_FLAGS) -c $(LOGSPACE).cpp
-$(MINIMIZE).o: $(MINIMIZE).cpp $(MINIMIZE).h
-	$(CC) $(CC_FLAGS) -c $(MINIMIZE).cpp
-$(CLONE).o: $(CLONE).cpp $(CLONE).h
-	$(CC) $(CC_FLAGS) -c $(CLONE).cpp
-$(CHDFUNCTIONS).o: $(CHDFUNCTIONS).cpp $(CHDFUNCTIONS).h
-	$(CC) $(CC_FLAGS) -c $(CHDFUNCTIONS).cpp
-$(FUNCTIONS).o: $(FUNCTIONS).cpp $(FUNCTIONS).h
-	$(CC) $(CC_FLAGS) -c $(FUNCTIONS).cpp
-$(CLONEHD).o: $(CLONEHD).cpp
-	$(CC) $(CC_FLAGS) -c $(CLONEHD).cpp
+filterHD: $(filterHDobj) filterHD.o
+	$(CC) $(CC_FLAGS) $(filterHDobj) filterHD.o -o ./build/filterHD $(LD_FLAGS)
+cloneHD: $(cloneHDobj) cloneHD.o
+	 $(CC) $(CC_FLAGS) $(cloneHDobj) cloneHD.o -o ./build/cloneHD $(LD_FLAGS)	
+#
+$(cloneobj) : clone.h
+$(filterHDobj) $(cloneHDobj) : $(.TARGET).h
+%.o: %.cpp
+	$(CC) $(CC_FLAGS) -c $(.SOURCE) -o $(.TARGET)
 clean:
 	rm -f ./*.o
-
