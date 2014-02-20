@@ -737,13 +737,14 @@ void print_posterior( FILE * post_fp, Clone * myClone, Emission * myEmit, int s,
 }
 
 void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts){
-  double ncn = double(myClone->normal_copy[myEmit->chr[s]]);
+  int myChr = myEmit->chr[s];
+  double ncn = double(myClone->normal_copy[myChr]);
   for (int evt=0; evt < myEmit->nEvents[s]; evt++){   
     int first = myEmit->idx_of_event[s][evt];     
     int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1] - 1 : myEmit->nSites[s]-1; 
     if( opts.print_all || myEmit->coarse_grained == 0 ){
       for (int idx=first; idx<=last; idx++){
-      	fprintf( mntcn_fp, "%i %6i", myEmit->chr[s], myEmit->loci[s][idx]);
+      	fprintf( mntcn_fp, "%i %6i", myChr, myEmit->loci[s][idx]);
 	for (int t=0; t<myEmit->nTimes; t++){
 	  double tcn = (myEmit->mntcn==NULL) ? ncn : myEmit->mntcn[t][s][evt];
 	  fprintf( mntcn_fp, " %.3f", tcn);
@@ -752,9 +753,7 @@ void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * myEmit, int s,
       }
     }
     else{
-      fprintf( mntcn_fp, "%i %6i %6i %6i", myEmit->chr[s], 
-	       myEmit->loci[s][first], last-first+1, myEmit->loci[s][last]
-	       );
+      fprintf( mntcn_fp, "%i %6i %6i %6i", myChr, myEmit->loci[s][first], last-first+1, myEmit->loci[s][last]);
       for (int t=0; t<myEmit->nTimes; t++){
 	double tcn = (myEmit->mntcn==NULL) ? ncn : myEmit->mntcn[t][s][evt];
 	fprintf( mntcn_fp, " %.3f", tcn);

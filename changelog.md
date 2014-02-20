@@ -8,6 +8,8 @@ v1.17.0 / to come
 	mean total copy numbers from `--mean-tcn [file]`.
 *  slimmed down output of `--print-options`.
 *  `--snv-err` to `--snv-fpfreq` and `--snv-fpr` to `--snv-fprate`
+*  normal_copy: int* -> map<int,int>
+*  introduced maxcn_per_clone
 
 v1.16.7 / 19.02.2014
 

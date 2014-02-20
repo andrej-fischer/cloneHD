@@ -44,14 +44,16 @@ class Clone{
   Emission * cnaEmit, * bafEmit, * snvEmit;
   Bulk * myBulk;
   void allocate(Emission * cnaEmit, Emission * bafEmit, Emission * snvEmit, const char * chr_fn);
+  std::map<int,int> normal_copy;
   void get_normal_copy(const char * chr_fn);
   void set_normal_copy(const char * chr_fn);
   void clean();
   int nTimes, nClones;
   int maxcn;
-  std::map<int,vector<int>> maxcn_mask;
-  std::map<int,vector<int>> maxcn_per_clone;
+  std::map<int, vector<int> > maxcn_mask;
+  std::map<int, vector<int> > maxcn_per_clone;
   std::set<int> all_maxcn;
+  void set_maxcn_per_clone();
   int allocated, is_set;
   int maj_ncn;
   double bulk_fix;
@@ -92,11 +94,8 @@ class Clone{
   //
   int ** copynumber;
   void set_copynumbers();
-  int * normal_copy; //copy number of normal human DNA
   gsl_matrix * cn_prior_snv;
-  //std::map<int,gsl_vector*> cn_prior_baf;
-  //void set_cn_prior_baf();
-  void set_cn_prior_cna( gsl_vector * cn_prior, int sample);
+  void set_cna_prior( gsl_vector * prior, int sample);
   void set_cn_prior_snv( gsl_matrix * prior_per_clone);
   gsl_matrix * init_cn_prior_snv;
   void initialize_cn_prior_snv();
@@ -156,10 +155,11 @@ class Clone{
   double entropy(gsl_vector * x);
   //
   void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T);
-  void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T, int mxcn);
-  void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, double flat);
-  double update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, int sample, int site);
+  void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T, int chr);
+  void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_vector * flat);
+  void apply_maxcn_mask( gsl_vector * prior, int chr, int log_space);
   //
+  double update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, int sample, int site);
   void update_cna( gsl_vector * prior, gsl_vector * post, int sample, int site);
   void update_cna_event( gsl_vector * prior, gsl_vector * post, int sample, int evt);
   void update_cna_site_noclone( gsl_vector * post, int sample, int site);

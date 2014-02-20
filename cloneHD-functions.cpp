@@ -115,7 +115,7 @@ void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
     }
     ifs.close();
   }
-  //insert for all chromosomes fixed the limit maxcn_gw
+  //insert for all chromosomes not fixed the limit maxcn_gw
   if ( myClone->cnaEmit->is_set){
     for (int s=0; s< myClone->cnaEmit->nSamples; s++){
       int cnaChr = myClone->cnaEmit->chr[s];
@@ -144,6 +144,7 @@ void get_maxcn_mask(const char * mask_fn, Clone * myClone, int maxcn_gw){
 }
 
 
+
 //get total copynumber tracks from file...
 void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
   ifstream ifs;
@@ -158,7 +159,7 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
   int cn_locusi=0, cn_locusf=0, nloci=0, locus=-1;
   int evt=0;
   double mcn, x;
-  double * mcn_buff = new double [myEmit->nTimes];
+  double * buff = new double [myEmit->nTimes];
   int sample=-1, perevt=0, persite=0;
   int wait=0;
   while( ifs.good() ){
@@ -193,7 +194,7 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
       nloci = 1;
     }
     if (chr != old_chr){//new chromosome
-      if(myEmit->chrs.count[chr] == 0){
+      if(myEmit->chrs.count(chr) == 0){
 	wait=1;
       }
       else{
@@ -201,7 +202,7 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
       }
       if (old_chr != -1 ){//not the first new chr
 	sample = myEmit->idx_of[old_chr];
-	if ( evt < myEmit->nEvents[sample]){//remaining from last chr
+	if ( evt < myEmit->nEvents[sample]){//remaining entries from last chr
 	  int oevt = evt-1;
 	  for (int e=evt; e<myEmit->nEvents[sample]; e++){
 	    for (int t=0; t<myEmit->nTimes; t++){
@@ -222,11 +223,11 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
     for (int t=0; t<myEmit->nTimes; t++){
       if (line_ss.good() != true) abort();
       line_ss >> mcn;
-      mcn_buff[t] = mcn;
+      buff[t] = mcn;
     }
     //fill
     while(locus <= cn_locusf){
-      for (int t=0; t<myEmit->nTimes; t++) myEmit->mean_tcn[t][sample][evt] = mcn_buff[t];
+      for (int t=0; t<myEmit->nTimes; t++) myEmit->mean_tcn[t][sample][evt] = buff[t];
       evt++;
       if ( evt >= myEmit->nEvents[sample]) break;
       locus = (int) myEmit->loci[sample][myEmit->idx_of_event[sample][evt]];
@@ -265,8 +266,7 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
   double frac, x;
   int nEl = (myClone->maxcn+1)*myClone->nTimes;
   double ** buff = new double [myClone->nTimes];
-  for (int t=0; t<myClone->nTimes; t++) 
-    buff[t] = new double [myClone->maxcn+1];
+  for (int t=0; t<myClone->nTimes; t++) buff[t] = new double [myClone->maxcn+1];
   int sample=-1, perevt=0, persite=0;
   int wait=0;
   while( ifs.good() ){
@@ -608,7 +608,8 @@ void get_bias_field( Clone * myClone, cmdl_opts& opts){
   //normalize the bias field...
   double bias_mean=0.0,norm=0.0;
   for (int s=0; s< myClone->cnaEmit->nSamples; s++){
-    int ncn = myClone->normal_copy[ myClone->cnaEmit->chr[s]];
+    int cnaChr = myClone->cnaEmit->chr[s];
+    int ncn    = myClone->normal_copy[cnaChr];
     for (int i=0; i< myClone->cnaEmit->nSites[s]; i++){
       bias_mean += myClone->cnaEmit->bias[s][i] / double(ncn);
     }
@@ -616,7 +617,8 @@ void get_bias_field( Clone * myClone, cmdl_opts& opts){
   }
   bias_mean /= norm;
   for (int s=0; s< myClone->cnaEmit->nSamples; s++){
-    int ncn = myClone->normal_copy[ myClone->cnaEmit->chr[s]];
+    int cnaChr = myClone->cnaEmit->chr[s];
+    int ncn = myClone->normal_copy[cnaChr];
     for (int i=0; i< myClone->cnaEmit->nSites[s]; i++){
       myClone->cnaEmit->bias[s][i] /= bias_mean * double(ncn);
       myClone->cnaEmit->log_bias[s][i] = log(myClone->cnaEmit->bias[s][i]);
