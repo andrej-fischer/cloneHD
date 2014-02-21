@@ -4,18 +4,20 @@ v1.17.0 / to come
 
 *  major release
 *  for SNV mode: changed the SNV prior computation from `--copynumber
-	[file]` to available copy numbers from `--avail-cn [file]` and
+	[file]` to available genotypes numbers from `--avail-cn [file]` and
 	mean total copy numbers from `--mean-tcn [file]`.
 *  slimmed down output of `--print-options`.
-*  `--snv-err` to `--snv-fpfreq` and `--snv-fpr` to `--snv-fprate`
+*  `--snv-err [double]` to `--snv-fpfreq [double]` 
+*  `--snv-fpr [double]` to `--snv-fprate [double]`
 *  normal_copy: int* -> map<int,int>
 *  introduced maxcn_per_clone
 *  split clone.cpp into components clone-*.cpp
+*  split off cloneHD-inference.cpp
 *  new Makefile
 
 v1.16.7 / 19.02.2014
 
-*  fixed bug in SNV+corr mode when --bulk-fix is used
+*  fixed bug in SNV w/ corr mode when --bulk-fix is used
 *  introduced different grid sizes for CNA, BAF and SNV
 *  fixed bug in Clone::get_interpolation(), at the boundaries
 *  fixed bug in Clone::trapezoidal() (affected --bulk-prior vs --bulk-mean consistency)
@@ -23,12 +25,12 @@ v1.16.7 / 19.02.2014
 v1.16.6 / 12.02.2014
 
 *  fixed major bug for SNV false positive emission rate and prior
-*  introduced new functions update_snv_site_ncorr/fixed/nfixed()
-*  fixed bug in SNV prior from CNA/BAF posterior computation
+*  introduced new functions:  Clone::update_snv_site_ncorr/fixed/nfixed()
+*  fixed bug in SNV prior from CNA/BAF posterior computation (BAF normalization)
 *  false positive SNV prior now includes P(c=all-zero)
 *  fixed bug in used cn output
-*  all-zero "observations" in SNV input are ignored (and not printed!)
-*  fixed bug in filterHD: all-zero obs are always retained.
+*  all-zero "observations" in SNV input (w/o corr) are ignored (and not printed!)
+*  fixed bug in filterHD: all-zero observations are always retained.
 
 v1.16.5 / 07.04.2014
 
@@ -36,17 +38,17 @@ v1.16.5 / 07.04.2014
 *  fixed bug in Clone::snv_prior_from_cna_baf_post()
 *  fixed bug in posterior output for BAF and SNV
 *  introduced prior masking for all update functions
-*  introduced --maxcn_mask [file] option to limit total c.n. per chromosome
+*  introduced `--maxcn_mask [file]` option to limit total c.n. per chromosome
 *  static linking of both libgcc and libstdc++ for increased portability
 
 v1.16.4 / 30.01.2014
 
-*  filterHD: if --reflect 1, use only posterior in [0,0.5] for mean/std-dev
-*  fixed bug with --bulk-fix 0.0
+*  filterHD: if `--reflect 1`, use only posterior in [0,0.5] for mean/std-dev
+*  fixed bug with `--bulk-fix 0.0`
 
 v1.16.3 / 13.01.2014
 
-*  introduced the option --mass-gauging [0/1:1] to switch off the mass gauging for cna data.
+*  introduced the option `--mass-gauging [0/1:1]` to switch off the mass gauging for cna data.
 
 v1.16.2 / 12.01.2104
 
