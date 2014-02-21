@@ -5,10 +5,10 @@ LD_FLAGS	= ${GSL} -fopenmp
 
 filterHDobj	= emission.o common-functions.o jump-diffusion.o minimization.o
 cloneobj	= clone.o clone-*.o
-cloneHDobj	= $(cloneobj) emission.o common-functions.o minimization.o log-space.o cloneHD-functions.o
+cloneHDobj	= $(cloneobj) emission.o common-functions.o minimization.o log-space.o cloneHD-functions.o cloneHD-inference.o
 
 all : filterHD cloneHD
-     rm -f ./*.o
+    rm -f ./*.o
 filterHD : $(filterHDobj) filterHD.o
 	 $(CC) $(CC_FLAGS) $^ -o ../build/filterHD $(LD_FLAGS)
 cloneHD : $(cloneHDobj) cloneHD.o
@@ -18,4 +18,4 @@ cloneHD : $(cloneHDobj) cloneHD.o
 $(cloneobj) : clone.h
 $(filterHDobj) $(cloneHDobj) : $(.TARGET:.o=.h)
 clean :
-	rm -f ./*.o
+      rm -f ./*.o

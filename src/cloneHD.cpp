@@ -44,6 +44,7 @@ If not, see <http://www.gnu.org/licenses/>.
 
 //own headers...
 #include "cloneHD-functions.h"
+#include "cloneHD-inference.h"
 #include "common-functions.h"
 
 
