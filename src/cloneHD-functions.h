@@ -64,32 +64,22 @@ void read_opts( const char * opts_fn, cmdl_opts& opts);
 void default_opts(cmdl_opts& opts);
 void test_opts(cmdl_opts& opts);
 void print_opts();
+
+
+
 void print_clonal_header( FILE * fp,  Clone * myClone, Emission * myEmit, cmdl_opts& opts);
 void print_posterior( FILE * cna_fp,  Clone * myClone, Emission * myEmit,  int s, cmdl_opts& opts);
 void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
 void print_avail_cn( FILE * avcn_fp,  Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
 
-void get_dims( const char * data_fn,
-	       int& nTimes,
-	       vector<int>& chrs,
-	       vector<int>& nSites
-	       );
-void get_data( const char * data_fn, 
-	       Emission * myEmit
-	       );
-void get_bulk_prior( gsl_matrix **& bulk, 
-		     double **& bulk_prior_mean,
-		     Emission * myEmit,
-		     cmdl_opts& opts
-		     );
-void get_track(const char * track_fn,
-	       gsl_matrix **& distribution, 
-	       double **& mean, 
-	       double **& var, 
-	       Emission * myEmit
-	       );
+void get_cna_data(Emission * cnaEmit, cmdl_opts& opts, int& nTimes);
+void get_baf_data(Emission * bafEmit, cmdl_opts& opts, int& nTimes, int& nT);
+void get_snv_data(Emission * snvEmit, cmdl_opts& opts, int& nTimes, int& nT);
+void get_snv_bulk_prior( Clone * myClone, cmdl_opts& opts);
+void get_track(const char * fn, gsl_matrix **& dist, double **& mn, double **& var, Emission * myEmit);
 
-void get_maxcn_mask(const char * maxcn_mask_fn, Clone * myClone, int maxcn_gw);
+
+void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone);
 void get_mean_tcn( const char * mtcn_fn, Clone * myClone, Emission * myEmit);
 void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit);
 void get_purity( const char * purity_fn, gsl_vector *& purity);
