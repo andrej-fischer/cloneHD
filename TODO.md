@@ -14,6 +14,8 @@
 *  print full if `--*jump` is (also) given, only events if `--*jumps`
 *  check memory leaks
 *  check BIC complexity
+*  symmetrize BAF post via CNA post, even for SNV prior computation
+*  `--maxcn [int]` to `--max-tcn [int/file]`
 
 # Features to be added in future releases
 
@@ -21,7 +23,7 @@
 
 *  filter loci incompatible with emission model via 2-state HMM
 *  do Baum-Welch
-*  `--filter-shortSe`g via posterior jump-prob (not via pmean)!
+*  `--filter-shortSeg [int]` via posterior jump-prob (not via pmean)!
 
 ## cloneHD
 

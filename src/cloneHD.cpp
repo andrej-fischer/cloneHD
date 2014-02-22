@@ -436,16 +436,13 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--clones") == 0){
       opts.clones_fn = argv[opt_idx];
     }
-    else if ( opt_switch.compare("--bulk-mean") == 0 ){
-      opts.bulk_fn = argv[opt_idx];
-      opts.bulk_mean=1;
-    }
-    else if ( opt_switch.compare("--bulk-prior") == 0 ){
-      opts.bulk_fn = argv[opt_idx];
-      opts.bulk_prior=1;
-    }
-    else if ( opt_switch.compare("--bulk-updates") == 0 ){
-      opts.bulk_updates = atoi(argv[opt_idx]);
+    else if ( opt_switch.compare("--max-tcn") == 0){
+      if ( isdigit(argv[opt_idx][0]) ){
+	opts.maxtcn = atoi(argv[opt_idx]);
+      }
+      else{
+	opts.maxtcn_fn = argv[opt_idx];
+      }
     }
     else if ( opt_switch.compare("--mean-tcn") == 0){
       opts.mntcn_fn = argv[opt_idx];
@@ -476,12 +473,6 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     }
     else if ( opt_switch.compare("--seed") == 0){
       opts.seed = atoi(argv[opt_idx]);
-    }
-    else if ( opt_switch.compare("--maxcn") == 0){
-      opts.maxcn = atoi(argv[opt_idx]);
-    }
-    else if ( opt_switch.compare("--maxcn-mask") == 0){
-      opts.maxcn_mask_fn = argv[opt_idx];
     }
     else if ( opt_switch.compare("--nmax") == 0){
       opts.nmax = atoi(argv[opt_idx]);
@@ -556,6 +547,17 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--mass-gauging") == 0){
       opts.mass_gauging = atoi(argv[opt_idx]);
     }
+    else if ( opt_switch.compare("--bulk-mean") == 0 ){
+      opts.bulk_fn = argv[opt_idx];
+      opts.bulk_mean=1;
+    }
+    else if ( opt_switch.compare("--bulk-prior") == 0 ){
+      opts.bulk_fn = argv[opt_idx];
+      opts.bulk_prior=1;
+    }
+    else if ( opt_switch.compare("--bulk-updates") == 0 ){
+      opts.bulk_updates = atoi(argv[opt_idx]);
+    }
     else if ( opt_switch.compare("--bulk-fix") == 0){
       opts.bulk_fix = atof(argv[opt_idx]);
     }
@@ -589,13 +591,13 @@ void default_opts(cmdl_opts& opts){
   opts.clones_fn = NULL;
   opts.bias_fn   = NULL;
   opts.mntcn_fn  = NULL;
+  opts.maxtcn_fn  = NULL;
   opts.avcn_fn   = NULL;
   opts.chr_fn    = NULL;
   opts.purity_fn = NULL;
   opts.cna_jumps_fn   = NULL;
   opts.baf_jumps_fn   = NULL;
   opts.snv_jumps_fn   = NULL;
-  opts.maxcn_mask_fn   = NULL;
   opts.pre      = "./out";
   opts.cnaGrid     = 300;
   opts.bafGrid     = 100;
@@ -620,7 +622,7 @@ void default_opts(cmdl_opts& opts){
   opts.trials   = 1;
   opts.nmax     = 3;
   opts.seed     = 123456 * (int(time(NULL)) % 10) + (int(time(NULL)) % 1000);
-  opts.maxcn    = 4;
+  opts.maxtcn    = 4;
   opts.min_occ  = 0.01;
   opts.min_jump = 0.01;
   opts.print_all = 0;
@@ -679,7 +681,7 @@ void test_opts(cmdl_opts& opts){
 }
 
 void print_opts(){
-  cout<<endl<<"./build/cloneHD --cna [file] --snv [file] --baf [file] --pre [string:./out] --clones [file] --purity [file] --chr [file] --bias [file] --mean-tcn [file] --avail-cn [file] --grid [int:300] --seed [int:time(0)] --trials [int:1] --restarts [int:10] --nmax [int:3] --force [int] --maxcn [int:4] --maxcn-mask [file] --cna-jump [double] --baf-jump [double] --snv-jump [double] --cna-jumps [files] --baf-jumps [file] --snv-jumps [file] --cna-rnd [double:0] --baf-rnd [double:0] --snv-rnd [double:0] --snv-fpfreq [double:0.01] --snv-fprate [double:0.001] --cna-shape [double:inf] --baf-shape [double:inf] --snv-shape [double:inf] --baf-pen [double:1.0] --snv-pen [double:0.01] --min-occ [double:0.01] --min-jump [double:0.01] --learn-priors [0/1:0] --mass-gauging [0/1:1] --bulk-prior [file] --bulk-mean [file] --bulk-fix [double:0] --bulk-sigma [double] --bulk-updates [int:0]";
+  cout<<endl<<"./build/cloneHD --cna [file] --snv [file] --baf [file] --pre [string:./out] --clones [file] --purity [file] --chr [file] --bias [file] --max-tcn [file/int:4] --mean-tcn [file] --avail-cn [file] --seed [int:time(0)] --trials [int:1] --restarts [int:10] --nmax [int:3] --force [int] --cna-jump [double] --baf-jump [double] --snv-jump [double] --cna-jumps [files] --baf-jumps [file] --snv-jumps [file] --cna-rnd [double:0] --baf-rnd [double:0] --snv-rnd [double:0] --snv-fpfreq [double:0.01] --snv-fprate [double:0.001] --cna-shape [double:inf] --baf-shape [double:inf] --snv-shape [double:inf] --baf-pen [double:1.0] --snv-pen [double:0.01] --min-occ [double:0.01] --min-jump [double:0.01] --learn-priors [0/1:0] --mass-gauging [0/1:1] --bulk-prior [file] --bulk-mean [file] --bulk-fix [double:0] --bulk-sigma [double] --bulk-updates [int:0] --cna-grid [int:300] --snv-grid [int:100] --baf-grid [int:100]";
   cout<<endl;
   exit(0);
 }

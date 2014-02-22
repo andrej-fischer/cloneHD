@@ -8,6 +8,29 @@
 using namespace std;
 
 
+//to be precomputed before each CNA fwd run
+void Clone::set_tcn(int s){
+  if (cnaEmit->is_set==0) abort();
+  double ncn = double(normal_copy[ cnaEmit->chr[s] ]);
+  for (int t=0; t<nTimes; t++){    
+    if ( tcn[t][s] != NULL)     delete [] tcn[t][s];
+    if ( log_tcn[t][s] != NULL) delete [] log_tcn[t][s];
+    tcn[t][s]     = new double [nLevels];
+    log_tcn[t][s] = new double [nLevels];
+    for (int l=0; l<nLevels; l++){
+      tcn[t][s][l] = ncn*(1.0-purity[t]) + clone_spectrum[t][l];
+      log_tcn[t][s][l] = log(tcn[t][s][l] + 1.0e-10);
+    }
+  }
+}
+
+double Clone::entropy(gsl_vector * x){
+  double H = 0.0;
+  for (int i=0; i<(int) x->size; i++){
+    if (x->data[i] > 0.0) H -= x->data[i] * log(x->data[i]);
+  }
+  return(H);
+}
 
 
 //*** CNA FWD/BWD ***************************************************
