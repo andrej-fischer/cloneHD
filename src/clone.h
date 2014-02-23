@@ -70,6 +70,8 @@ class Clone{
   std::map<int, vector<int> > maxtcn_per_clone;
   std::set<int> all_maxtcn;
   void set_maxtcn_per_clone();
+  void set_all_levels();
+  std::map<int,int> level_of;
   // penalties and parameters
   double baf_pen,snv_pen;
   double snv_fpr,snv_fpf;

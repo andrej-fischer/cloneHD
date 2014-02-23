@@ -151,15 +151,14 @@ int main (int argc, const char * argv[]){
   if (clones != NULL && (int) clones->size1 > nTimes) rows = (int) clones->size1;
   if (rows > nTimes){//print LLH's for predefined parameter values...
     print_llh_for_set( clones, mass, &myClone, opts);
-    return(0);//conditional end of main()
+    return(0);
   }
   else{
     // ****** INFERENCE STARTS HERE ******
     bestn = infer_clones( clones, mass, &myClone, opts);
+    printf("cloneHD found support for %i sub-clone(s) in the data.\n", bestn);
     // ****** INFERENCE COMPLETED ********
   }
-  printf("cloneHD found support for %i sub-clone(s) in the data.\n", bestn);
-  bafEmit.connect = 0;
   print_all_results( &myClone, opts);
   // all done...
   return (0);

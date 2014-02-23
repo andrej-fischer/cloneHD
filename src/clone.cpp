@@ -23,10 +23,9 @@ Clone::Clone(){
   baf_prior_map  = NULL;
   snv_prior_from_cna_baf_map  = NULL;
   snv_prior_from_cna_map      = NULL;
-  maxcn     = 4;
+  maxtcn     = 4;
   logn_set  = 0;
   nFreq     = 0;
-  max_nFreq = 4;
   TransMat_cna  = NULL;
   TransMat_snv  = NULL;
   mass      = NULL;
@@ -44,23 +43,24 @@ Clone::Clone(){
   baf_pen = 1.0;
   snv_pen = 0.01;
   snv_fpr = 1.0e-4;
+  // pre-computed
   tcn    = NULL;//total copy number
   log_tcn= NULL;//log thereof
   bafEmitLog = NULL;
   cnaEmitLog = NULL;
   snvEmitLog = NULL;
-  //posteriors
+  // (fwd) posteriors
   alpha_cna=NULL;
   gamma_cna=NULL;
   alpha_baf=NULL;
   gamma_baf=NULL; 
   alpha_snv=NULL;
   gamma_snv=NULL;
-  //
+  // llh's
   cna_total_llh=0;
   baf_total_llh=0;
   snv_total_llh=0;
-  //bulk variables
+  // bulk variables
   bulk_prior      = NULL;
   bulk_post       = NULL;
   bulk_dist       = NULL;
@@ -68,11 +68,12 @@ Clone::Clone(){
   bulk_post_mean  = NULL;
   bulk_mean       = NULL; 
   bulk_min = NULL;
-  logzero = -1.0e6;
+  //grids
   cnaGrid  = 300;
   bafGrid  = 100;
   snvGrid  = 100;
   bulkGrid = 100;
+  logzero = -1.0e6;
 }
 
 
@@ -279,14 +280,15 @@ void Clone::get_normal_copy(const char * chr_fn){
 
 // set frequency-dependent variables
 void Clone::set(const gsl_matrix * freq){
-  if( freq == NULL){//no clone
+  if( freq == NULL){// no clone
     nFreq   = 0;
     nClones = 0;
     freqs = NULL;
     if( nLevels == 0 || nClones != 0){//first time
       Clone::set_copynumbers();
       Clone::set_margin_map();
-      Clone::set_maxcn_per_clone();
+      Clone::set_maxtcn_per_clone();
+      Clone::set_all_levels();
     }
   }// new number of clones?
   else if ( freq != NULL && (int) freq->size2 != nFreq ){
@@ -297,7 +299,8 @@ void Clone::set(const gsl_matrix * freq){
     // set all the copynumbers per level
     Clone::set_copynumbers();
     Clone::set_margin_map();
-    Clone::set_maxcn_per_clone();
+    Clone::set_maxtcn_per_clone();
+    Clone::set_all_levels();
     if (cnaEmit->is_set){
       if (cnaEmit->connect) Clone::set_TransMat_cna();
       if (bafEmit->is_set)  Clone::set_baf_prior_map();
@@ -344,11 +347,11 @@ void Clone::set_copynumbers(){
     }
     nLevels = 1;// the total number of levels
     for (int f=0;f<nFreq;f++){
-      nLevels *= maxcn + 1;
+      nLevels *= maxtcn + 1;
     }
     int nl = nLevels;
     for (int f=0;f<nFreq;f++){
-      nl = (int) double(nl) / double(maxcn + 1);
+      nl = (int) double(nl) / double(maxtcn + 1);
       offset[f] = nl;
     }
     // get the copynumbers for each level
@@ -358,10 +361,29 @@ void Clone::set_copynumbers(){
     }
     for (int f=0; f<nFreq; f++){
       for (int l=0; l<nLevels; l++){
-	copynumber[l][f] = int(l/offset[f]) % (maxcn+1);
+	copynumber[l][f] = int(l/offset[f]) % (maxtcn+1);
       }
     }
     delete [] offset;
+  }
+}
+
+
+void Clone::set_all_levels(){
+  level_of.clear();
+  std::map<int,int>::iterator it;
+  for ( it=maxtcn_per_clone.begin(); it != maxtcn_per_clone.end(); it++){
+    int chr = it->first;
+    if (nClones==0){
+      level_of.insert(pair<int,int>(chr,0));
+    }
+    else{
+      int lev=0;
+      for (int j=0; j<nClones;j++){
+	lev += maxtcn_per_clone[chr][j] * pow(maxtcn,nClones-1-j);
+      }
+      level_of.insert(pair<int,int>(chr,lev));
+    }
   }
 }
 
@@ -393,26 +415,26 @@ void Clone::set_clone_spectrum(const gsl_matrix * freq){
   }
 }
 
-void Clone::set_maxcn_per_clone(){
-  maxcn_per_clone.clear();
+void Clone::set_maxtcn_per_clone(){
+  maxtcn_per_clone.clear();
   std::map<int, vector<int> >::iterator it;
-  for (it=maxcn_mask.begin(); it != maxcn_mask.end(); it++){
+  for (it=maxtcn_input.begin(); it != maxtcn_input.end(); it++){
     int chr = it->first;
     vector<int> mxpc;
     if (nClones==0){
       mxpc.push_back(0);
-      maxcn_per_clone.insert(std::pair< int, vector<int> >(chr,mxpc));
+      maxtcn_per_clone.insert(std::pair< int, vector<int> >(chr,mxpc));
     }
     else{
       for (int j=0;j<nClones;j++){
-	if ( j < (int) maxcn_mask[chr].size()){
-	  mxpc.push_back( maxcn_mask[chr][j] );
+	if ( j < (int) maxtcn_input[chr].size()){
+	  mxpc.push_back( maxtcn_input[chr][j] );
 	}
 	else{
-	  mxpc.push_back( maxcn_mask[chr].back() );
+	  mxpc.push_back( maxtcn_input[chr].back() );
 	}
       }
-      maxcn_per_clone.insert(std::pair< int, vector<int> >(chr,mxpc));
+      maxtcn_per_clone.insert(std::pair< int, vector<int> >(chr,mxpc));
     }
   }
 }
@@ -425,11 +447,11 @@ void Clone::set_margin_map(){
   }
   else{
     int ct = 0;
-    for (int f=0; f<nFreq; f++) ct += maxcn+1;
+    for (int f=0; f<nFreq; f++) ct += maxtcn+1;
     margin_map = gsl_matrix_calloc( ct, nLevels);
     ct=0;
     for (int f=0; f<nFreq; f++){
-      for (int i=0; i<maxcn+1; i++){
+      for (int i=0; i<=maxtcn; i++){
 	for (int j=0; j<nLevels; j++){
 	  if (copynumber[j][f] == i){
 	    gsl_matrix_set( margin_map, ct, j, 1.0);
@@ -441,49 +463,54 @@ void Clone::set_margin_map(){
   }
 }
 
+
+
 void Clone::get_complexity(){
+  double cnaC=0, bafC=0, snvC=0;
+  double cnaN=0, bafN=0, snvN=0;
+  std::map<int,int>::iterator it;
+  for (it=maxtcn_per_clone.begin(); it != maxtcn_per_clone.end(); it++){
+    int chr = it->first;
+    double val=1.0;
+    for (intj=0; j<nClones; j++){
+      val *= (double) maxtcn_per_clone[chr][j] + 1;
+    }
+    if (cnaEmit->is_set && cnaEmit->chrs.count(chr)==1){
+      cnaC += val*double(cnaEmit->nSites[cnaEmit->idx_of[chr]]);
+      cnaN += double(cnaEmit->nSites[cnaEmit->idx_of[chr]]);      
+    }
+    if (bafEmit->is_set && bafEmit->chrs.count(chr)==1){
+      bafC += val*double(bafEmit->nSites[bafEmit->idx_of[chr]]);
+      bafN += double(bafEmit->nSites[bafEmit->idx_of[chr]]);      
+    }
+    if (snvEmit->is_set && snvEmit->chrs.count(chr)==1){
+      snvC += val*double(snvEmit->nSites[snvEmit->idx_of[chr]]);
+      snvN += double(snvEmit->nSites[snvEmit->idx_of[chr]]);      
+    }
+  }
+  double complexity = double(nTimes)*( double(nClones) + 1.0);
+  double size=0;
   if (cnaEmit->is_set){
-    complexity = double(nTimes)*( double(nClones) + 1.0) + pow( double(maxcn+1), nClones);
-    double size = double(cnaEmit->total_loci);
-    if (bafEmit->is_set) size += double(bafEmit->total_loci);
-    if (snvEmit->is_set) size += double(snvEmit->total_loci);
-    complexity *= log(size);
+    complexity += cnaC / cnaN;
+    size += cnaN;
   }
-  //TODO: if maxcn_mask is used???
-  else if (snvEmit->is_set){
-    double * cnmax_freq = new double [maxcn+1];
-    for (int cn=0; cn<=maxcn;cn++) cnmax_freq[cn]=0.0;
-    double norm=0.0;
-    if ( snvEmit->cnmax == NULL ){
-      for (int s=0; s<snvEmit->nSamples; s++){
-	cnmax_freq[ normal_copy[ snvEmit->chr[s] ] ] += double(snvEmit->nSites[s]);
-	norm += double(snvEmit->nSites[s]);
-      }  
-    }
-    else{
-      for (int s=0; s<snvEmit->nSamples; s++){
-	for (int evt=0; evt<snvEmit->nEvents[s];evt++){
-	  cnmax_freq[snvEmit->cnmax[s][evt]] += 1.0;
-	}
-	norm += double(snvEmit->nEvents[s]);
+  if (bafEmit->is_set){
+    complexity += bafC / bafN;
+    size += bafN;
+  }
+  if (snvEmit->is_set){
+    complexity += snvC / snvN;
+    size += snvN;
+    if (learn_priors){
+      std::set<int>::iterator iter;
+      for (iter=all_maxtcn.begin(); iter!=all_maxtcn.end(); iter++){
+	complexity += *iter;
       }
     }
-    for (int cn=0; cn<=maxcn;cn++){
-      cnmax_freq[cn] /= norm;
-    }
-    complexity = 0.0;
-    for (int cn=1; cn<=maxcn;cn++){
-      complexity += cnmax_freq[cn] * pow( double(cn+1), nClones);
-      if (!snvEmit->connect && snvEmit->cnmax_seen.count(cn) == 1){
-	complexity += double(cn+1);//d.o.f. of cn-prior
-      }
-    }
-    if (!snvEmit->connect) complexity += 1.0;
-    complexity += double(nTimes)*(double(nClones) + 1.0);
-    complexity *= log(double(snvEmit->total_loci));
-    delete [] cnmax_freq;
   }
+  complexity *= log(size); 
 }
+
 
 void Clone::set_logn(){//only needed for cnaEmit
   for (int t=0; t<nTimes; t++){
@@ -562,7 +589,7 @@ void Clone::get_cna_marginals(){
   }
   if (marginals != NULL) gsl_matrix_free(marginals);
   int ct = 0;
-  for (int f=0; f<nFreq; f++) ct += maxcn+1;
+  for (int f=0; f<nFreq; f++) ct += maxtcn+1;
   marginals = gsl_matrix_calloc( cnaEmit->nSamples, ct);
   gsl_vector * post = gsl_vector_calloc(nLevels);
   gsl_vector * mem  = gsl_vector_calloc(nLevels);
@@ -618,13 +645,13 @@ void Clone::get_cna_marginals(){
   for (int f=0; f<nClones; f++){
     norm = 0.0;
     for (int s=0; s<cnaEmit->nSamples; s++){
-      part = gsl_matrix_subrow( marginals, s, ct, maxcn+1);
+      part = gsl_matrix_subrow( marginals, s, ct, maxtcn+1);
       norm += gsl_blas_dasum(&part.vector);
     }
-    gsl_matrix_view pt = gsl_matrix_submatrix( marginals, 0, ct, cnaEmit->nSamples, maxcn+1);
+    gsl_matrix_view pt = gsl_matrix_submatrix( marginals, 0, ct, cnaEmit->nSamples, maxtcn+1);
     if (norm <= 0.0) abort();
     gsl_matrix_scale( &pt.matrix, 1.0 / norm);
-    ct += maxcn+1;
+    ct += maxtcn+1;
   }
 }
 

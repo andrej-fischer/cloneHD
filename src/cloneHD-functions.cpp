@@ -233,6 +233,7 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
     }
   }
   if ( myClone->maxtcn == 0) abort();
+  printf("\nA maximum total copy number of %i will be used.\n", myClone->maxtcn);
 }
 
 
@@ -595,125 +596,135 @@ void get_fixed_clones(gsl_matrix *& clones, gsl_vector *& mass, const char * clo
 
 
 //***posterior jump probability track***
-void get_jump_probability(  Clone * myClone, cmdl_opts& opts){
+void get_jump_probability( Clone * myClone, cmdl_opts& opts){
+  Emission * cnaEmit = myClone->cnaEmit;
+  Emission * bafEmit = myClone->bafEmit;
+  Emission * snvEmit = myClone->snvEmit; 
   double ** vardummy = NULL;
   gsl_matrix ** distdummy = NULL;
-  if (myClone->cnaEmit->is_set){//***CNA JUMPS***
+  if (cnaEmit->is_set){//***CNA JUMPS***
     if(opts.cna_jumps_fn != NULL){//1. either use external jump probability track
-      get_track( opts.cna_jumps_fn, distdummy, myClone->cnaEmit->pjump, vardummy, myClone->cnaEmit);
-      for (int s=0; s< myClone->cnaEmit->nSamples; s++){
-	myClone->cnaEmit->coarse_grain_jumps( s, opts.min_jump, 5);
+      get_track( opts.cna_jumps_fn, distdummy, cnaEmit->pjump, vardummy, cnaEmit);
+      for (int s=0; s< cnaEmit->nSamples; s++){
+	cnaEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
-      myClone->cnaEmit->get_events_via_jumps();
+      cnaEmit->get_events_via_jumps();
     }
     else if (opts.cna_jump >= 0.0){//2. or constant jump probability per base
-      myClone->cnaEmit->set_pjump(opts.cna_jump);
+      cnaEmit->set_pjump(opts.cna_jump);
     }
     else{
       abort();
     }
-    myClone->cnaEmit->allocate_mean_tcn();
-    if (myClone->bafEmit->is_set){//CNA+BAF: map CNA evts to BAF
-      for (int s=0; s<myClone->bafEmit->nSamples; s++){
-	myClone->bafEmit->map_idx_to_Event( myClone->cnaEmit, s);
-      }
-      if (myClone->snvEmit->is_set){//CNA+BAF+SNV: map CNA evts to SNV outside of autosomes
-	for (int s=0; s<myClone->snvEmit->nSamples; s++){
-	  int snvChr = myClone->snvEmit->chr[s];
-	  if (myClone->bafEmit->chrs.count(snvChr) == 0){
-	    myClone->snvEmit->map_idx_to_Event( myClone->cnaEmit, s);
-	  }
-	}
-      }
-    }
-    else if (myClone->snvEmit->is_set){//CNA+SNV (no BAF): map CNA events to SNV
-      for (int s=0; s<myClone->snvEmit->nSamples; s++){
-	myClone->snvEmit->map_idx_to_Event( myClone->cnaEmit, s);
-      }
-    }
   }
-  if ( myClone->bafEmit->is_set ){//***BAF JUMPS***
+  if ( bafEmit->is_set ){//***BAF JUMPS***
     if (opts.baf_jumps_fn != NULL){//1. either external jump probability track
-      get_track( opts.baf_jumps_fn, distdummy, myClone->bafEmit->pjump, vardummy, myClone->bafEmit);
-      for (int s=0; s< myClone->bafEmit->nSamples; s++){// ignore improbable jump events
-	myClone->bafEmit->coarse_grain_jumps( s, opts.min_jump, 5);
+      get_track( opts.baf_jumps_fn, distdummy, bafEmit->pjump, vardummy, bafEmit);
+      for (int s=0; s< bafEmit->nSamples; s++){// ignore improbable jump events
+	bafEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
-      myClone->bafEmit->get_events_via_jumps();
-      if ( myClone->cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//allow transit at CNA jumps
-	myClone->bafEmit->add_break_points_via_jumps( myClone->cnaEmit, opts.min_jump);
+      bafEmit->get_events_via_jumps();
+      if ( cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//allow transit at CNA jumps
+	bafEmit->add_break_points_via_jumps( cnaEmit, opts.min_jump);
       }
-      myClone->bafEmit->get_events_via_jumps();
+      bafEmit->get_events_via_jumps();
     }
-    else if ( myClone->cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//2. map the CNA jumps to BAF
-      myClone->bafEmit->map_jumps(myClone->cnaEmit);
-      myClone->bafEmit->get_events_via_jumps();
+    else if ( cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//2. map the CNA jumps to BAF
+      bafEmit->map_jumps(cnaEmit);
+      bafEmit->get_events_via_jumps();
     }
     else if (opts.baf_jump >= 0.0){//or 3. constant jump probability per base
-      myClone->bafEmit->set_pjump(opts.baf_jump);
+      bafEmit->set_pjump(opts.baf_jump);
     }
     else{
       abort();
     }
-    myClone->bafEmit->allocate_mean_tcn();
-    if (myClone->snvEmit->is_set){//CNA + BAF + SNV: map BAF to SNV for autosomes only
-      for (int s=0; s<myClone->snvEmit->nSamples; s++){
-	int snvChr = myClone->snvEmit->chr[s];
-	if (myClone->bafEmit->chrs.count(snvChr) == 1){
-	  myClone->snvEmit->map_idx_to_Event( myClone->bafEmit, s);
-	}
-      }
-    }
   }
-  if ( myClone->snvEmit->is_set ){//***SNV JUMPS***
+  if ( snvEmit->is_set ){//***SNV JUMPS***
     if ( opts.snv_jumps_fn != NULL ){
-      get_track( opts.snv_jumps_fn, distdummy, myClone->snvEmit->pjump, vardummy, myClone->snvEmit);
-      for (int s=0; s< myClone->snvEmit->nSamples; s++){//ignore improbable jump events
-	myClone->snvEmit->coarse_grain_jumps( s, opts.min_jump, 5);
+      get_track( opts.snv_jumps_fn, distdummy, snvEmit->pjump, vardummy, snvEmit);
+      for (int s=0; s< snvEmit->nSamples; s++){//ignore improbable jump events
+	snvEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
-      myClone->snvEmit->get_events_via_jumps();
+      snvEmit->get_events_via_jumps();
       if ( opts.cna_jumps_fn != NULL ){//allow SNV to jump at CNA jump sites
-	myClone->snvEmit->add_break_points_via_jumps( myClone->cnaEmit, opts.min_jump);
+	snvEmit->add_break_points_via_jumps( cnaEmit, opts.min_jump);
       }
-      myClone->snvEmit->get_events_via_jumps();
+      snvEmit->get_events_via_jumps();
     }
     else if (opts.snv_jump >= 0.0){
-      myClone->snvEmit->set_pjump(opts.snv_jump);
+      snvEmit->set_pjump(opts.snv_jump);
     }    
-    if (myClone->cnaEmit->is_set){
-      myClone->snvEmit->allocate_mean_tcn();
-    }
-    else{
-      if (opts.mntcn_fn != NULL) myClone->snvEmit->allocate_mean_tcn();
-      if (opts.avcn_fn  != NULL) myClone->snvEmit->allocate_av_cn(myClone->maxcn);
-    }
   }
 }
 
 
+void map_all_events( Clone * myClone ){
+  Emission * cnaEmit = myClone->cnaEmit;
+  Emission * bafEmit = myClone->bafEmit;
+  Emission * snvEmit = myClone->snvEmit; 
+  if (cnaEmit->is_set && bafEmit->is_set){//CNA+BAF: map CNA evts to BAF
+    for (int s=0; s<bafEmit->nSamples; s++){
+      bafEmit->map_idx_to_Event( cnaEmit, s);
+    }
+    if (snvEmit->is_set){//CNA+BAF+SNV: map CNA evts to SNV outside of autosomes
+      for (int s=0; s<snvEmit->nSamples; s++){
+	int snvChr = snvEmit->chr[s];
+	if (bafEmit->chrs.count(snvChr) == 1){
+	  snvEmit->map_idx_to_Event( bafEmit, s);
+	}
+	else{
+	  snvEmit->map_idx_to_Event( cnaEmit, s);
+	}
+      }
+    }
+  }
+  else if (cnaEmit->is_set && snvEmit->is_set){//CNA+SNV (no BAF): map CNA events to SNV
+    for (int s=0; s<snvEmit->nSamples; s++){
+      snvEmit->map_idx_to_Event( cnaEmit, s);
+    }
+  }
+  // allocations
+  if (cnaEmit->is_set){
+    cnaEmit->allocate_mean_tcn();
+    cnaEmit->allocate_av_cn();
+    if (bafEmit->is_set){
+      bafEmit->allocate_mean_tcn();
+      bafEmit->allocate_av_cn();
+    }
+    if (snvEmit->is_set) snvEmit->allocate_mean_tcn();
+  }
+  else if (snvEmit->is_set){
+    if (opts.mntcn_fn != NULL) snvEmit->allocate_mean_tcn();
+    if (opts.avcn_fn  != NULL) snvEmit->allocate_av_cn(myClone->maxtcn);
+  }
+}
+
 //***BIAS FIELD***
 void get_bias_field( Clone * myClone, cmdl_opts& opts){
-  myClone->cnaEmit->allocate_bias();
-  get_bias( opts.bias_fn, myClone->cnaEmit);
+  Emission * cnaEmit = myClone->cnaEmit;
+  cnaEmit->allocate_bias();
+  get_bias( opts.bias_fn, cnaEmit);
   //normalize the bias field...
   double bias_mean=0.0,norm=0.0;
-  for (int s=0; s< myClone->cnaEmit->nSamples; s++){
-    int cnaChr = myClone->cnaEmit->chr[s];
-    int ncn    = myClone->normal_copy[cnaChr];
-    for (int i=0; i< myClone->cnaEmit->nSites[s]; i++){
-      bias_mean += myClone->cnaEmit->bias[s][i] / double(ncn);
+  for (int s=0; s< cnaEmit->nSamples; s++){
+    int cnaChr = cnaEmit->chr[s];
+    int ncn    = normal_copy[cnaChr];
+    for (int i=0; i< cnaEmit->nSites[s]; i++){
+      bias_mean += cnaEmit->bias[s][i] / double(ncn);
     }
-    norm += double(myClone->cnaEmit->nSites[s]);
+    norm += double(cnaEmit->nSites[s]);
   }
   bias_mean /= norm;
-  for (int s=0; s< myClone->cnaEmit->nSamples; s++){
-    int cnaChr = myClone->cnaEmit->chr[s];
+  for (int s=0; s< cnaEmit->nSamples; s++){
+    int cnaChr = cnaEmit->chr[s];
     int ncn = myClone->normal_copy[cnaChr];
-    for (int i=0; i< myClone->cnaEmit->nSites[s]; i++){
-      myClone->cnaEmit->bias[s][i] /= bias_mean * double(ncn);
-      myClone->cnaEmit->log_bias[s][i] = log(myClone->cnaEmit->bias[s][i]);
+    for (int i=0; i< cnaEmit->nSites[s]; i++){
+      cnaEmit->bias[s][i] /= bias_mean * double(ncn);
+      cnaEmit->log_bias[s][i] = log(cnaEmit->bias[s][i]);
       for (int t=1; t<myClone->cnaEmit->nTimes; t++){
-	myClone->cnaEmit->bias[s][i]     = myClone->cnaEmit->bias[s][i];
-	myClone->cnaEmit->log_bias[s][i] = myClone->cnaEmit->log_bias[s][i];
+	cnaEmit->bias[s][i]     = cnaEmit->bias[s][i];
+	cnaEmit->log_bias[s][i] = cnaEmit->log_bias[s][i];
       }
     }
   }
@@ -775,6 +786,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   Emission * cnaEmit = myClone->cnaEmit;
   Emission * bafEmit = myClone->bafEmit;
   Emission * snvEmit = myClone->snvEmit;
+  bafEmit->connect = 0;
   // margin-map to get the posterior per clone...
   char buff[1024]; 
   sprintf( buff, "%s.clonal.margin_map.txt", opts.pre);
@@ -969,10 +981,10 @@ void print_clonal_header(FILE * fp, Clone * myClone, Emission * myEmit, cmdl_opt
     fprintf( fp, "\n");
   }
   if (opts.print_all || myEmit->coarse_grained == 0 ){//HERE!!!
-    fprintf( fp,"#sample locus PostDist\n");
+    fprintf( fp,"#chr locus PostDist\n");
   }
   else{
-    fprintf( fp,"#sample first-locus nloci last-locus PostDist\n");
+    fprintf( fp,"#chr first-locus nloci last-locus PostDist\n");
   }
 }
 
@@ -1037,7 +1049,7 @@ void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * myEmit, int s,
 void print_avail_cn( FILE * avcn_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts){
   for (int evt=0; evt < myEmit->nEvents[s]; evt++){   
     int first = myEmit->idx_of_event[s][evt];     
-    int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1] - 1 : myEmit->nSites[s]-1; 
+    int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1]-1 : myEmit->nSites[s]-1; 
     if( opts.print_all || !myEmit->coarse_grained ){
       for (int idx=first; idx<=last; idx++){
       	fprintf( avcn_fp, "%i %6i", myEmit->chr[s], myEmit->loci[s][idx]);

@@ -85,5 +85,6 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit);
 void get_purity( const char * purity_fn, gsl_vector *& purity);
 void get_fixed_clones( gsl_matrix *& clones, gsl_vector *& mass, const char * clones_fn, int nTimes);
 void get_jump_probability(  Clone * myClone, cmdl_opts& opts);
+void map_all_events( Clone * myClone);
 void get_bias_field( Clone * myClone, cmdl_opts& opts);
 void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, cmdl_opts& opts);
