@@ -209,13 +209,20 @@ Format of input files: the first two columns of all three input file
      the total log-likelihood. The best result out of `trials` independent,
      randomly seeded,  runs will be used.
 
-*    `--copynumber [file]`  Use copy number constraint for SNV data. 
+*    `--mean-tcn [file]`  Use mean total copy number constraint SNV data. 
 
      For a SNV data analysis, the cloneHD output file
-     ending `*copynumber.txt` from a CNA(+BAF) run can be given here. Since
+     ending `*mean_tcn.txt` from a CNA(+BAF) run can be supplied here. Since
      the subclonal decomposition can be different for SNVs, this option
-     ensures that the found solution is still consistent with the copy
-     number profile.
+     ensures that a reasonable mean total copy number is used.
+
+*    `--avail-cn [file]`  Use SNV copy number availablility constraint.
+
+     For a SNV data analysis, the cloneHD output file
+     ending `*avail_cn.txt` from a CNA(+BAF) run can be supplied here. Since
+     the subclonal decomposition can be different for SNVs, this option
+     ensures that the SNV genotype is consistent with the fraction of cells in which this number of copies is available.
+     Can only be used together with `--mean-tcn [file]`. In combination, this is a much stronger constraint.
 
 ### Fuzzy segmentation options
 
@@ -306,14 +313,6 @@ available. Useful in combination with `--clones`.
 *    `--learn-priors [0/1:0]` For snv-mode only: if 1, then the parameters
      for the multiplicative genotype priors are learned.
 
-*    `--maxcn-mask [file]`  Use max copy number mask.
-
-     A maximum total copy number for individual
-     chromosomes can be specified. This is useful, if large copy
-     numbers are expected in only part of the genome. In
-     chromosomes not specified in this file, the value of `--maxcn` is
-     used as upper limit.
-
 *    `--chr [file]`  Set normal copy numbers.
 
      The normal copy number for every single
@@ -321,10 +320,10 @@ available. Useful in combination with `--clones`.
      given, human DNA is assumed and the sex is inferred from the
      presence or absence of chr 24 (= chr Y) in the input data.
 
-*    `--snv-fpr [double:1.0e-4]`  The false positive rate for SNVs,
+*    `--snv-fprate [double:1.0e-4]`  The false positive rate for SNVs,
      i.e. rate of SNV data points of genotype all-0.
 
-*    `--snv-err [double:0.01]`  The typical frequency of mis-called variant reads.
+*    `--snv-fpfreq [double:0.01]`  The typical frequency of false positive SNVs.
 
 *    `--snv-pen [double:0.01]`  The penalty for higher than expected
      genotypes.
@@ -356,8 +355,11 @@ data is input with `--snv`. Data segmentation can be used with
 
 ## Technical options
 
-*    `--grid [int:300]`  The grid size for the pre-computed emission
-     probabilities if fuzzy data segmentation is used.
+The grid sizes for the pre-computed emission probabilities if fuzzy data segmentation is used.
+
+*    `--cna-grid [int:300]`  
+*    `--baf-grid [int:100]` 
+*    `--snv-grid [int:100]`  
 
 # Tips and tricks
 
