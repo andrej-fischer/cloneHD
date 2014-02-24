@@ -21,9 +21,8 @@
 #include "gsl/gsl_blas.h"
 
 //own headers
-#include "clone.h"
-#include "minimization.h"
-#include "emission.h"
+class Clone;
+class Emission;
 
 using namespace std;
 
@@ -65,8 +64,7 @@ void default_opts(cmdl_opts& opts);
 void test_opts(cmdl_opts& opts);
 void print_opts();
 
-
-
+void print_all_results( Clone * myClone, cmdl_opts& opts);
 void print_clonal_header( FILE * fp,  Clone * myClone, Emission * myEmit, cmdl_opts& opts);
 void print_posterior( FILE * cna_fp,  Clone * myClone, Emission * myEmit,  int s, cmdl_opts& opts);
 void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
@@ -78,13 +76,11 @@ void get_snv_data(Emission * snvEmit, cmdl_opts& opts, int& nTimes, int& nT);
 void get_snv_bulk_prior( Clone * myClone, cmdl_opts& opts);
 void get_track(const char * fn, gsl_matrix **& dist, double **& mn, double **& var, Emission * myEmit);
 
-
 void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone);
 void get_mean_tcn( const char * mtcn_fn, Clone * myClone, Emission * myEmit);
 void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit);
 void get_purity( const char * purity_fn, gsl_vector *& purity);
 void get_fixed_clones( gsl_matrix *& clones, gsl_vector *& mass, const char * clones_fn, int nTimes);
 void get_jump_probability(  Clone * myClone, cmdl_opts& opts);
-void map_all_events( Clone * myClone);
 void get_bias_field( Clone * myClone, cmdl_opts& opts);
 void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, cmdl_opts& opts);

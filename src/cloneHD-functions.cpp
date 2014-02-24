@@ -2,6 +2,9 @@
 
 #include "common-functions.h"
 #include "cloneHD-functions.h"
+#include "clone.h"
+#include "emission.h"
+#include "minimization.h"
 
 #define PI 3.1415926
 #define LOG2 0.693147
@@ -18,7 +21,7 @@ void get_cna_data(Emission * cnaEmit, cmdl_opts& opts, int& nTimes){
   cnaEmit->rnd_emit  = opts.cna_rnd;
   if (opts.cna_jump >= 0.0)      cnaEmit->connect = 1;
   if (opts.cna_jumps_fn != NULL) cnaEmit->connect = 1;
-  get_dims( opts.cna_fn, nTimes, chrs, nSites, cnaEmit.connect);
+  get_dims( opts.cna_fn, nTimes, chrs, nSites, cnaEmit->connect);
   cnaEmit->set( nTimes, chrs, nSites, opts.cnaGrid);
   get_data( opts.cna_fn, cnaEmit);
 }
@@ -65,7 +68,7 @@ void get_snv_data(Emission * snvEmit, cmdl_opts& opts, int& nTimes, int& nT){
     exit(1);
   }
   nTimes = nT;
-  snvEmit.set( nTimes, chrs, nSites, opts.snvGrid);
+  snvEmit->set( nTimes, chrs, nSites, opts.snvGrid);
   get_data( opts.snv_fn, snvEmit);
   snvEmit->set_EmitProb(-1);
 }
@@ -194,7 +197,7 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
     if ( myClone->cnaEmit->is_set){
       for (int s=0; s< myClone->cnaEmit->nSamples; s++){
 	int cnaChr = myClone->cnaEmit->chr[s];
-	if ( myClone->maxcn_mask.count(cnaChr) == 0){
+	if ( myClone->maxtcn_input.count(cnaChr) == 0){
 	  printf("ERROR: in file %s: chr %i is missing.\n", maxtcn_fn, cnaChr);
 	  exit(1);
 	}
@@ -203,8 +206,8 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
     else if ( myClone->snvEmit->is_set){
       for (int s=0; s< myClone->snvEmit->nSamples; s++){
 	int snvChr = myClone->snvEmit->chr[s];
-	if ( myClone->maxcn_mask.count(snvChr) == 0){
-	  printf("ERROR: in file %s: chr %i is missing.\n", maxtcn_fn, cnaChr);
+	if ( myClone->maxtcn_input.count(snvChr) == 0){
+	  printf("ERROR: in file %s: chr %i is missing.\n", maxtcn_fn, snvChr);
 	  exit(1);
 	}
       }
@@ -216,8 +219,8 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
       int maxtcn = (maxtcn_gw > 0) ? maxtcn_gw : myClone->normal_copy[cnaChr];
       vector<int> mx;
       mx.push_back(maxtcn);
-      myClone->maxcn_mask.insert(std::pair<int, vector<int> >(cnaChr,mx));
-      myClone->all_maxcn.insert(maxtcn);
+      myClone->maxtcn_input.insert(std::pair<int, vector<int> >(cnaChr,mx));
+      myClone->all_maxtcn.insert(maxtcn);
       myClone->maxtcn = max( myClone->maxtcn, maxtcn);
     }
   }    
@@ -226,9 +229,9 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
       int snvChr = myClone->snvEmit->chr[s];
       int maxtcn = (maxtcn_gw > 0) ? maxtcn_gw : myClone->normal_copy[snvChr];
       vector<int> mx;
-      mx.push_back(maxcn);
-      myClone->maxcn_mask.insert(std::pair<int, vector<int> >(snvChr,mx));
-      myClone->all_maxcn.insert(maxtcn);
+      mx.push_back(maxtcn);
+      myClone->maxtcn_input.insert(std::pair<int, vector<int> >(snvChr,mx));
+      myClone->all_maxtcn.insert(maxtcn);
       myClone->maxtcn = max( myClone->maxtcn, maxtcn);
     }
   }
@@ -239,7 +242,7 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
 
 
 //get total copynumber tracks from file...
-void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
+void get_mean_tcn( const char * mntcn_fn, Clone * myClone, Emission * myEmit){
   ifstream ifs;
   string line;
   stringstream line_ss;
@@ -253,7 +256,7 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
   int evt=0;
   double mcn, x;
   double * buff = new double [myEmit->nTimes];
-  int sample=-1, perevt=0, persite=0;
+  int sample=-1, perevt=0;
   int wait=0;
   while( ifs.good() ){
     line.clear();
@@ -268,10 +271,7 @@ void get_mean_tcn( const char * cn_fn, Clone * myClone, Emission * myEmit){
       if (cols == 1 + 3 + myEmit->nTimes){
 	perevt = 1;
       }
-      else if (cols == 1 + 1 + myEmit->nTimes){
-	persite = 1;
-      }
-      else{
+      else if (cols != 1 + 1 + myEmit->nTimes){
 	printf("ERROR: check format in %s.\n", mntcn_fn);
 	exit(1);
       }
@@ -357,10 +357,10 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
   int cn_locusi=0, cn_locusf=0, nloci=0, locus=-1;
   int evt=0;
   double frac, x;
-  int nEl = (myClone->maxcn+1)*myClone->nTimes;
-  double ** buff = new double [myClone->nTimes];
-  for (int t=0; t<myClone->nTimes; t++) buff[t] = new double [myClone->maxcn+1];
-  int sample=-1, perevt=0, persite=0;
+  int nEl = (myClone->maxtcn+1)*myClone->nTimes;
+  double ** buff = new double * [myClone->nTimes];
+  for (int t=0; t<myClone->nTimes; t++) buff[t] = new double [myClone->maxtcn+1];
+  int sample=-1, perevt=0;
   int wait=0;
   while( ifs.good() ){
     line.clear();
@@ -375,10 +375,7 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
       if (cols == 1 + 3 + nEl){
 	perevt = 1;
       }
-      else if (cols == 1 + 1 + nEl){
-	persite = 1;
-      }
-      else{
+      if (cols != 1 + 1 + nEl){
 	printf("ERROR: check format in %s.\n", avcn_fn);
 	exit(1);
       }
@@ -394,7 +391,7 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
       nloci = 1;
     }
     if (chr != old_chr){//new chromosome
-      if(myEmit->chrs.count[chr] == 0){
+      if(myEmit->chrs.count(chr) == 0){
 	wait = 1;
       }
       else{
@@ -406,7 +403,7 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
 	  int oevt = evt-1;
 	  for (int e=evt; e<myEmit->nEvents[sample]; e++){
 	    for (int t=0; t<myEmit->nTimes; t++){
-	      for (int cn=0; cn<=myClone->maxcn; cn++){
+	      for (int cn=0; cn<=myClone->maxtcn; cn++){
 		myEmit->av_cn[t][sample][e][cn] = myEmit->av_cn[t][sample][oevt][cn];
 	      }
 	    }
@@ -423,7 +420,7 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
     if( cn_locusf <  locus) continue;
     // now we are above or at next event...
     for (int t=0; t<myEmit->nTimes; t++){
-      for (int cn=0; cn<=myClone->maxcn; cn++){
+      for (int cn=0; cn<=myClone->maxtcn; cn++){
 	if (line_ss.good() != true) abort();
 	line_ss >> frac;
 	buff[t][cn] = frac;
@@ -432,7 +429,7 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
     // now fill
     while(locus <= cn_locusf){
       for (int t=0; t<myEmit->nTimes; t++){
-	for (int cn=0; cn<=myClone->maxcn; cn++){
+	for (int cn=0; cn<=myClone->maxtcn; cn++){
 	  myEmit->av_cn[t][sample][evt][cn] = buff[t][cn];
 	}
       }
@@ -447,7 +444,7 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
     int oevt = evt-1;
     for (int e=evt; e<myEmit->nEvents[sample]; e++){
       for (int t=0; t<myEmit->nTimes; t++){
-	for (int cn=0; cn<=myClone->maxcn; cn++){
+	for (int cn=0; cn<=myClone->maxtcn; cn++){
 	  myEmit->av_cn[t][sample][e][cn] = myEmit->av_cn[t][sample][oevt][cn];
 	}
       }
@@ -616,6 +613,19 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     else{
       abort();
     }
+    //map CNA events to BAF and SNV...
+    if(bafEmit->is_set){
+      for (int s=0; s<bafEmit->nSamples; s++){
+	bafEmit->map_idx_to_Event( cnaEmit, s);
+      }
+    }
+    if (snvEmit->is_set){
+      for (int s=0; s<snvEmit->nSamples; s++){
+	if ( !bafEmit->is_set ||bafEmit->chrs.count(snvEmit->chr[s]) == 0){
+	  snvEmit->map_idx_to_Event( cnaEmit, s);
+	}
+      }
+    }
   }
   if ( bafEmit->is_set ){//***BAF JUMPS***
     if (opts.baf_jumps_fn != NULL){//1. either external jump probability track
@@ -639,6 +649,14 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     else{
       abort();
     }
+    // map BAF events to SNV
+    if (snvEmit->is_set){
+      for (int s=0; s<snvEmit->nSamples; s++){
+	if (bafEmit->chrs.count(snvEmit->chr[s]) == 1){
+	  snvEmit->map_idx_to_Event( bafEmit, s);
+	}
+      }
+    }
   }
   if ( snvEmit->is_set ){//***SNV JUMPS***
     if ( opts.snv_jumps_fn != NULL ){
@@ -656,41 +674,15 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
       snvEmit->set_pjump(opts.snv_jump);
     }    
   }
-}
-
-
-void map_all_events( Clone * myClone ){
-  Emission * cnaEmit = myClone->cnaEmit;
-  Emission * bafEmit = myClone->bafEmit;
-  Emission * snvEmit = myClone->snvEmit; 
-  if (cnaEmit->is_set && bafEmit->is_set){//CNA+BAF: map CNA evts to BAF
-    for (int s=0; s<bafEmit->nSamples; s++){
-      bafEmit->map_idx_to_Event( cnaEmit, s);
-    }
-    if (snvEmit->is_set){//CNA+BAF+SNV: map CNA evts to SNV outside of autosomes
-      for (int s=0; s<snvEmit->nSamples; s++){
-	int snvChr = snvEmit->chr[s];
-	if (bafEmit->chrs.count(snvChr) == 1){
-	  snvEmit->map_idx_to_Event( bafEmit, s);
-	}
-	else{
-	  snvEmit->map_idx_to_Event( cnaEmit, s);
-	}
-      }
-    }
-  }
-  else if (cnaEmit->is_set && snvEmit->is_set){//CNA+SNV (no BAF): map CNA events to SNV
-    for (int s=0; s<snvEmit->nSamples; s++){
-      snvEmit->map_idx_to_Event( cnaEmit, s);
-    }
-  }
-  // allocations
+  // allocations, now that all events are fixed...
   if (cnaEmit->is_set){
     cnaEmit->allocate_mean_tcn();
-    cnaEmit->allocate_av_cn();
     if (bafEmit->is_set){
       bafEmit->allocate_mean_tcn();
-      bafEmit->allocate_av_cn();
+      bafEmit->allocate_av_cn(myClone->maxtcn);
+    }
+    else{
+      cnaEmit->allocate_av_cn(myClone->maxtcn);
     }
     if (snvEmit->is_set) snvEmit->allocate_mean_tcn();
   }
@@ -699,6 +691,9 @@ void map_all_events( Clone * myClone ){
     if (opts.avcn_fn  != NULL) snvEmit->allocate_av_cn(myClone->maxtcn);
   }
 }
+
+
+
 
 //***BIAS FIELD***
 void get_bias_field( Clone * myClone, cmdl_opts& opts){
@@ -709,18 +704,21 @@ void get_bias_field( Clone * myClone, cmdl_opts& opts){
   double bias_mean=0.0,norm=0.0;
   for (int s=0; s< cnaEmit->nSamples; s++){
     int cnaChr = cnaEmit->chr[s];
-    int ncn    = normal_copy[cnaChr];
+    double ncn = (double) myClone->normal_copy[cnaChr];
+    if (ncn==0) abort();
     for (int i=0; i< cnaEmit->nSites[s]; i++){
-      bias_mean += cnaEmit->bias[s][i] / double(ncn);
+      bias_mean += cnaEmit->bias[s][i] / ncn;
     }
     norm += double(cnaEmit->nSites[s]);
   }
+  if (norm==0) abort();
+  if (bias_mean==0) abort();
   bias_mean /= norm;
   for (int s=0; s< cnaEmit->nSamples; s++){
     int cnaChr = cnaEmit->chr[s];
-    int ncn = myClone->normal_copy[cnaChr];
+    double ncn = (double) myClone->normal_copy[cnaChr];
     for (int i=0; i< cnaEmit->nSites[s]; i++){
-      cnaEmit->bias[s][i] /= bias_mean * double(ncn);
+      cnaEmit->bias[s][i] /= bias_mean * ncn;
       cnaEmit->log_bias[s][i] = log(cnaEmit->bias[s][i]);
       for (int t=1; t<myClone->cnaEmit->nTimes; t++){
 	cnaEmit->bias[s][i]     = cnaEmit->bias[s][i];
@@ -817,14 +815,13 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     print_clonal_header( cna_fp, myClone, cnaEmit, opts);
     sprintf( buff,"%s.mean_tcn.txt", opts.pre); 
     FILE * mntcn_fp =  fopen(buff,"w");
-    fprintf( mntcn_fp, "#sample site mean-total-copynumber\n");
+    fprintf( mntcn_fp, "#chr site mean-total-copynumber\n");
     sprintf( buff,"%s.available_cn.txt", opts.pre); 
     FILE * avcn_fp =  fopen(buff,"w");
-    fprintf( avcn_fp, "#sample site copynumber-availability\n");
+    fprintf( avcn_fp, "#chr site copynumber-availability\n");
     //allocate space for the posterior
     myClone->alpha_cna = new gsl_matrix * [cnaEmit->nSamples];
     myClone->gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
-    if (!bafEmit->is_set) cnaEmit->allocate_av_cn(myClone->maxtcn);
     for (int s=0; s < cnaEmit->nSamples; s++){//print each chromosome...
       myClone->alpha_cna[s] = NULL;
       myClone->gamma_cna[s] = NULL;
@@ -834,8 +831,8 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       myClone->get_mean_tcn(s);
       print_mean_tcn( mntcn_fp, myClone, cnaEmit, s, opts);
       if (!bafEmit->is_set){//get cn availability via CNA...
-	myClone->get_av_cn( cnaEmit, s);      
-	print_av_cn( avcn_fp, myClone, cnaEmit, s, opts);
+	myClone->get_avail_cn( cnaEmit, s);      
+	print_avail_cn( avcn_fp, myClone, cnaEmit, s, opts);
       }
       int cnaChr = cnaEmit->chr[s];
       int bafSample = -1;
@@ -867,15 +864,14 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       print_clonal_header( baf_fp, myClone, bafEmit, opts);
       myClone->alpha_baf = new gsl_matrix * [bafEmit->nSamples];
       myClone->gamma_baf = new gsl_matrix * [bafEmit->nSamples];  
-      bafEmit->allocate_av_cn(myClone->maxtcn);  
       for (int s=0; s < bafEmit->nSamples; s++){
 	myClone->alpha_baf[s] = NULL;
 	myClone->gamma_baf[s] = NULL;
 	myClone->get_baf_posterior(s);
 	print_posterior( baf_fp, myClone, bafEmit, s, opts);
 	//get cn availability via BAF...
-	myClone->get_av_cn( &bafEmit, s);      
-	print_av_cn( avcn_fp, myClone, bafEmit, s, opts);
+	myClone->get_avail_cn( bafEmit, s);      
+	print_avail_cn( avcn_fp, myClone, bafEmit, s, opts);
       }
       fclose(baf_fp);
     }
@@ -888,7 +884,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       print_clonal_header( snv_fp, myClone, snvEmit, opts);
       myClone->alpha_snv = new gsl_matrix * [snvEmit->nSamples];
       myClone->gamma_snv = new gsl_matrix * [snvEmit->nSamples];   
-      for (int s=0; s < snvEmit.nSamples; s++){
+      for (int s=0; s < snvEmit->nSamples; s++){
 	myClone->alpha_snv[s] = NULL;
 	myClone->gamma_snv[s] = NULL;
 	myClone->get_snv_posterior(s);
@@ -936,7 +932,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   if (snvEmit->is_set && myClone->bulk_mean != NULL){
     if (opts.bulk_updates > 0) myClone->set_bulk_to_post();
     //print bulk posterior mean/distribution//TBD
-    for (int t=0; t<nTimes; t++){
+    for (int t=0; t<myClone->nTimes; t++){
       sprintf( buff, "%s.bulk.posterior.%i.txt", opts.pre, t+1);
       FILE * bulk_fp = fopen( buff, "w");
       fprintf( bulk_fp, "#sample site mean");
@@ -1020,15 +1016,17 @@ void print_posterior( FILE * post_fp, Clone * myClone, Emission * myEmit, int s,
 
 void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts){
   int myChr = myEmit->chr[s];
-  double ncn = double(myClone->normal_copy[myChr]);
   for (int evt=0; evt < myEmit->nEvents[s]; evt++){   
     int first = myEmit->idx_of_event[s][evt];     
-    int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1] - 1 : myEmit->nSites[s]-1; 
+    int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1]-1 : myEmit->nSites[s]-1; 
     if( opts.print_all || myEmit->coarse_grained == 0 ){
       for (int idx=first; idx<=last; idx++){
       	fprintf( mntcn_fp, "%i %6i", myChr, myEmit->loci[s][idx]);
 	for (int t=0; t<myEmit->nTimes; t++){
-	  double tcn = (myEmit->mntcn==NULL) ? ncn : myEmit->mntcn[t][s][evt];
+	  double tcn 
+	    = (myEmit->mean_tcn!=NULL) 
+	    ? myEmit->mean_tcn[t][s][evt] 
+	    : myClone->tcn[myChr][t][myClone->level_of[myChr]];
 	  fprintf( mntcn_fp, " %.3f", tcn);
 	}
 	fprintf( mntcn_fp, "\n");
@@ -1037,7 +1035,10 @@ void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * myEmit, int s,
     else{
       fprintf( mntcn_fp, "%i %6i %6i %6i", myChr, myEmit->loci[s][first], last-first+1, myEmit->loci[s][last]);
       for (int t=0; t<myEmit->nTimes; t++){
-	double tcn = (myEmit->mntcn==NULL) ? ncn : myEmit->mntcn[t][s][evt];
+	double tcn 
+	  = (myEmit->mean_tcn!=NULL) 
+	  ? myEmit->mean_tcn[t][s][evt]
+	  : myClone->tcn[myChr][t][myClone->level_of[myChr]];
 	fprintf( mntcn_fp, " %.3f", tcn);
       }
       fprintf( mntcn_fp, "\n");
@@ -1054,7 +1055,7 @@ void print_avail_cn( FILE * avcn_fp, Clone * myClone, Emission * myEmit, int s, 
       for (int idx=first; idx<=last; idx++){
       	fprintf( avcn_fp, "%i %6i", myEmit->chr[s], myEmit->loci[s][idx]);
 	for (int t=0; t<myEmit->nTimes; t++){
-	  for (int cn=0; cn<=myClone->maxcn; cn++){
+	  for (int cn=0; cn<=myClone->maxtcn; cn++){
 	    fprintf( avcn_fp, " %.3f", myEmit->av_cn[t][s][evt][cn]);
 	  }
 	}
@@ -1066,7 +1067,7 @@ void print_avail_cn( FILE * avcn_fp, Clone * myClone, Emission * myEmit, int s, 
 	       myEmit->loci[s][first], last-first+1, myEmit->loci[s][last]
 	       );
       for (int t=0; t<myEmit->nTimes; t++){
-	for (int cn=0; cn<=myClone->maxcn; cn++){
+	for (int cn=0; cn<=myClone->maxtcn; cn++){
 	  fprintf( avcn_fp, " %.3f", myEmit->av_cn[t][s][evt][cn]);
 	}
       }

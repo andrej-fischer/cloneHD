@@ -29,7 +29,7 @@ double Clone::update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, 
   else{
     if (gsl_vector_isnull(post)){
       gsl_vector_memcpy( post, prior);
-      return(-1.0e10);
+      return(logzero);
     }
     else{
       gsl_vector_mul( post, prior);
@@ -61,12 +61,13 @@ void Clone::update_cna_event( gsl_vector * prior, gsl_vector * post, int sample,
   gsl_vector_set_all( post, 0.0);//log-space!
   gsl_vector_view emit;
   double x,dx,val;
+  int chr = cnaEmit->chr[sample];
   for (int t=0; t<nTimes; t++){
     emit = gsl_matrix_row( cnaEmitLog[t][sample], evt);
     dx   = (cna_xmax[t] - cna_xmin[t]) / double(cnaGrid);
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= logzero) continue;
-      x = tcn[t][sample][level] * mass->data[t];
+      x = tcn[chr][t][level] * mass->data[t];
       if ( x < cna_xmin[t] || x > cna_xmax[t]){//outside range...
 	val = logzero;
       }
@@ -117,6 +118,7 @@ void Clone::update_cna_site_wclone( gsl_vector * prior, gsl_vector * post, int s
   gsl_vector_set_all( post, 1.0);//NOT logspace!
   double b  = (cnaEmit->bias != NULL) ? cnaEmit->bias[sample][site] : -1.0;
   double lb = (cnaEmit->log_bias != NULL) ? cnaEmit->log_bias[sample][site] : 0.0;
+  int chr = cnaEmit->chr[sample];
   for (int time=0; time<nTimes; time++){
     int N = cnaEmit->depths[time][sample][site];
     int n = cnaEmit->reads[time][sample][site];
@@ -132,7 +134,7 @@ void Clone::update_cna_site_wclone( gsl_vector * prior, gsl_vector * post, int s
       }
       for (int l=0; l<nLevels; l++){
 	if (prior->data[l] <= 0.0) continue;
-	val = pre1 - pre2*tcn[time][sample][l] + double(n)*log_tcn[time][sample][l];
+	val = pre1 - pre2*tcn[chr][time][l] + double(n)*log_tcn[chr][time][l];
 	val = exp(val);
 	if (rnd > 0.0) val = val*nrnd + rnd;
 	post->data[l] *= val;
@@ -144,8 +146,8 @@ void Clone::update_cna_site_wclone( gsl_vector * prior, gsl_vector * post, int s
       double rate;
       for (int l=0; l<nLevels; l++){
 	if (prior->data[l] <= 0.0) continue;
-	rate = mass->data[time] * tcn[time][sample][l];
-	val  = pre +  double(n) * (log_mass->data[time] + log_tcn[time][sample][l]);
+	rate = mass->data[time] * tcn[chr][time][l];
+	val  = pre +  double(n) * (log_mass->data[time] + log_tcn[chr][time][l]);
 	if (b > 0.0){
 	  rate *= b;
 	  val += double(n)*lb;
@@ -170,17 +172,18 @@ void Clone::update_baf( gsl_vector * prior, gsl_vector * post, int sample, int e
 }
 
 void Clone::update_baf_event( gsl_vector * prior, gsl_vector * post, int sample, int evt){
+  if (bafEmit->mean_tcn==NULL) abort();
   gsl_vector_set_all( post, 0.0);//log-space!
-  double x,y,val,total_cn;
+  double x,y,val;
   double dx = 1.0 / double(bafGrid);
   gsl_vector_view emit;
   for (int t=0; t<nTimes; t++){
-    total_cn = (bafEmit->phi == NULL) ? 2.0 : bafEmit->phi[t][sample][evt];//only diploid chromosomes!
-    y = (1.0 - purity[t]) / total_cn;
+    double mntcn = bafEmit->mean_tcn[t][sample][evt];
+    y = (1.0 - purity[t]) / mntcn;
     emit = gsl_matrix_row( bafEmitLog[t][sample], evt);
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= logzero) continue;
-      x = y + clone_spectrum[t][level] / total_cn;
+      x = y + clone_spectrum[t][level] / mntcn;
       if ( x < 0.0 || x > 1.0){//outside range...
 	val = logzero;
       }
@@ -195,7 +198,7 @@ void Clone::update_baf_event( gsl_vector * prior, gsl_vector * post, int sample,
 
 void Clone::update_baf_site( gsl_vector * prior, gsl_vector * post, int sample, int site){
   gsl_vector_set_all( post, 1.0);//not log-space!
-  double x, y, total_cn, val;
+  double x, y, mntcn, val;
   unsigned int N, n1, n2;
   double dx = bafEmit->dx;
   int evt   = bafEmit->event_of_idx[sample][site];
@@ -207,11 +210,11 @@ void Clone::update_baf_site( gsl_vector * prior, gsl_vector * post, int sample, 
     n2 = N-n1;
     if (n2 != n1) emit2 = bafEmit->EmitLog[N][n2];
     double rnd = bafEmit->rnd_emit / double(N+1);
-    total_cn = (bafEmit->phi == NULL) ? 2.0 : bafEmit->phi[t][sample][evt];
-    y = (1.0-purity[t]) / total_cn;
+    mntcn =  bafEmit->mean_tcn[t][sample][evt];
+    y = (1.0-purity[t]) / mntcn;
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= 0.0) continue;
-      x = y + clone_spectrum[t][level] / total_cn;
+      x = y + clone_spectrum[t][level] / mntcn;
       if (x > 1.0){//outside range...
 	val = 0.0;
       }
@@ -241,8 +244,6 @@ void Clone::update_baf_site( gsl_vector * prior, gsl_vector * post, int sample, 
       if (bafEmit->rnd_emit > 0.0) val = val*(1.0-bafEmit->rnd_emit) + rnd;
       if (val!=val || val < 0.0) abort();
       post->data[level] *= val;
-      //printf("x=%e n=%i N=%i p=%e\n", x,n1,N,val);
-      //exit(0);
     }
   }
 }
@@ -266,17 +267,23 @@ void Clone::update_snv( gsl_vector * prior, gsl_vector * post, int sample, int e
 
 void Clone::update_snv_event( gsl_vector * prior, gsl_vector * post, int sample, int evt){
   gsl_vector_set_all( post, 0.0);//log-space!
-  double val,total_cn;
-  double ncn = double(normal_copy[snvEmit->chr[sample]]);
+  double val=0;
+  int chr = snvEmit->chr[sample];
   for (int t=0; t<nTimes; t++){
-    total_cn = (snvEmit->phi == NULL) ? ncn : snvEmit->phi[t][sample][evt];
-    double b = (1.0 - purity[t]) * ncn / total_cn;
+    double mntcn 
+      = (snvEmit->mean_tcn == NULL) 
+      ? tcn[chr][t][level_of[chr]] 
+      : snvEmit->mean_tcn[t][sample][evt];
+    double b = (1.0 - purity[t]) * double(normal_copy[chr]) / mntcn;
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= logzero) continue;
-      double a = clone_spectrum[t][level] / total_cn;
+      double a = clone_spectrum[t][level] / mntcn;
       if (a > 1.0){//outside range...
 	int idx  = snvEmit->idx_of_event[sample][evt];
-	int nidx = (evt < snvEmit->nEvents[sample]-1) ? snvEmit->idx_of_event[sample][evt+1] : snvEmit->nSites[sample];
+	int nidx 
+	  = (evt < snvEmit->nEvents[sample]-1) 
+	  ? snvEmit->idx_of_event[sample][evt+1] 
+	  : snvEmit->nSites[sample];
 	val = logzero * double(nidx-idx);
       }
       else if (bulk_fix == 0.0){
@@ -293,7 +300,7 @@ void Clone::update_snv_event( gsl_vector * prior, gsl_vector * post, int sample,
 
 void Clone::update_snv_site_ncorr( gsl_vector * prior, gsl_vector * post, int sample, int site){
   gsl_vector_set_all( post, 1.0);
-  int ncn = normal_copy[snvEmit->chr[sample]];
+  int chr = snvEmit->chr[sample];
   double x,val=0;
   unsigned int N,n;
   int evt = snvEmit->event_of_idx[sample][site];
@@ -308,14 +315,17 @@ void Clone::update_snv_site_ncorr( gsl_vector * prior, gsl_vector * post, int sa
     emit = snvEmit->EmitLog[N][n];
     double rnd  = snvEmit->rnd_emit / double(N+1);
     double nrnd = 1.0 - snvEmit->rnd_emit;
-    double total_cn = (snvEmit->phi == NULL) ? double(ncn) : snvEmit->phi[t][sample][evt];
+    double mntcn 
+      = (snvEmit->mean_tcn == NULL) 
+      ? tcn[chr][t][level_of[chr]] 
+      : snvEmit->mean_tcn[t][sample][evt];
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= 0.0) continue;
       if (level==0){//allele frequency of false positives
 	x = snv_fpf; 
       }
       else{
-	x = clone_spectrum[t][level] / total_cn; 
+	x = clone_spectrum[t][level] / mntcn; 
       }
       if (x > 1.0){//outside range...
 	val = 0.0;
@@ -343,7 +353,7 @@ void Clone::update_snv_site_ncorr( gsl_vector * prior, gsl_vector * post, int sa
 //Dirac-Delta bulk prior distribution (maybe fixed at zero)...
 void Clone::update_snv_site_fixed( gsl_vector * prior, gsl_vector * post, int sample, int site){
   gsl_vector_set_all( post, 1.0);
-  int ncn = normal_copy[snvEmit->chr[sample]];
+  int chr = snvEmit->chr[sample];
   double x,y,val=0;
   unsigned int N,n;
   int evt = snvEmit->event_of_idx[sample][site];
@@ -358,12 +368,15 @@ void Clone::update_snv_site_fixed( gsl_vector * prior, gsl_vector * post, int sa
     emit = snvEmit->EmitLog[N][n];
     double rnd  = snvEmit->rnd_emit / double(N+1);
     double nrnd = 1.0 - snvEmit->rnd_emit;
-    double total_cn = (snvEmit->phi == NULL) ? double(ncn) : snvEmit->phi[t][sample][evt];
+    double mntcn 
+      = (snvEmit->mean_tcn == NULL) 
+      ? tcn[chr][t][level_of[chr]] 
+      : snvEmit->mean_tcn[t][sample][evt];
     double bfix = (bulk_fix >= 0.0) ? bulk_fix : bulk_mean[t][sample][site];
-    y =  bfix * (1.0-purity[t]) * double(ncn) / total_cn;
+    y =  bfix * (1.0-purity[t]) * double(normal_copy[chr]) / mntcn;
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= 0.0) continue;
-      x = y + clone_spectrum[t][level] / total_cn; 
+      x = y + clone_spectrum[t][level] / mntcn; 
       if (x > 1.0){//outside range...
 	val = 0.0;
       }
@@ -390,7 +403,7 @@ void Clone::update_snv_site_fixed( gsl_vector * prior, gsl_vector * post, int sa
 //non-trivial case with one or more clones
 void Clone::update_snv_site_nfixed( gsl_vector * prior, gsl_vector * post, int sample, int site){
   gsl_vector_set_all(post, 1.0);
-  int ncn = normal_copy[snvEmit->chr[sample]];
+  int chr = snvEmit->chr[sample];
   double val=0;
   int evt = snvEmit->event_of_idx[sample][site];
   for (int time=0; time<nTimes; time++){//product over time points
@@ -403,18 +416,21 @@ void Clone::update_snv_site_nfixed( gsl_vector * prior, gsl_vector * post, int s
     int nPts = (nLevels <= 100 ) ? nLevels-1 : 100;
     //grid for linear interpolation//***TEST***
     gsl_vector * mem = gsl_vector_calloc(nPts+1);
-    double total_cn = (snvEmit->phi == NULL) ? double(ncn) : snvEmit->phi[time][sample][evt];
+    double mntcn 
+      = (snvEmit->mean_tcn == NULL) 
+      ? tcn[chr][time][level_of[chr]] 
+      : snvEmit->mean_tcn[time][sample][evt];
     double maxq = 0.0;
     for (int l=0; l<nLevels; l++){
-      if (clone_spectrum[time][l] / total_cn <= 1.0){
-	maxq = max( maxq, clone_spectrum[time][l] / total_cn);
+      if (clone_spectrum[time][l] / mntcn <= 1.0){
+	maxq = max( maxq, clone_spectrum[time][l] / mntcn);
       }
     }
     double dq = maxq / double(nPts);
     gsl_vector_view blk = gsl_matrix_row( bulk_dist[time][sample], site);
-    double b = (1.0-purity[time])*double(ncn) / total_cn;
+    double b = (1.0-purity[time])*double(normal_copy[chr]) / mntcn;
     for (int pt=0; pt<=nPts; pt++){
-      double a = (nPts == nLevels-1) ? clone_spectrum[time][pt] / total_cn : double(pt)*dq;
+      double a = (nPts == nLevels-1) ? clone_spectrum[time][pt] / mntcn : double(pt)*dq;
       if( N == 0 ){
 	val =  1.0;// no observation -> all states equally likely!
       }
@@ -445,7 +461,7 @@ void Clone::update_snv_site_nfixed( gsl_vector * prior, gsl_vector * post, int s
       // remaining levels...
       for (int level=0; level<nLevels; level++){
 	if (prior->data[level] <= 0.0) continue;
-	a = clone_spectrum[time][level] / total_cn;	 
+	a = clone_spectrum[time][level] / mntcn;	 
 	if (a>1.0){
 	  val = 0.0;
 	}

@@ -40,7 +40,8 @@ double Clone::get_all_total_llh(){
   baf_total_llh = 0.0;
   snv_total_llh = 0.0;
   int sample;
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
+  int nt = min( cnaEmit->nSamples, omp_get_thread_limit());
+#pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
   for ( sample=0; sample < cnaEmit->nSamples; sample++){
     double llh,ent;   
     Clone::do_cna_Fwd( sample, llh);
@@ -51,16 +52,16 @@ double Clone::get_all_total_llh(){
     if (save_cna_alpha==1){
       int cnaChr = cnaEmit->chr[sample];
       Clone::do_cna_Bwd( sample, ent);
-      Clone::get_phi(sample);
+      Clone::get_mean_tcn(sample);
       if ( bafEmit->is_set && bafEmit->chrs.count(cnaChr) == 1){
-	Clone::map_phi( cnaEmit, sample, bafEmit);	
+	Clone::map_mean_tcn( cnaEmit, sample, bafEmit);	
 	if ( snvEmit->is_set && snvEmit->chrs.count(cnaChr) == 1){
 	  int bafsample = bafEmit->idx_of[cnaEmit->chr[sample]];
-	  Clone::map_phi( bafEmit, bafsample, snvEmit);
+	  Clone::map_mean_tcn( bafEmit, bafsample, snvEmit);
 	}
       }
       else if ( snvEmit->is_set && snvEmit->chrs.count(cnaChr) == 1){
-	Clone::map_phi( cnaEmit, sample, snvEmit);
+	Clone::map_mean_tcn( cnaEmit, sample, snvEmit);
       }
       gsl_matrix_free(alpha_cna[sample]);
       alpha_cna[sample] = NULL;
@@ -69,7 +70,8 @@ double Clone::get_all_total_llh(){
   //
   // BAF
   if ( bafEmit->is_set ){
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
+    int nt = min( bafEmit->nSamples, omp_get_thread_limit());
+#pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
     for ( sample=0; sample < bafEmit->nSamples; sample++){//START PARALLEL FOR
       double llh=0,ent=0;	
       Clone::do_baf_Fwd( sample, llh);
@@ -87,7 +89,8 @@ double Clone::get_all_total_llh(){
   //
   // SNV
   if( snvEmit->is_set ){
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
+    int nt = min( snvEmit->nSamples, omp_get_thread_limit());
+#pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
     for ( sample=0; sample < snvEmit->nSamples; sample++){//START PARALLEL FOR
       double llh = 0.0;
       Clone::do_snv_Fwd(sample, llh);
@@ -124,7 +127,8 @@ double Clone::get_cna_total_llh(){
   int sample;
   save_cna_alpha = 0;
   cna_total_llh  = 0.0;
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
+  int nt = min( cnaEmit->nSamples, omp_get_thread_limit());
+#pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
   for ( sample=0; sample < cnaEmit->nSamples; sample++){
     double llh;
     Clone::do_cna_Fwd( sample, llh);
@@ -142,7 +146,8 @@ double Clone::get_baf_total_llh(){
   save_baf_alpha = 0;
   baf_total_llh = 0.0;
   int sample;
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
+  int nt = min( bafEmit->nSamples, omp_get_thread_limit());
+#pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
   for ( sample=0; sample< bafEmit->nSamples; sample++){
     double llh;
     Clone::do_baf_Fwd( sample, llh);
@@ -160,7 +165,8 @@ double Clone::get_snv_total_llh(){
   int sample;
   save_snv_alpha = 0;
   snv_total_llh  = 0.0;
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
+  int nt = min( snvEmit->nSamples, omp_get_thread_limit());
+#pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
   for ( sample=0; sample< snvEmit->nSamples; sample++){
     double llh;
     Clone::do_snv_Fwd( sample, llh);

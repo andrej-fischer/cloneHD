@@ -12,6 +12,7 @@
 #include <set>
 #include <vector>
 #include <algorithm>
+#include <omp.h>
 //#include <unordered_map>
 
 // GSL headers...
@@ -48,6 +49,8 @@ class Clone{
   int nTimes, nClones;
   int allocated, is_set;
   int total_loci;
+  std::set<int> chrs;
+  int maxChr;
   // copy number combination states and frequencies
   int ** copynumber;
   void set_copynumbers();
@@ -72,6 +75,9 @@ class Clone{
   void set_maxtcn_per_clone();
   void set_all_levels();
   std::map<int,int> level_of;
+  double *** tcn;
+  double *** log_tcn;
+  void set_tcn();
   // penalties and parameters
   double baf_pen,snv_pen;
   double snv_fpr,snv_fpf;
@@ -113,6 +119,7 @@ class Clone{
   void update_bulk(int sample);
   void get_bulk_post_dist( gsl_vector * bprior, gsl_vector * bpost, gsl_vector * emit, int time, int sample, int idx);
   // *** in clone-prior.cpp **************************************************************************
+  int learn_priors;
   gsl_matrix * baf_prior_map;
   gsl_matrix ** snv_prior_from_cna_baf_map;
   gsl_matrix *  snv_prior_from_cna_map;
@@ -123,24 +130,26 @@ class Clone{
   void get_snv_prior_from_cna_post(gsl_vector * prior, gsl_vector * post);
   void get_snv_prior_from_cna_baf_post(gsl_vector * prior, gsl_vector * cnapost, gsl_vector * bafpost);
   void apply_snv_prpc( gsl_vector * prior, gsl_matrix * snv_prpc, double pc0);
-  gsl_matrix * cn_prior_snv;
+  std::map<int,gsl_vector*> snv_prior;
   void set_cna_prior( gsl_vector * prior, int sample);
-  void set_cn_prior_snv( gsl_matrix * prior_per_clone);
-  gsl_matrix * init_cn_prior_snv;
-  void initialize_cn_prior_snv();
+  void set_snv_prior( gsl_matrix * prior_param );
+  gsl_matrix * initial_snv_prior_param;
+  void initialize_snv_prior_param();
   // mean total c.n. and available c.n.
   void get_mean_tcn(int sample);//for cna only
   void map_mean_tcn( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
-  void get_av_cn(int sample);//for cna only
-  void map_av_cn( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
+  void get_avail_cn( Emission * myEmit, int sample);//for cna/baf
+  void get_snv_prior_from_av_cn( gsl_vector * prior, int sample, int evt);
   // *** in clone-predict.cpp ************************************************************************  
-  gsl_matrix * TransMat_snv, * TransMat_cna;
+  gsl_matrix ** TransMat_cna;
+  gsl_matrix ** TransMat_snv;
   void set_TransMat_cna();
   void set_TransMat_snv();
+  void set_TransMat_cna(gsl_matrix * Trans, int chr);
+  void set_TransMat_snv(gsl_matrix * Trans, int chr);
   void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T);
-  void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T, int chr);
   void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_vector * flat);
-  void apply_maxcn_mask( gsl_vector * prior, int chr, int log_space);
+  void apply_maxtcn_mask( gsl_vector * prior, int chr, int log_space);
   // *** in clone-fwd-bwd.cpp ************************************************************************
   void do_cna_Fwd( int sample, double& llh);
   void do_cna_Bwd( int sample, double& ent);
@@ -165,9 +174,6 @@ class Clone{
   double get_snv_total_llh();
   // *** in clone-update.cpp *************************************************************************
   // precomputed variables for cna update 
-  double *** tcn;
-  double *** log_tcn;
-  void set_tcn(int sample);
   // update step CNA
   double update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, int sample, int site);
   void update_cna( gsl_vector * prior, gsl_vector * post, int sample, int site);

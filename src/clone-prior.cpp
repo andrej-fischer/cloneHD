@@ -14,7 +14,7 @@ void Clone::set_cna_prior( gsl_vector * prior, int sample){
   double pdif = 0.01;//penalty for having different copynumbers in clones
   if (cnaEmit->is_set == 0) abort();
   if (nClones==0){
-    gsl_matrix_set_all(prior,1.0);
+    gsl_vector_set_all(prior,1.0);
   }
   else{
     std::set<int> cns;
@@ -38,82 +38,67 @@ void Clone::set_cna_prior( gsl_vector * prior, int sample){
 }
 
 //used in SNV-only mode, w/o correlation and w/o cn-info...
-void Clone::initialize_cn_prior_snv(){// SNV prior, conditional on max-cn
-  if (init_cn_prior_snv != NULL) gsl_matrix_free(init_cn_prior_snv);
-  init_cn_prior_snv = gsl_matrix_calloc( maxcn+1, maxcn+1);
-  gsl_matrix_set( init_cn_prior_snv, 0, 0, snv_fpr);//default:1.0e-4
-  double p   = 0.5;// initial penalty for higher genotypes
-  for (int cn=1; cn <= maxcn; cn++){
-    if ( !maxcns.exists(cn) ) continue;
-    gsl_vector_view subrow = gsl_matrix_subrow( init_cn_prior_snv, cn, 0, cn+1);
+void Clone::initialize_snv_prior_param(){// SNV prior, conditional on max-cn
+  if (initial_snv_prior_param != NULL) gsl_matrix_free(initial_snv_prior_param);
+  initial_snv_prior_param = gsl_matrix_calloc( maxtcn+1, maxtcn+1);
+  gsl_matrix_set( initial_snv_prior_param, 0, 0, snv_fpr);
+  double p = 0.5;// initial penalty for higher genotypes
+  for (int cn=1; cn <= maxtcn; cn++){
+    if ( all_maxtcn.count(cn) == 0 ) continue;
+    gsl_vector_view subrow = gsl_matrix_subrow( initial_snv_prior_param, cn, 0, cn+1);
     gsl_vector_set( &subrow.vector, 0, p);//P0=P1>P2>... or P00=P10=P10=P11>P20...
     for (int i=1; i<=cn; i++) gsl_vector_set( &subrow.vector, i, pow( p, i));
     gsl_vector_scale( &subrow.vector, 1.0 / gsl_blas_dasum(&subrow.vector) );
   }
   //set above fixed priors
-  if (cn_prior_snv != NULL) gsl_matrix_free(cn_prior_snv);
-  cn_prior_snv = gsl_matrix_allocate(maxcn+1,nLevels);
-  Clone::set_cn_prior_snv(init_cn_prior_snv);
+  Clone::set_snv_prior(initial_snv_prior_param);
 }
 
+
 //SNV-only mode, w/o cn-info...
-void Clone::set_cn_prior_snv( gsl_matrix * snv_prior_by_maxcn){
-  if (snvEmit->is_set == 0) abort();
-  if ((int) cn_prior_snv->size2 != nLevels) abort();
-  //cn==0
-  gsl_matrix_set( cn_prior_snv, 0, 0, 1.0);
-  double val;
-  if (snvEmit->log_space){//log-transform?
-    for (int l=0; l<nLevels; l++){
-      val = gsl_matrix_get(cn_prior_snv,0,l);
-      gsl_matrix_set( cn_prior_snv, 0, l, val>0.0 ? log(val) : logzero);
-    }
-  }
-  //cn>0
-  for (int cn=1; cn<=maxcn; cn++){//if total c.n. = cn...
-    gsl_vector_view row = gsl_matrix_row(prior_per_clone,cn);
-    if ( gsl_vector_max(&row.vector) <= 0.0) continue;
-    gsl_vector * pr = gsl_vector_calloc(nLevels);
-    for (int i=0; i<nLevels; i++){
+void Clone::set_snv_prior( gsl_matrix * snv_prior_param){
+  double fpr = gsl_matrix_get( snv_prior_param, 0, 0);
+  snv_prior.clear();
+  std::map<int, vector<int> >::iterator it;
+  for (it=maxtcn_per_clone.begin(); it != maxtcn_per_clone.end(); it++){
+    int chr = it->first;
+    snv_prior[chr] = gsl_vector_calloc(nLevels);
+    for (int i=1; i<nLevels; i++){
       double p=1.0;
       for (int j=0; j<nClones; j++){
-	if (copynumber[i][j] <= cn){
-	  p *= gsl_matrix_get( prior_per_clone, cn, copynumber[i][j]);
+	int limit = maxtcn_per_clone[chr][j];
+	if (copynumber[i][j] <= limit){
+	  p *= (limit==0) ? 1.0 : gsl_matrix_get( snv_prior_param, limit, copynumber[i][j]);
 	}
 	else{
 	  p = 0.0;
 	  break;
 	}
       }
-      gsl_vector_set( pr, i, p);
+      gsl_vector_set( snv_prior[chr], i, p);
     }
-    // set all-zero-combination to SNV false positive rate...
-    if ( !snvEmit->connect ){//CHECK
-      double p0 = gsl_matrix_get( prior_per_clone, 0, 0);
-      gsl_vector_set( pr, 0, p0);
-    }
-    //normalize
-    double norm = gsl_blas_dasum(pr);
-    if (norm <= 0.0 ) abort(); 
-    gsl_vector_scale( pr, 1.0/norm);
+    double norm = gsl_blas_dasum(snv_prior[chr]);
+    if (norm<=0) abort();
+    gsl_vector_scale( snv_prior[chr], (1.0-fpr) / norm);
+    gsl_vector_set( snv_prior[chr], 0, fpr);
     if (snvEmit->log_space){//log-transform
       for (int l=0; l<nLevels; l++){
-	pr->data[l] = pr->data[l] > 0.0 ? log(pr->data[l]) : logzero;
+	double val = gsl_vector_get( snv_prior[chr], l);
+	gsl_vector_set( snv_prior[chr], l, val>0 ? log(val) : logzero);
       }
     }
-    cn_prior_snv.insert( pair<int,gsl_vector*>(cn,pr));
   }
 }
 
 //CNA + BAF (+SNV) mode...
 void Clone::set_baf_prior_map(){
   if ( baf_prior_map == NULL){
-    baf_prior_map = gsl_matrix_alloc(maxcn+1,maxcn+1);
+    baf_prior_map = gsl_matrix_alloc(maxtcn+1,maxtcn+1);
   }
   gsl_matrix_set_zero( baf_prior_map ); 
   double p = baf_pen;//penalty for complex chromosome status (default:1.0)
   double f = 0;
-  for (int cn=0; cn <= maxcn; cn++){
+  for (int cn=0; cn <= maxtcn; cn++){
     for (int bcn=0; bcn <= cn; bcn++){
       f = pow( p, int( fabs(double(bcn) - 0.5*double(cn)) ));
       gsl_matrix_set( baf_prior_map, bcn, cn, f);
@@ -121,7 +106,7 @@ void Clone::set_baf_prior_map(){
     //normalize...
     gsl_vector_view col = gsl_matrix_column( baf_prior_map,cn);
     double norm = gsl_blas_dasum(&col.vector);
-    if (norm <= 0.0 || norm != norm) abort();
+    if (norm <= 0.0) abort();
     gsl_vector_scale( &col.vector, 1.0 / norm);
   }
 }
@@ -132,14 +117,14 @@ void Clone::set_snv_prior_map(){//either via BAF or else via CNA
   if (cnaEmit->is_set == 0) abort();
   //allocate
   if ( snv_prior_from_cna_baf_map == NULL){
-    snv_prior_from_cna_baf_map = new gsl_matrix * [maxcn+1];
-    for (int cn=0; cn <= maxcn; cn++){ 
-      snv_prior_from_cna_baf_map[cn] = gsl_matrix_alloc( maxcn+1, maxcn+1);
+    snv_prior_from_cna_baf_map = new gsl_matrix * [maxtcn+1];
+    for (int cn=0; cn <= maxtcn; cn++){ 
+      snv_prior_from_cna_baf_map[cn] = gsl_matrix_alloc( maxtcn+1, maxtcn+1);
     }
   }
   //via CNA + BAF posterior...
   double p = snv_pen;//penalty for SNVs in cn higher than max BAF cn (multiple hits)
-  for (int cn=0; cn <= maxcn; cn++){
+  for (int cn=0; cn <= maxtcn; cn++){
     gsl_matrix_set_zero( snv_prior_from_cna_baf_map[cn]); 
     for (int j=0; j<=cn; j++){
       for (int i=0; i<= cn; i++){
@@ -149,24 +134,24 @@ void Clone::set_snv_prior_map(){//either via BAF or else via CNA
       //normalize...
       gsl_vector_view col = gsl_matrix_column( snv_prior_from_cna_baf_map[cn], j);
       double norm = gsl_blas_dasum(&col.vector);
-      if (norm <=0 || norm != norm) abort();
+      if (norm <=0.0) abort();
       gsl_vector_scale( &col.vector, 1.0 / norm);
     }
   } 
   //via CNA posterior only...
   if ( snv_prior_from_cna_map == NULL){//allocate
-    snv_prior_from_cna_map = gsl_matrix_alloc( maxcn+1, maxcn+1);
+    snv_prior_from_cna_map = gsl_matrix_alloc( maxtcn+1, maxtcn+1);
   }
   gsl_matrix_set_zero( snv_prior_from_cna_map);  
   p = (snvEmit->connect) ? 1.0 : snv_pen;// penalty for high genotypes 
-  for (int cn=0; cn <= maxcn; cn++){
+  for (int cn=0; cn <= maxtcn; cn++){
     for (int i=0; i <= cn; i++){
       gsl_matrix_set( snv_prior_from_cna_map, i, cn, pow(p,i));
     }
     //normalize...
     gsl_vector_view col = gsl_matrix_column( snv_prior_from_cna_map, cn);
     double norm = gsl_blas_dasum(&col.vector);
-    if (norm <=0 || norm != norm) abort();
+    if (norm <=0.0) abort();
     gsl_vector_scale( &col.vector, 1.0 / norm);
   }
 }
@@ -176,12 +161,12 @@ void Clone::set_snv_prior_map(){//either via BAF or else via CNA
 
 // CNA + BAF (+SNV) mode
 void Clone::get_baf_prior_from_cna_post(gsl_vector * prior, gsl_vector * post){
-  gsl_vector * post_per_clone  = gsl_vector_calloc( nClones*(maxcn+1) );
-  gsl_matrix * prior_per_clone = gsl_matrix_calloc( nClones, maxcn+1);
+  gsl_vector * post_per_clone  = gsl_vector_calloc( nClones*(maxtcn+1) );
+  gsl_matrix * prior_per_clone = gsl_matrix_calloc( nClones, maxtcn+1);
   gsl_blas_dgemv( CblasNoTrans, 1.0, margin_map, post, 0.0, post_per_clone);
   gsl_vector_view po_pc,pr_pc;
   for (int i=0; i<nClones; i++){
-    po_pc = gsl_vector_subvector( post_per_clone, i*(maxcn+1), maxcn+1);
+    po_pc = gsl_vector_subvector( post_per_clone, i*(maxtcn+1), maxtcn+1);
     pr_pc = gsl_matrix_row( prior_per_clone, i);
     gsl_blas_dgemv( CblasNoTrans, 1.0, baf_prior_map, &po_pc.vector, 0.0, &pr_pc.vector);
   }
@@ -193,21 +178,22 @@ void Clone::get_baf_prior_from_cna_post(gsl_vector * prior, gsl_vector * post){
   }
   if (bafEmit->log_space){//log-transform?
     for (int l=0; l<nLevels; l++){
-      prior->data[l] = prior->data[l] > 0.0 ? log(prior->data[l]) : - 1.0e10;
+      prior->data[l] = prior->data[l] > 0.0 ? log(prior->data[l]) : logzero;
     }
   }
   gsl_matrix_free(prior_per_clone);
   gsl_vector_free(post_per_clone);
 }
 
+
 // CNA + SNV mode...
 void Clone::get_snv_prior_from_cna_post(gsl_vector * prior, gsl_vector * cnapost){
-  gsl_vector * cnapostpc = gsl_vector_calloc( nClones*(maxcn+1));
-  gsl_matrix * snv_prpc  = gsl_matrix_calloc( nClones, maxcn+1);
+  gsl_vector * cnapostpc = gsl_vector_calloc( nClones*(maxtcn+1));
+  gsl_matrix * snv_prpc  = gsl_matrix_calloc( nClones, maxtcn+1);
   gsl_blas_dgemv( CblasNoTrans, 1.0, margin_map, cnapost, 0.0, cnapostpc);
   gsl_vector_view cnappc,prpc;
   for (int i=0; i<nClones; i++){
-    cnappc = gsl_vector_subvector( cnapostpc, i*(maxcn+1), maxcn+1);
+    cnappc = gsl_vector_subvector( cnapostpc, i*(maxtcn+1), maxtcn+1);
     prpc = gsl_matrix_row( snv_prpc, i);
     gsl_blas_dgemv( CblasNoTrans, 1.0, snv_prior_from_cna_map, &cnappc.vector, 0.0, &prpc.vector);
   }
@@ -221,25 +207,25 @@ void Clone::get_snv_prior_from_cna_post(gsl_vector * prior, gsl_vector * cnapost
 
 //CNA + BAF + SNV mode...
 void Clone::get_snv_prior_from_cna_baf_post(gsl_vector * prior, gsl_vector * cnapost, gsl_vector * bafpost){
-  gsl_vector * cnapostpc  = gsl_vector_calloc( nClones*(maxcn+1));
-  gsl_vector * bafpostpc  = gsl_vector_calloc( nClones*(maxcn+1));
-  gsl_matrix * snv_prpc   = gsl_matrix_calloc( nClones, maxcn+1);
+  gsl_vector * cnapostpc  = gsl_vector_calloc( nClones*(maxtcn+1));
+  gsl_vector * bafpostpc  = gsl_vector_calloc( nClones*(maxtcn+1));
+  gsl_matrix * snv_prpc   = gsl_matrix_calloc( nClones, maxtcn+1);
   gsl_blas_dgemv( CblasNoTrans, 1.0, margin_map, cnapost, 0.0, cnapostpc);
   gsl_blas_dgemv( CblasNoTrans, 1.0, margin_map, bafpost, 0.0, bafpostpc);
   gsl_vector_view prpc;
-  gsl_vector * bafppc = gsl_vector_alloc(maxcn+1);
+  gsl_vector * bafppc = gsl_vector_alloc(maxtcn+1);
   for (int i=0; i<nClones; i++){
     //bafppc = gsl_vector_subvector( bafpostpc, i*(maxcn+1), maxcn+1);    
     prpc   = gsl_matrix_row( snv_prpc, i);
-    for (int cn=0; cn<=maxcn; cn++){
+    for (int cn=0; cn<=maxtcn; cn++){
       gsl_vector_set_zero(bafppc); 
       double norm=0;
       for (int j=0; j<=cn;j++){
-	bafppc->data[j] = gsl_vector_get( bafpostpc, i*(maxcn+1)+j) + 1.0e-10;
+	bafppc->data[j] = gsl_vector_get( bafpostpc, i*(maxtcn+1)+j) + 1.0e-10;
 	norm += bafppc->data[j];
       }
       gsl_vector_scale(bafppc,1.0/norm);
-      double pcna = gsl_vector_get( cnapostpc, i*(maxcn+1) + cn);
+      double pcna = gsl_vector_get( cnapostpc, i*(maxtcn+1) + cn);
       gsl_blas_dgemv( CblasNoTrans, pcna, snv_prior_from_cna_baf_map[cn], bafppc, 1.0, &prpc.vector);
     }
   }
@@ -274,7 +260,7 @@ void Clone::apply_snv_prpc( gsl_vector * prior, gsl_matrix * snv_prpc,  double p
   //log-transform?
   if (snvEmit->log_space){
     for (int l=0; l<nLevels; l++){
-      prior->data[l] = prior->data[l] > 0.0 ? log(prior->data[l]) : - 1.0e10;
+      prior->data[l] = prior->data[l] > 0.0 ? log(prior->data[l]) : logzero;
     }
   }
 }
@@ -283,85 +269,94 @@ void Clone::apply_snv_prpc( gsl_vector * prior, gsl_matrix * snv_prpc,  double p
 
 
 //get mean total copy number...
-void Clone::get_phi(int sample){//only ever used for cnaEmit
-  if (nClones == 0){
-    double ncn = normal_copy[cnaEmit->chr[sample]];
+void Clone::get_mean_tcn(int sample){//only ever used for cnaEmit
+  int chr = cnaEmit->chr[sample];
+  if (nClones == 0){   
     for (int t=0; t<nTimes; t++){
       for (int evt=0; evt < cnaEmit->nEvents[sample]; evt++){
-	cnaEmit->phi[t][sample][evt] = double(ncn);
+	cnaEmit->mean_tcn[t][sample][evt] = tcn[chr][t][0];
       }
     }
-    for (int evt=0; evt<cnaEmit->nEvents[sample]; evt++){
-      cnaEmit->cnmax[sample][evt] = ncn;
+  }
+  else{//nClones > 0
+    if (gamma_cna[sample] == NULL) abort();
+    for (int t=0; t<nTimes; t++){
+      for (int evt=0; evt < cnaEmit->nEvents[sample]; evt++){
+	gsl_vector_view TCN  = gsl_vector_view_array( tcn[chr][t], nLevels);
+	gsl_vector_view post = gsl_matrix_row( gamma_cna[sample], evt);
+	gsl_blas_ddot( &TCN.vector, &post.vector, &(cnaEmit->mean_tcn[t][sample][evt]));
+      }
     }
   }
-  else{
-    if (gamma_cna[sample] == NULL) abort();
-    double val=0;
-    gsl_vector * post1 = gsl_vector_alloc(nLevels);
-    gsl_vector * post2 = gsl_vector_alloc(maxcn+1);
-    int ncn = normal_copy[ cnaEmit->chr[sample] ];
+}
+
+void Clone::map_mean_tcn( Emission * fromEmit, int fromSample, Emission * toEmit){
+  int fromChr = fromEmit->chr[fromSample];
+  if (toEmit->chrs.count(fromChr) == 0) abort();
+  if (toEmit->mean_tcn==NULL) abort();
+  int toSample = toEmit->idx_of[fromChr];
+  for (int evt=0; evt < toEmit->nEvents[toSample]; evt++){
+    int idx = toEmit->idx_of_event[toSample][evt];
+    int fromEvt = toEmit->Event_of_idx[toSample][idx];
+    for (int t=0; t<nTimes; t++){//mean total copynumber
+      toEmit->mean_tcn[t][toSample][evt] = fromEmit->mean_tcn[t][fromSample][fromEvt];
+    }
+  }
+}
+
+
+
+void Clone::get_avail_cn(Emission * myEmit, int sample){
+  int chr = myEmit->chr[sample];
+  if (nClones==0){
     for (int t=0; t<nTimes; t++){
-      double nrml = (1.0-purity[t]) * double(ncn);
-      for (int evt=0; evt < cnaEmit->nEvents[sample]; evt++){
-	cnaEmit->phi[t][sample][evt] = 0.0;
-	if (t==0){
-	  gsl_vector_set_zero(post2);
+      for (int evt=0; evt < myEmit->nEvents[sample]; evt++){
+	for (int cn=0; cn<=maxtcn; cn++){
+	  myEmit->av_cn[t][sample][evt][cn] = (cn <= normal_copy[chr]) ? 1.0 : 0.0;
 	}
-	for (int l=0; l<nLevels; l++){
-	  val = gsl_matrix_get( gamma_cna[sample], evt, l);
-	  post1->data[l] = val;
-	  cnaEmit->phi[t][sample][evt] += val * (nrml + clone_spectrum[t][l]);
-	  if (t==0){
-	    int mx = *std::max_element( copynumber[l], copynumber[l] + nClones);
-	    post2->data[mx] += val;
-	  }
-	}
-	if (t==0){//get the maximum copynumber across clones...
-	  cnaEmit->cnmax[sample][evt] = 0;
-	  double p=0.0;
-	  for (int cn=0; cn<=maxcn; cn++){
-	    p += post2->data[cn];
-	    if (p > 0.99){//conservative estimate of the highest copynumber (with pError < 1%)
-	      cnaEmit->cnmax[sample][evt] = cn;
+      }
+    }
+  }
+  else{//nClones > 0
+    gsl_matrix * gamma = NULL;
+    if (myEmit == cnaEmit) gamma = gamma_cna[sample];
+    if (myEmit == bafEmit) gamma = gamma_baf[sample];
+    if (gamma== NULL) abort();
+    double val=0;
+    gsl_vector * post_per_clone = gsl_vector_alloc((maxtcn+1)*nClones);
+    int * cnest = new int [nClones];//conservative estimate
+    for (int t=0; t<nTimes; t++){
+      for (int evt=0; evt < myEmit->nEvents[sample]; evt++){
+	gsl_vector_view post = gsl_matrix_row(gamma,evt);
+	gsl_blas_dgemv(CblasNoTrans, 1.0, margin_map, &post.vector, 0.0, post_per_clone);
+	for (int j=0; j<nClones; j++){
+	  val=0;
+	  for (int cn=0; cn<=maxtcn; cn++){
+	    val += gsl_vector_get( post_per_clone, j*(maxtcn+1) + cn);
+	    if (val > 0.99){
+	      cnest[j] = cn;
 	      break;
 	    }
+	  }	  
+	}
+	for (int cn=0; cn<=maxtcn; cn++){
+	  double av = 0.0;
+	  if (cn <= normal_copy[chr]) av += 1.0-purity[t];
+	  for (int j=0;j<nClones;j++){
+	    if (cn<=cnest[j]) av += gsl_matrix_get(freqs,t,j);
 	  }
+	  myEmit->av_cn[t][sample][evt][cn] = av;
 	}
       }
     }
-    gsl_vector_free(post1);
-    gsl_vector_free(post2);
-  }
-}
-
-void Clone::map_phi( Emission * fromEmit, int from_sample, Emission * toEmit){
-  int fromChr = fromEmit->chr[from_sample];
-  if ( toEmit->chrs.count(fromChr) == 0 ) abort();
-  int sample = toEmit->idx_of[fromChr];
-  if (nClones == 0){
-    double ncn = normal_copy[toEmit->chr[sample]];
-    for (int t=0; t<nTimes; t++){
-      for (int evt=0; evt<toEmit->nEvents[sample]; evt++){
-	toEmit->phi[t][sample][evt] = double(ncn);
-      }
-    }
-    for (int evt=0; evt<toEmit->nEvents[sample]; evt++){
-      toEmit->cnmax[sample][evt] = ncn;
-    }
-  }
-  else{
-    for (int evt=0; evt < toEmit->nEvents[sample]; evt++){
-      int idx = toEmit->idx_of_event[sample][evt];
-      int from_evt = toEmit->Event_of_idx[sample][idx];
-      for (int t=0; t<nTimes; t++){//mean total copynumber
-	toEmit->phi[t][sample][evt] = fromEmit->phi[t][from_sample][from_evt];
-      }
-      //max total copynumber
-      toEmit->cnmax[sample][evt] = fromEmit->cnmax[from_sample][from_evt];
-    }
+    gsl_vector_free(post_per_clone);
   }
 }
 
 
-
+void Clone::get_snv_prior_from_av_cn(gsl_vector * prior, int sample, int evt){
+  if (snvEmit->av_cn==NULL) abort();
+  for (int l=0; l<nLevels; l++){
+    //TODO
+  }
+}

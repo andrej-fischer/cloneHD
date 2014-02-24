@@ -224,15 +224,7 @@ void Emission::allocate_bias(){//only once...
 
 
 void Emission::allocate_mean_tcn(){
-  if (mean_tcn != NULL){//delete old
-    for (int t=0; t<nTimes; t++){
-      for (int s=0; s<nSamples; s++){
-	if (mean_tcn[t][s] != NULL) delete [] mean_tcn[t][s];
-      }
-      delete [] mean_tcn[t];
-    }
-    delete [] mean_tcn;
-  }
+  if (mean_tcn != NULL) abort();
   mean_tcn = new double ** [nTimes];
   for (int t=0; t<nTimes; t++){
     mean_tcn[t] = new double * [nSamples];
@@ -248,21 +240,8 @@ void Emission::allocate_mean_tcn(){
 }
 
 
-void Emission::allocate_av_cn(int maxcn){//repeatedly...
-  if (av_cn != NULL){//delete old
-    for (int t=0; t<nTimes; t++){
-      for (int s=0; s<nSamples; s++){
-	if (av_cn[t][s] != NULL){
-	  for (int evt=0; evt<nEvents[s]; evt++){
-	    delete [] av_cn[t][s][evt];
-	  }
-	  delete [] av_cn[t][s];
-	}	
-      }
-      delete [] av_cn[t];
-    }
-    delete [] av_cn;
-  }
+void Emission::allocate_av_cn(int maxtcn){//only once!
+  if (av_cn != NULL) abort();
   av_cn = new double *** [nTimes];
   for (int t=0; t<nTimes; t++){
     av_cn[t] = new double ** [nSamples];
@@ -273,7 +252,7 @@ void Emission::allocate_av_cn(int maxcn){//repeatedly...
       else{
 	av_cn[t][s] = new double * [nEvents[s]];
 	for (int evt=0; evt<nEvents[s]; evt++){
-	  av_cn[t][s][evt] = new double [maxcn+1];
+	  av_cn[t][s][evt] = new double [maxtcn+1];
 	}
       }
     }
@@ -285,9 +264,6 @@ void Emission::allocate_av_cn(int maxcn){//repeatedly...
 
 //Destructor
 Emission::~Emission(){
-  if (is_set==1){
-    Emission::clear();
-  }
   if (pjump != NULL){
     for (int s=0; s<nSamples; s++) delete [] pjump[s];
     delete [] pjump;
@@ -323,13 +299,13 @@ Emission::~Emission(){
     for (int s=0; s<nSamples; s++) delete [] log_bias[s];
     delete [] log_bias;
   }
+  if (is_set==1){
+    Emission::clear();
+  }
 }
 
 void Emission::clear(){
-  if (is_set==0){
-    cout<<"ERROR-1 in Emission::clear()";
-    exit(1);
-  }
+  if (is_set==0) abort();
   for (int t=0; t<nTimes; t++){
     for (int s=0; s<nSamples; s++){
       delete [] reads[t][s];

@@ -46,6 +46,9 @@ If not, see <http://www.gnu.org/licenses/>.
 #include "cloneHD-functions.h"
 #include "cloneHD-inference.h"
 #include "common-functions.h"
+#include "clone.h"
+#include "emission.h"
+
 
 using namespace std;
 
@@ -90,6 +93,14 @@ int main (int argc, const char * argv[]){
   myClone.bulkGrid = opts.bulkGrid;
   // *** GET MAX-TCN INFO ***
   get_maxtcn_input( opts.maxtcn_fn, opts.maxtcn, &myClone);
+  /*std::map<int, vector<int> >::iterator it;
+  for (it=myClone.maxtcn_input.begin(); it != myClone.maxtcn_input.end(); it++){
+    printf("%i ",it->first);
+    for (int j=0; j<it->second.size(); j++) printf("%i ", it->second[j]);
+    cout<<endl;
+  }
+  exit(1);
+  */
   // *** GET SNV BULK PRIOR ***
   if ( snvEmit.is_set && opts.bulk_fn != NULL ){
     printf("Using data in %s as SNV bulk prior...\n", opts.bulk_fn);
@@ -395,13 +406,13 @@ void default_opts(cmdl_opts& opts){
 void test_opts(cmdl_opts& opts){
   // *** CHECK COMMAND LINE ARGUMENTS ***
   if ( opts.cna_fn == NULL && opts.baf_fn == NULL && opts.snv_fn == NULL){
-    cout<<"One of --cna [file], --baf [file] and --snv [file] must be given.\n";
+    cout<<"ERROR: One of --cna [file], --baf [file] and --snv [file] must be given.\n";
     exit(1);
   }
   if (opts.snv_fn != NULL){
     if ( opts.snv_jumps_fn != NULL || opts.snv_jump >= 0.0){//with SNV persistence
       if ( opts.bulk_fn == NULL && opts.bulk_fix < 0.0){
-	cout<<"With --snv [file] with correlations, one of --bulk-(prior/mean) [file] or --bulk-fix [double] must be given.\n";
+	cout<<"ERROR: With --snv [file] with correlations, one of --bulk-(prior/mean) [file] or --bulk-fix [double] must be given.\n";
 	exit(1);
       }
       opts.snv_fpf = 0.0;//there are no false positives
@@ -410,20 +421,20 @@ void test_opts(cmdl_opts& opts){
       opts.bulk_fix = 0.0;
     }
     if (opts.bulk_fn != NULL && opts.bulk_fix >= 0.0){
-      cout<<"Only one of --bulk-(mean/prior) [file] and --bulk-fix [double] can be used.\n";
+      cout<<"ERROR: Only one of --bulk-(mean/prior) [file] and --bulk-fix [double] can be used.\n";
       exit(1);
     }
     if (opts.bulk_fn != NULL && opts.bulk_mean == 1 && opts.bulk_prior == 1){
-      cout<<"Only one of --bulk-mean or --bulk-prior [file] can be used.\n";
+      cout<<"ERROR: Only one of --bulk-mean or --bulk-prior [file] can be used.\n";
       exit(1);
     }
   }
   if (opts.cna_fn != NULL && (opts.mntcn_fn != NULL || opts.avcn_fn != NULL )){
-    cout<<"--mean-tcn [file] and --avail-cn [file] cannot be used with --cna [file].\n";
+    cout<<"ERROR: --mean-tcn [file] and --avail-cn [file] cannot be used with --cna [file].\n";
     exit(1);
   }
   if ( opts.cna_fn != NULL && opts.cna_jump < 0.0 && opts.cna_jumps_fn == NULL ){
-    cout<<"With --cna [file], --cna-jump [double] or --cna-jumps [file] must be given.\n";
+    cout<<"ERROR: With --cna [file], --cna-jump [double] or --cna-jumps [file] must be given.\n";
     exit(1);
   }
   if (opts.bulk_fix == 0.0 && opts.snv_rnd == 0.0){

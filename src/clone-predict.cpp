@@ -8,18 +8,32 @@
 using namespace std;
 
 
+void Clone::set_TransMat_cna(){
+  if (TransMat_cna==NULL){
+    TransMat_cna = new gsl_matrix * [cnaEmit->nSamples];
+    for (int s=0; s<cnaEmit->nSamples;s++) TransMat_cna[s] = NULL;
+  }
+  for (int s=0; s<cnaEmit->nSamples;s++){
+    if (TransMat_cna[s]!=NULL) gsl_matrix_free(TransMat_cna[s]);
+    TransMat_cna[s] = gsl_matrix_alloc(nLevels,nLevels);
+    set_TransMat_cna( TransMat_cna[s], cnaEmit->chr[s]);
+  }
+}
+
 // only one clone can change its state,
 // or clones in the same state can change in parallel
-void Clone::set_TransMat_cna(){
-  if (TransMat_cna != NULL) gsl_matrix_free(TransMat_cna);
-  TransMat_cna = gsl_matrix_calloc(nLevels,nLevels);
+void Clone::set_TransMat_cna( gsl_matrix * Trans, int chr){
   double norm;
   gsl_vector_view row;
   int jumps,cni,cnf;
   for (int i=0; i<nLevels; i++){
     for (int j=0; j<nLevels; j++){
       jumps=0;
-      for(int k=0; k < nFreq; k++){
+      for(int k=0; k < nClones; k++){
+	if (copynumber[j][k] > maxtcn_per_clone[chr][k]){
+	  jumps = 2;
+	  break;
+	}
 	if( copynumber[i][k] != copynumber[j][k]){
 	  if ( jumps==0 ){
 	    cni = copynumber[i][k];
@@ -33,44 +47,60 @@ void Clone::set_TransMat_cna(){
 	}
       }
       if (jumps <= 1){
-	gsl_matrix_set(TransMat_cna,i, j, 1.0);
+	gsl_matrix_set( Trans, i, j, 1.0);
       }
       else{
-	gsl_matrix_set(TransMat_cna,i, j, 0.0);
+	gsl_matrix_set( Trans, i, j, 0.0);
       }
     }
-    row  = gsl_matrix_row(TransMat_cna,i);
+    row  = gsl_matrix_row(Trans,i);
     norm = gsl_blas_dasum(&row.vector);
+    if (norm <= 0) abort();
     gsl_vector_scale(&row.vector,1.0/norm);
   }
 }
 
 
+void Clone::set_TransMat_snv(){
+  if (TransMat_snv==NULL){
+    TransMat_snv = new gsl_matrix * [cnaEmit->nSamples];
+    for (int s=0; s<snvEmit->nSamples;s++) TransMat_snv[s] = NULL;
+  }
+  for (int s=0; s<snvEmit->nSamples;s++){
+    if (TransMat_snv[s]!=NULL) gsl_matrix_free(TransMat_snv[s]);
+    TransMat_snv[s] = gsl_matrix_alloc(nLevels,nLevels);
+    set_TransMat_snv( TransMat_snv[s], snvEmit->chr[s]);
+  }
+}
+
 
 // only one clone can change its state,
-void Clone::set_TransMat_snv(){
-  if (TransMat_snv != NULL) gsl_matrix_free(TransMat_snv);
-  TransMat_snv = gsl_matrix_calloc(nLevels,nLevels);
+void Clone::set_TransMat_snv(gsl_matrix * Trans, int chr){
   double norm;
   gsl_vector_view row;
   int jumps;
   for (int i=0; i<nLevels; i++){
     for (int j=0; j<nLevels; j++){
       jumps=0;
-      for(int k=0; k < nFreq; k++){
+      for(int k=0; k < nClones; k++){
+	if (copynumber[j][k] > maxtcn_per_clone[chr][k]){
+	  jumps = 2;
+	  break;
+	}
 	if( copynumber[i][k] != copynumber[j][k]){
 	  jumps++;
 	}
       }
       if (jumps <= 1){
-	gsl_matrix_set(TransMat_snv,i, j, 1.0);
+	gsl_matrix_set(Trans,i, j, 1.0);
       }
       else{
-	gsl_matrix_set(TransMat_snv,i, j, 0.0);
+	gsl_matrix_set(Trans,i, j, 0.0);
       }
     }
-    row  = gsl_matrix_row(TransMat_snv,i);
+    row  = gsl_matrix_row(Trans,i);
     norm = gsl_blas_dasum(&row.vector);
+    if (norm<=0) abort();
     gsl_vector_scale(&row.vector,1.0/norm);
   }
 }
@@ -90,19 +120,6 @@ void Clone::predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, d
 	prior->data[l] = prior->data[l]>0.0 ? log(prior->data[l]) : logzero;
       }
     }
-  }
-}
-
-//predict step with transition matrix and maximum cn constraint...
-void Clone::predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_matrix * T, int chr){
-  if (pj == 0.0){
-    gsl_vector_memcpy( prior, post);//no jump possible
-  }
-  else{
-    if (myEmit->log_space) for (int l=0;l<nLevels;l++) post->data[l] = exp(post->data[l]);
-    gsl_vector_memcpy( prior, post);
-    gsl_blas_dgemv( CblasTrans, pj, T, post, 1.0-pj, prior);
-    Clone::apply_maxcn_mask( prior, chr, myEmit->log_space);
   }
 }
 
@@ -130,10 +147,10 @@ void Clone::predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, d
   }
 }
 
-void Clone::apply_maxcn_mask(gsl_vector * prior, int chr, int log_space){
+void Clone::apply_maxtcn_mask(gsl_vector * prior, int chr, int log_space){
   for (int l=0;l<nLevels;l++){
     for (int j=0; j<nClones; j++){
-      if ( copynumber[l][j] > maxcn_per_clone[chr][j] ){
+      if ( copynumber[l][j] > maxtcn_per_clone[chr][j] ){
 	prior->data[l] = 0.0;
 	break;
       }

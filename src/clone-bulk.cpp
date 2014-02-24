@@ -3,6 +3,7 @@
 //own headers...
 #include "emission.h"
 #include "log-space.h"
+#include "common-functions.h"
 #include "clone.h"
 
 using namespace std;
@@ -139,9 +140,16 @@ void Clone::get_bulk_post_dist( gsl_vector * bprior, gsl_vector * bpost, gsl_vec
   double dx = snvEmit->dx;
   double prob=0, x=0, y=0, val=0 , f1=0, f2=0, nu=0;
   int old=-1, i1=0, i2=0;
-  double ncn = (double) normal_copy[snvEmit->chr[sample]];
+  int chr = snvEmit->chr[sample];
+  double ncn = (double) normal_copy[chr];
   int evt = snvEmit->event_of_idx[sample][idx];
-  double total_cn = (snvEmit->phi==NULL) ? ncn : snvEmit->phi[time][sample][evt];
+  double total_cn = 0;
+  if (snvEmit->mean_tcn != NULL){
+    total_cn = snvEmit->mean_tcn[time][sample][evt];
+  }
+  else{
+    total_cn = tcn[chr][time][level_of[chr]];
+  }
   gsl_vector_set_zero(bpost);
   for (int i=0; i <= bulkGrid; i++){
     y = double(i)*dx * (1.0 - purity[time]) * ncn / total_cn;

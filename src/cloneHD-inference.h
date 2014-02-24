@@ -20,10 +20,8 @@
 #include "gsl/gsl_randist.h"
 #include "gsl/gsl_blas.h"
 
-//own headers
-#include "clone.h"
-#include "minimization.h"
-#include "emission.h"
+class Clone;
+class Emission;
 
 int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_opts& opts);
 

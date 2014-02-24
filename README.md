@@ -18,7 +18,7 @@ data with a matched normal. All command line arguments are explained below.
 
 To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to your GSL installation location (if non-standard). Then type 
 
-`$ make -f Makefile_cloneHD`
+`$ make`
 
 in the source directory. The two executables, `filterHD` and
 `cloneHD`, will be in `./build`.
@@ -179,9 +179,21 @@ Format of input files: the first two columns of all three input file
      filterHD run on matched-normal read depth data, to estimate the
      technical read depth modulation.
 
-*    `--maxcn [int:4]`  The maximum total copy number.
+*    `--max-tcn [file/int]`  The maximum total copy number.
 
-      This number should be chosen conservatively, since it increases the
+     If a number is given, this is used as an upper limit for the total copy number genome wide (in all chr).
+     If a file is given, it should have the format: chr max1 max2 max3 etc., e.g.
+
+        1  2
+        2  2
+        3  8  2
+        4  2
+        etc.
+
+     The first column is the chromosome, the next columns are the limits to be used for subclone 1, 2 etc.
+     For subclones not specified, the limit in the last column is used. In the example above, subclone 1 has an upper limit of 8 total copies in chr3, for all other subclones and in all other chromosomes, the upper limit is 2. If only SNV data is provided (and `--avail-cn [file]` is not given), this is used to fix the total number of copies. If `--max-tcn` is not given, cloneHD uses the normal copy number for each chr.
+
+     This number should be chosen conservatively, since it increases the
      HMM dimensionality and can open the possibility for spurious solutions. 
 
 *    `--nmax [int:2]`  The maximum number of subclones to be tried.
