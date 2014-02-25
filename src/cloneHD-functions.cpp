@@ -143,8 +143,8 @@ void get_track(const char * track_fn,
     line_ss >> jp;
     for (int i=0; i < (int) (distribution[ myEmit->idx_of[chr] ])->size2; i++){
       if (line_ss.good() != true){
-	printf("ERROR 3 in get_track()\n");
-	exit(1);
+        printf("ERROR 3 in get_track()\n");
+        exit(1);
       }
       line_ss >> p;
       gsl_matrix_set( distribution[ myEmit->idx_of[chr] ], l, i, p);
@@ -178,38 +178,38 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
       line_ss.str(line);
       line_ss >> chr;
       if ( myClone->maxtcn_input.count(chr) == 0){
-	vector<int> mx;
-	while( line_ss.good() ){
-	  line_ss >> maxtcn;
-	  mx.push_back(maxtcn);
-	  myClone->all_maxtcn.insert(maxtcn);
-	  myClone->maxtcn = max( myClone->maxtcn, maxtcn);
-	}
-	myClone->maxtcn_input.insert(std::pair<int, vector<int> >(chr,mx) );
+        vector<int> mx;
+        while( line_ss.good() ){
+         line_ss >> maxtcn;
+         mx.push_back(maxtcn);
+         myClone->all_maxtcn.insert(maxtcn);
+         myClone->maxtcn = max( myClone->maxtcn, maxtcn);
+        }  
+        myClone->maxtcn_input.insert(std::pair<int, vector<int> >(chr,mx) );
       }
       else{
-	printf("ERROR: in file %s: chr %i appears twice.\n", maxtcn_fn, chr);
-	exit(1);
-      }
+       printf("ERROR: in file %s: chr %i appears twice.\n", maxtcn_fn, chr);
+       exit(1);
+     }
     }
     ifs.close();
     //check that all chromosomes are covered
     if ( myClone->cnaEmit->is_set){
       for (int s=0; s< myClone->cnaEmit->nSamples; s++){
-	int cnaChr = myClone->cnaEmit->chr[s];
-	if ( myClone->maxtcn_input.count(cnaChr) == 0){
-	  printf("ERROR: in file %s: chr %i is missing.\n", maxtcn_fn, cnaChr);
-	  exit(1);
-	}
+       int cnaChr = myClone->cnaEmit->chr[s];
+       if ( myClone->maxtcn_input.count(cnaChr) == 0){
+         printf("ERROR: in file %s: chr %i is missing.\n", maxtcn_fn, cnaChr);
+         exit(1);
+       }
       }
     }
     else if ( myClone->snvEmit->is_set){
       for (int s=0; s< myClone->snvEmit->nSamples; s++){
-	int snvChr = myClone->snvEmit->chr[s];
-	if ( myClone->maxtcn_input.count(snvChr) == 0){
-	  printf("ERROR: in file %s: chr %i is missing.\n", maxtcn_fn, snvChr);
-	  exit(1);
-	}
+        int snvChr = myClone->snvEmit->chr[s];
+        if ( myClone->maxtcn_input.count(snvChr) == 0){
+         printf("ERROR: in file %s: chr %i is missing.\n", maxtcn_fn, snvChr);
+         exit(1);
+       }
       }
     }
   }
@@ -236,7 +236,7 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
     }
   }
   if ( myClone->maxtcn == 0) abort();
-  printf("\nA maximum total copy number of %i will be used.\n", myClone->maxtcn);
+  printf("A maximum total copy number of %i will be used.\n\n", myClone->maxtcn);
 }
 
 
@@ -269,11 +269,11 @@ void get_mean_tcn( const char * mntcn_fn, Clone * myClone, Emission * myEmit){
       int cols=0;
       while(line_ss >> x) cols++;
       if (cols == 1 + 3 + myEmit->nTimes){
-	perevt = 1;
+        perevt = 1;
       }
       else if (cols != 1 + 1 + myEmit->nTimes){
-	printf("ERROR: check format in %s.\n", mntcn_fn);
-	exit(1);
+        printf("ERROR: check format in %s.\n", mntcn_fn);
+        exit(1);
       }
       line_ss.clear();//reset
       line_ss.str(line);
@@ -288,10 +288,10 @@ void get_mean_tcn( const char * mntcn_fn, Clone * myClone, Emission * myEmit){
     }
     if (chr != old_chr){//new chromosome
       if(myEmit->chrs.count(chr) == 0){
-	wait=1;
+        wait=1;
       }
       else{
-	wait=0;
+        wait=0;
       }
       if (old_chr != -1 ){//not the first new chr
 	sample = myEmit->idx_of[old_chr];
@@ -375,7 +375,7 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
       if (cols == 1 + 3 + nEl){
 	perevt = 1;
       }
-      if (cols != 1 + 1 + nEl){
+      else if (cols != 1 + 1 + nEl){
 	printf("ERROR: check format in %s.\n", avcn_fn);
 	exit(1);
       }
@@ -460,13 +460,13 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
 
 //read in frequencies to act as lower limit in minimisations...
 void get_purity( const char * purity_fn, gsl_vector *& purity){
-  printf("Using data in %s for sample purities (lower bounds for lambdas)...\n", purity_fn);
+  printf("Using data in %s for sample purities (lower bounds for subclone frequencies)...\n", purity_fn);
   ifstream ifs;
   string line;
   stringstream line_ss;
   ifs.open( purity_fn, ios::in);
   if (ifs.fail()){
-    printf("ERROR-1 in get_purity(): file %s cannot be opened.\n", purity_fn);
+    printf("ERROR: file %s cannot be opened.\n", purity_fn);
     exit(1);
   }
   double x;
@@ -801,12 +801,12 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   if ( bafEmit->is_set ){
     sprintf( buff, "%s.baf.used_mean_tcn.txt", opts.pre);
     baf_utcn_fp = fopen( buff, "w");
-    fprintf( baf_utcn_fp, "#sample site used-mean-total-copynumber\n");
+    fprintf( baf_utcn_fp, "#chr site used-mean-total-copynumber\n");
   }
   if ( snvEmit->is_set ){
     sprintf( buff, "%s.snv.used_mean_tcn.txt", opts.pre);
     snv_utcn_fp = fopen( buff, "w");
-    fprintf( snv_utcn_fp, "#sample site used-mean-total-copynumber\n");
+    fprintf( snv_utcn_fp, "#chr site used-mean-total-copynumber\n");
   }
   // print CNA posterior distributions..
   if (cnaEmit->is_set){

@@ -35,6 +35,8 @@ Clone::Clone(){
   copynumber       = NULL;
   copynumber_post  = NULL;
   initial_snv_prior_param= NULL;
+  learn_priors = 0;
+  cn_usage = NULL;
   clone_spectrum   = NULL;
   majcn_post  = NULL;
   bulk_fix  = -1.0;
@@ -303,14 +305,9 @@ void Clone::set(const gsl_matrix * freq){
       if (cnaEmit->is_set) Clone::set_TransMat_cna();
       if (snvEmit->is_set && snvEmit->connect) Clone::set_TransMat_snv();
     }
-    for (int chr=0;chr<=maxChr; chr++){
-      if (tcn[chr] == NULL) continue;
-      for (int t=0;t<nTimes;t++){
-	if (tcn[chr][t] != NULL) delete [] tcn[chr][t];
-	if (log_tcn[chr][t] != NULL) delete [] log_tcn[chr][t];
-	tcn[chr][t] = new double [nLevels];
-	log_tcn[chr][t] = new double [nLevels];
-      }
+    Clone::allocate_tcn();
+    if (nClones>0 && snvEmit->is_set && snvEmit->av_cn != NULL && !snvEmit->connect){
+      Clone::allocate_cn_usage();
     }
   }
   if (freq != NULL){
@@ -328,6 +325,9 @@ void Clone::set(const gsl_matrix * freq){
     }
   }
   Clone::set_tcn();
+  if (nClones>0 && snvEmit->is_set && snvEmit->av_cn != NULL && !snvEmit->connect){
+    Clone::set_cn_usage();
+  }
   is_set = 1;
 }
 
@@ -381,14 +381,18 @@ void Clone::set_all_levels(){
   for ( it=maxtcn_per_clone.begin(); it != maxtcn_per_clone.end(); it++){
     int chr = it->first;
     if (nClones==0){
-      level_of.insert(pair<int,int>(chr,0));
+      level_of[chr] = 0;
     }
     else{
       int lev=0;
       for (int j=0; j<nClones;j++){
-	lev += maxtcn_per_clone[chr][j] * pow(maxtcn,nClones-1-j);
+	lev += maxtcn_per_clone[chr][j] * (j<nClones-1 ? pow(maxtcn+1,nClones-1-j) : 1);
+	//printf("%i", maxtcn_per_clone[chr][j]);
       }
-      level_of.insert(pair<int,int>(chr,lev));
+      level_of[chr] = lev;
+      //printf(" = %i = ",lev);
+      //for (int j=0; j<nClones;j++) printf("%i", copynumber[lev][j]);
+      //cout<<endl;
     }
   }
 }
@@ -445,8 +449,18 @@ void Clone::set_maxtcn_per_clone(){
   }
 }
 
+void Clone::allocate_tcn(){
+  for (int chr=0;chr<=maxChr; chr++){
+    if (tcn[chr] == NULL) continue;
+    for (int t=0;t<nTimes;t++){
+      if (tcn[chr][t] != NULL) delete [] tcn[chr][t];
+      if (log_tcn[chr][t] != NULL) delete [] log_tcn[chr][t];
+      tcn[chr][t] = new double [nLevels];
+      log_tcn[chr][t] = new double [nLevels];
+    }
+  }
+}
 
-//to be precomputed before each CNA fwd run
 void Clone::set_tcn(){
   for (int chr=0; chr<=maxChr; chr++){
     if( tcn[chr] == NULL ) continue;
@@ -460,6 +474,34 @@ void Clone::set_tcn(){
   }
 }
 
+void Clone::allocate_cn_usage(){
+  if (cn_usage == NULL){
+    cn_usage = new double ** [nTimes];
+    for (int t=0;t<nTimes;t++){
+      cn_usage[t] = new double * [maxtcn+1];
+      for (int cn=0; cn<=maxtcn; cn++) cn_usage[t][cn] = NULL;
+    }
+  }
+  for (int t=0;t<nTimes;t++){
+    for (int cn=0; cn<=maxtcn; cn++){
+      if (cn_usage[t][cn] != NULL) delete [] cn_usage[t][cn];
+      cn_usage[t][cn] = new double [nLevels];
+    }
+  }
+}
+
+void Clone::set_cn_usage(){
+  for (int t=0; t<nTimes; t++){
+    for (int cn=0;cn<=maxtcn;cn++){
+      for (int l=0;l<nLevels;l++) cn_usage[t][cn][l] = 0;
+    }
+    for (int l=0;l<nLevels;l++){
+      for (int j=0;j<nClones;j++){
+	cn_usage[t][copynumber[l][j]][l] += gsl_matrix_get(freqs,t,j);
+      }
+    }
+  }
+}
 
 
 void Clone::set_margin_map(){
@@ -511,7 +553,7 @@ void Clone::get_complexity(){
       snvN += double(snvEmit->nSites[snvEmit->idx_of[chr]]);      
     }
   }
-  complexity = double(nTimes)*( double(nClones) + 1.0);
+  complexity = (double) nTimes*( nClones + cnaEmit->is_set);
   double size=0;
   if (cnaEmit->is_set){
     complexity += cnaC / cnaN;
@@ -529,6 +571,7 @@ void Clone::get_complexity(){
       for (iter=all_maxtcn.begin(); iter!=all_maxtcn.end(); iter++){
 	complexity += *iter;
       }
+      complexity += 1.0;//for fpr
     }
   }
   complexity *= log(size); 

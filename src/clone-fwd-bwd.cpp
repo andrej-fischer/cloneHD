@@ -335,17 +335,15 @@ void Clone::do_snv_Fwd(int sample, double& llh){
   gsl_vector * post  = gsl_vector_alloc(nLevels);
   gsl_vector * mem   = gsl_vector_alloc(nLevels);
   gsl_matrix * Trans = NULL;
-  if ( nClones>0 && snvEmit->connect){
+  if ( nClones>0 && snvEmit->connect ){
     Trans = gsl_matrix_alloc( nLevels, nLevels);
     gsl_matrix_memcpy(Trans,TransMat_snv[sample]);
   }
   if ( nClones > 0 && !cnaEmit->is_set && !snvEmit->connect && snvEmit->av_cn==NULL){
     gsl_vector_memcpy( Prior, snv_prior[snvChr]);
   }
-  else if (snvEmit->connect){
-    gsl_vector_set_all(prior,1.0/double(nLevels));
-    if (nClones>0) Clone::apply_maxtcn_mask( prior, snvChr, snvEmit->log_space);
-  }
+  gsl_vector_set_all(prior,1.0/double(nLevels));
+  if (nClones>0) Clone::apply_maxtcn_mask( prior, snvChr, snvEmit->log_space);
   gsl_vector_view cna_post, baf_post;
   double norm = 0.0, pj=0.0;
   int cna_evt=-1, last_cna_evt=-1;
@@ -461,10 +459,8 @@ void Clone::do_snv_Bwd( int sample, double& ent){
   if ( nClones > 0 && !cnaEmit->is_set && !snvEmit->connect && snvEmit->av_cn==NULL){
     gsl_vector_memcpy( Prior, snv_prior[snvChr]);
   }
-  else if (snvEmit->connect){
-    gsl_vector_set_all(prior,1.0/double(nLevels));
-    if (nClones>0) Clone::apply_maxtcn_mask( prior, snvChr, snvEmit->log_space);
-  }
+  gsl_vector_set_all(prior,1.0/double(nLevels));
+  if (nClones>0) Clone::apply_maxtcn_mask( prior, snvChr, snvEmit->log_space);
   ent = 0.0;
   gsl_vector_view alph;
   gsl_vector_view cna_post,baf_post;

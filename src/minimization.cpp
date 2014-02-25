@@ -122,7 +122,7 @@ double find_optimum_wrestarts( int nSimplex,
       other_best = gsl_vector_alloc(other->size);
       gsl_vector_memcpy(other_best,other);
     }
-    printf("%-3i: %.8e\n", 0, fbest);
+    //printf("%-3i: %.8e\n", 0, fbest);
     cout<<flush;
     int ct=1;
     while (restarts>0){
@@ -140,7 +140,7 @@ double find_optimum_wrestarts( int nSimplex,
 	if (other!=NULL) gsl_vector_memcpy(other_best,other);
 	fbest = ftest;
 	eps *= 0.95;
-	printf("%-3i: %.8e\n", ct, fbest);
+	//printf("%-3i: %.8e\n", ct, fbest);
       }
       restarts--;
       ct++;

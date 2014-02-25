@@ -77,6 +77,7 @@ class Clone{
   std::map<int,int> level_of;
   double *** tcn;
   double *** log_tcn;
+  void allocate_tcn();
   void set_tcn();
   // penalties and parameters
   double baf_pen,snv_pen;
@@ -140,6 +141,9 @@ class Clone{
   void map_mean_tcn( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
   void get_avail_cn( Emission * myEmit, int sample);//for cna/baf
   void get_snv_prior_from_av_cn( gsl_vector * prior, int sample, int evt);
+  double *** cn_usage;
+  void allocate_cn_usage();
+  void set_cn_usage();
   // *** in clone-predict.cpp ************************************************************************  
   gsl_matrix ** TransMat_cna;
   gsl_matrix ** TransMat_snv;

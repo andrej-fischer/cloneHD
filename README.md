@@ -179,19 +179,10 @@ Format of input files: the first two columns of all three input file
      filterHD run on matched-normal read depth data, to estimate the
      technical read depth modulation.
 
-*    `--max-tcn [file/int]`  The maximum total copy number.
+*    `--max-tcn [int]`  The maximum total copy number.
 
-     If a number is given, this is used as an upper limit for the total copy number genome wide (in all chr).
-     If a file is given, it should have the format: chr max1 max2 max3 etc., e.g.
-
-        1  2
-        2  2
-        3  8  2
-        4  2
-        etc.
-
-     The first column is the chromosome, the next columns are the limits to be used for subclone 1, 2 etc.
-     For subclones not specified, the limit in the last column is used. In the example above, subclone 1 has an upper limit of 8 total copies in chr3, for all other subclones and in all other chromosomes, the upper limit is 2. If only SNV data is provided (and `--avail-cn [file]` is not given), this is used to fix the total number of copies. If `--max-tcn` is not given, cloneHD uses the normal copy number for each chr.
+     This is used as an upper limit for the total copy number genome wide (in all chr).
+     If not specified, the normal copy number is used as limit for each chromosome.
 
      This number should be chosen conservatively, since it increases the
      HMM dimensionality and can open the possibility for spurious solutions. 
@@ -309,6 +300,19 @@ available. Useful in combination with `--clones`.
 *    `--print-all [0/1:0]`  If 1, the posterior for every observation
      is printed to files ending `*[cna/baf/snv].posterior.txt`. 
      If 0, only one line for each segment is printed.
+
+*    `--max-tcn [file]`  The maximum total copy number per chr and subclone.
+
+    This file should have the format: chr max1 max2 max3 etc., e.g.
+
+        1  2
+        2  2
+        3  8  2
+        4  2
+        etc.
+
+     The first column is the chromosome, the next columns are the limits to be used for subclone 1, 2 etc.
+     For subclones not specified, the limit in the last column is used. In the example above, subclone 1 has an upper limit of 8 total copies in chr3, for all other subclones and in all other chromosomes, the upper limit is 2. If only SNV data is provided (and `--avail-cn [file]` is not given), this is used to fix the total number of copies. If `--max-tcn` is not given, cloneHD uses the normal copy number for each chr.
 
 *    `--learn-priors [0/1:0]` For snv-mode only: if 1, then the parameters
      for the multiplicative genotype priors are learned.

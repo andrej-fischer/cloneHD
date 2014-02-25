@@ -274,7 +274,7 @@ void Clone::get_mean_tcn(int sample){//only ever used for cnaEmit
   if (nClones == 0){   
     for (int t=0; t<nTimes; t++){
       for (int evt=0; evt < cnaEmit->nEvents[sample]; evt++){
-	cnaEmit->mean_tcn[t][sample][evt] = tcn[chr][t][0];
+       cnaEmit->mean_tcn[t][sample][evt] = tcn[chr][t][0];
       }
     }
   }
@@ -282,9 +282,9 @@ void Clone::get_mean_tcn(int sample){//only ever used for cnaEmit
     if (gamma_cna[sample] == NULL) abort();
     for (int t=0; t<nTimes; t++){
       for (int evt=0; evt < cnaEmit->nEvents[sample]; evt++){
-	gsl_vector_view TCN  = gsl_vector_view_array( tcn[chr][t], nLevels);
-	gsl_vector_view post = gsl_matrix_row( gamma_cna[sample], evt);
-	gsl_blas_ddot( &TCN.vector, &post.vector, &(cnaEmit->mean_tcn[t][sample][evt]));
+       gsl_vector_view TCN  = gsl_vector_view_array( tcn[chr][t], nLevels);
+       gsl_vector_view post = gsl_matrix_row( gamma_cna[sample], evt);
+       gsl_blas_ddot( &TCN.vector, &post.vector, &(cnaEmit->mean_tcn[t][sample][evt]));
       }
     }
   }
@@ -311,9 +311,14 @@ void Clone::get_avail_cn(Emission * myEmit, int sample){
   if (nClones==0){
     for (int t=0; t<nTimes; t++){
       for (int evt=0; evt < myEmit->nEvents[sample]; evt++){
-	for (int cn=0; cn<=maxtcn; cn++){
-	  myEmit->av_cn[t][sample][evt][cn] = (cn <= normal_copy[chr]) ? 1.0 : 0.0;
-	}
+       for (int cn=0; cn<=maxtcn; cn++){
+         if (myEmit==cnaEmit){
+           myEmit->av_cn[t][sample][evt][cn] = (cn <= normal_copy[chr]) ? 1.0 : 0.0;
+         }
+         else if (myEmit==bafEmit){
+           myEmit->av_cn[t][sample][evt][cn] = (cn <= 1) ? 1.0 : 0.0;
+         }
+       }
       }
     }
   }
@@ -327,26 +332,27 @@ void Clone::get_avail_cn(Emission * myEmit, int sample){
     int * cnest = new int [nClones];//conservative estimate
     for (int t=0; t<nTimes; t++){
       for (int evt=0; evt < myEmit->nEvents[sample]; evt++){
-	gsl_vector_view post = gsl_matrix_row(gamma,evt);
-	gsl_blas_dgemv(CblasNoTrans, 1.0, margin_map, &post.vector, 0.0, post_per_clone);
-	for (int j=0; j<nClones; j++){
-	  val=0;
-	  for (int cn=0; cn<=maxtcn; cn++){
-	    val += gsl_vector_get( post_per_clone, j*(maxtcn+1) + cn);
-	    if (val > 0.99){
-	      cnest[j] = cn;
-	      break;
-	    }
-	  }	  
-	}
-	for (int cn=0; cn<=maxtcn; cn++){
-	  double av = 0.0;
-	  if (cn <= normal_copy[chr]) av += 1.0-purity[t];
-	  for (int j=0;j<nClones;j++){
-	    if (cn<=cnest[j]) av += gsl_matrix_get(freqs,t,j);
-	  }
-	  myEmit->av_cn[t][sample][evt][cn] = av;
-	}
+        gsl_vector_view post = gsl_matrix_row(gamma,evt);
+        gsl_blas_dgemv(CblasNoTrans, 1.0, margin_map, &post.vector, 0.0, post_per_clone);
+        for (int j=0; j<nClones; j++){
+          val=0;
+          for (int cn=0; cn<=maxtcn; cn++){
+            val += gsl_vector_get( post_per_clone, j*(maxtcn+1) + cn);
+            if (val > 0.99){
+              cnest[j] = cn;
+              break;
+            }
+          }
+        }
+        for (int cn=0; cn<=maxtcn; cn++){
+          double av = 0.0;
+          if (myEmit == cnaEmit && cn <= normal_copy[chr]) av += 1.0-purity[t];
+          if (myEmit == bafEmit && cn <= 1) av += 1.0-purity[t];
+          for (int j=0;j<nClones;j++){
+            if (cn<=cnest[j]) av += gsl_matrix_get(freqs,t,j);
+          }
+          myEmit->av_cn[t][sample][evt][cn] = av;
+        }
       }
     }
     gsl_vector_free(post_per_clone);
@@ -356,7 +362,23 @@ void Clone::get_avail_cn(Emission * myEmit, int sample){
 
 void Clone::get_snv_prior_from_av_cn(gsl_vector * prior, int sample, int evt){
   if (snvEmit->av_cn==NULL) abort();
-  for (int l=0; l<nLevels; l++){
-    //TODO
+  int found=0;
+  prior->data[0] = 0;
+  for (int l=1; l<nLevels; l++){
+    found=0;
+    for (int t=0;t<nTimes;t++){
+      for (int cn=0;cn<=maxtcn;cn++){
+       if (cn_usage[t][cn][l] > snvEmit->av_cn[t][sample][evt][cn]){
+         found=1;
+         break;
+       }
+      }
+      if (found) break;
+    }
+    prior->data[l] = found ? 0.01 : 1.0;
   }
+  double norm = gsl_blas_dasum(prior);
+  if (norm<=0) abort();
+  gsl_vector_scale(prior, (1.0-snv_fpr)/norm);
+  prior->data[0] = snv_fpr;
 }

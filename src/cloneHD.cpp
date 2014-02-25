@@ -91,16 +91,9 @@ int main (int argc, const char * argv[]){
   myClone.bafGrid  = opts.bafGrid;
   myClone.snvGrid  = opts.snvGrid;
   myClone.bulkGrid = opts.bulkGrid;
+  myClone.learn_priors = (cnaEmit.is_set || snvEmit.connect || opts.avcn_fn != NULL) ? 0 : opts.learn_priors;
   // *** GET MAX-TCN INFO ***
   get_maxtcn_input( opts.maxtcn_fn, opts.maxtcn, &myClone);
-  /*std::map<int, vector<int> >::iterator it;
-  for (it=myClone.maxtcn_input.begin(); it != myClone.maxtcn_input.end(); it++){
-    printf("%i ",it->first);
-    for (int j=0; j<it->second.size(); j++) printf("%i ", it->second[j]);
-    cout<<endl;
-  }
-  exit(1);
-  */
   // *** GET SNV BULK PRIOR ***
   if ( snvEmit.is_set && opts.bulk_fn != NULL ){
     printf("Using data in %s as SNV bulk prior...\n", opts.bulk_fn);
@@ -391,7 +384,7 @@ void default_opts(cmdl_opts& opts){
   opts.trials   = 1;
   opts.nmax     = 3;
   opts.seed     = 123456 * (int(time(NULL)) % 10) + (int(time(NULL)) % 1000);
-  opts.maxtcn    = 4;
+  opts.maxtcn    = -1;
   opts.min_occ  = 0.01;
   opts.min_jump = 0.01;
   opts.print_all = 0;
@@ -399,7 +392,7 @@ void default_opts(cmdl_opts& opts){
   opts.bulk_prior   = 0;
   opts.bulk_updates = 0;
   opts.restarts = 10;
-  opts.learn_priors = 1;
+  opts.learn_priors = 0;
   opts.mass_gauging = 1;
 }
 

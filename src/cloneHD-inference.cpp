@@ -112,28 +112,28 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
       //with CNA data, the mass must be found even for n=0...
       best_mass[0] = gsl_vector_alloc(nT);
       if ( Mass == NULL ){//need to get masses...
-	cna_llh = cna_only_mass_noclones(  best_mass[0], myClone, 0, steps);
-	myClone->set_mass(best_mass[0]);	
+       cna_llh = cna_only_mass_noclones(  best_mass[0], myClone, 0, steps);
+       myClone->set_mass(best_mass[0]);	
       }
       else if ( Mass != NULL ){//masses are fixed...
-	gsl_vector_memcpy( best_mass[0],  Mass);
-	myClone->set_mass( best_mass[0]);
-	cna_llh = myClone->get_cna_total_llh();
+       gsl_vector_memcpy( best_mass[0],  Mass);
+       myClone->set_mass( best_mass[0]);
+       cna_llh = myClone->get_cna_total_llh();
       }   
       //set trivial (normal) mean total copynumber...  
       for (int cnaSample=0; cnaSample<cnaEmit->nSamples; cnaSample++){
-	myClone->get_mean_tcn(cnaSample);
-	int cnaChr = cnaEmit->chr[cnaSample];
-	if (bafEmit->is_set && bafEmit->chrs.count(cnaChr) == 1){
-	  myClone->map_mean_tcn( cnaEmit, cnaSample, bafEmit);
-	  if (snvEmit->is_set && snvEmit->chrs.count(cnaChr) == 1){
-	    int bafSample = bafEmit->idx_of[cnaChr];
-	    myClone->map_mean_tcn( bafEmit, bafSample, snvEmit);
-	  }
-	}
-	else if (snvEmit->is_set && snvEmit->chrs.count(cnaChr) == 1){
-	  myClone->map_mean_tcn( cnaEmit, cnaSample, snvEmit);
-	}
+       myClone->get_mean_tcn(cnaSample);
+       int cnaChr = cnaEmit->chr[cnaSample];
+       if (bafEmit->is_set && bafEmit->chrs.count(cnaChr) == 1){
+         myClone->map_mean_tcn( cnaEmit, cnaSample, bafEmit);
+         if (snvEmit->is_set && snvEmit->chrs.count(cnaChr) == 1){
+           int bafSample = bafEmit->idx_of[cnaChr];
+           myClone->map_mean_tcn( bafEmit, bafSample, snvEmit);
+         }
+       }
+       else if (snvEmit->is_set && snvEmit->chrs.count(cnaChr) == 1){
+         myClone->map_mean_tcn( cnaEmit, cnaSample, snvEmit);
+       }
       }
     }
     if (bafEmit->is_set){//*** BAF - NO CLONE ***
@@ -141,12 +141,12 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     }
     if (snvEmit->is_set){//*** SNV - NO CLONE ***
       if (myClone->bulk_mean != NULL){
-	snv_bulk_update(myClone);
-	myClone->set_bulk_to_post();
+       snv_bulk_update(myClone);
+       myClone->set_bulk_to_post();
       }
       snv_llh = myClone->get_snv_total_llh();
       if (myClone->bulk_mean != NULL)
-	myClone->set_bulk_to_prior();
+      myClone->set_bulk_to_prior();
     }
     llh = cna_llh + baf_llh + snv_llh;//n==0 total LLH
     max_bic = 2.0*llh;//n==0 BIC...
@@ -186,15 +186,26 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
       llh = cl + bl + sl;
       //test llh value...
       if (trial==0 || llh > max_llh){
-	max_llh = llh;
-	cna_llh = cl;
-	baf_llh = bl;
-	snv_llh = sl;
-	btrial  = trial;//trial with the best solution
-	// keep results...	
-	gsl_matrix_memcpy( best_clones[n], clones);
-	if (mass != NULL)   gsl_vector_memcpy( best_mass[n],   mass);
-	if (priors != NULL) gsl_matrix_memcpy( best_priors[n], priors);
+        max_llh = llh;
+        cna_llh = cl;
+        baf_llh = bl;
+        snv_llh = sl;
+	      btrial  = trial;//trial with the best solution
+	      // keep results, sorted by sizw in t==1...	
+        std::vector<int> idx;
+        for (int i = 0; i < n; ++i) idx.push_back(i);
+        SortDesc sd;
+        gsl_vector_view row = gsl_matrix_row(clones,0);
+        sd.arg = (&row.vector)->data;
+        std::sort( idx.begin(), idx.end(), sd);
+        for (int i = 0; i < nT; ++i){
+          for (int j = 0; j < n; ++j){
+            gsl_matrix_set(best_clones[n],i,j,gsl_matrix_get(clones,i,idx[j]));
+          }
+        }
+        // gsl_matrix_memcpy( best_clones[n], clones);
+        if (mass != NULL)   gsl_vector_memcpy( best_mass[n],   mass);
+        if (priors != NULL) gsl_matrix_memcpy( best_priors[n], priors);
       }
       cout<<endl;
       if (Clones != NULL && Mass != NULL) break;
@@ -204,8 +215,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     printf("complexity = %f\n", myClone->complexity);
     bic = 2.0*max_llh - myClone->complexity;
     printf("%i clone best total llh (trial %i) = %+.6e, bic = %+.6e\n\n", n, btrial+1, max_llh, bic);
-    fprintf(clonal_fp, "%i %.10e %.10e %.10e %.10e %.10e\n", 
-	    n, cna_llh, baf_llh, snv_llh, max_llh, bic);
+    fprintf(clonal_fp, "%i %.10e %.10e %.10e %.10e %.10e\n", n, cna_llh, baf_llh, snv_llh, max_llh, bic);
     // test BIC value...
     if (bic > max_bic || (opts.force > 0 && opts.force == n) ){
       bestn   = n;
@@ -565,9 +575,19 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
   double llh=0;
   gsl_vector * mem = gsl_vector_alloc(nC);
   //STEP 1: learn clones with fixed priors...
-  if (myClone->learn_priors){
+  if (snvEmit->av_cn == NULL){
     myClone->initialize_snv_prior_param();
-    gsl_matrix_memcpy( priors, myClone->initial_snv_prior_param);
+    printf("Using these SNV copynumber prior parameters\n");
+    for (int i=0; i<=myClone->maxtcn; i++){
+      for (int j=0; j<=myClone->maxtcn; j++){
+	printf("%.3f ", gsl_matrix_get( myClone->initial_snv_prior_param, i, j));
+      }
+      cout<<endl;
+    }
+    if (myClone->learn_priors){
+      if (priors==NULL) abort();
+      gsl_matrix_memcpy( priors, myClone->initial_snv_prior_param);
+    }
   }
   if ( Clones == NULL ){
     for (int t=0; t<nT; t++){
@@ -889,14 +909,14 @@ void get_candidate_masses( gsl_matrix * clones,
     for (int j=0; j<i; j++){
       double maxdiff=0.0,md=0,m1,m2;
       for (int t=0; t<nT; t++){
-	m1 = gsl_matrix_get(myClone->mass_candidates, i, t);
-	m2 = gsl_matrix_get(myClone->mass_candidates, j, t);
-	md = fabs( m1 - m2) / m1;
-	maxdiff = max(md,maxdiff);
+        m1 = gsl_matrix_get(myClone->mass_candidates, i, t);
+        m2 = gsl_matrix_get(myClone->mass_candidates, j, t);
+        md = fabs( m1 - m2) / m1;
+        maxdiff = max(md,maxdiff);
       }
       if ( maxdiff < 0.01){//less than 1% relative difference
-	found=1;
-	break;
+        found=1;
+        break;
       };
     }
     if (found==1) continue;
@@ -1182,8 +1202,9 @@ void snv_bulk_update(Clone * myClone){
       myClone->map_mean_tcn( cnaEmit, cna_sample, snvEmit);
     }
     myClone->update_bulk(s);
-    if (myClone->gamma_cna[cna_sample] != NULL)
+    if (myClone->gamma_cna != NULL && myClone->gamma_cna[cna_sample] != NULL){
       gsl_matrix_free(myClone->gamma_cna[cna_sample]);
+    }
   }  
   myClone->set_bulk_to_post();
   //clean up...
