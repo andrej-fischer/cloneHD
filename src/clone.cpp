@@ -540,6 +540,7 @@ void Clone::get_complexity(){
     for (int j=0; j<nClones; j++){
       val *= (double) maxtcn_per_clone[chr][j] + 1;
     }
+    val -= 1.0;
     if (cnaEmit->is_set && cnaEmit->chrs.count(chr)==1){
       cnaC += val*double(cnaEmit->nSites[cnaEmit->idx_of[chr]]);
       cnaN += double(cnaEmit->nSites[cnaEmit->idx_of[chr]]);      
@@ -559,11 +560,11 @@ void Clone::get_complexity(){
     complexity += cnaC / cnaN;
     size += cnaN;
   }
-  if (bafEmit->is_set){
+  /*if (bafEmit->is_set){
     complexity += bafC / bafN;
     size += bafN;
-  }
-  if (snvEmit->is_set){
+    }*/
+  else if (snvEmit->is_set){
     complexity += snvC / snvN;
     size += snvN;
     if (learn_priors){
