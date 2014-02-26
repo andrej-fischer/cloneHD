@@ -40,7 +40,7 @@ double Clone::get_all_total_llh(){
   baf_total_llh = 0.0;
   snv_total_llh = 0.0;
   int sample;
-  int nt = min( cnaEmit->nSamples, omp_get_thread_limit());
+  int nt = min( cnaEmit->nSamples, omp_get_max_threads());
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
   for ( sample=0; sample < cnaEmit->nSamples; sample++){
     double llh,ent;   
@@ -70,7 +70,7 @@ double Clone::get_all_total_llh(){
   //
   // BAF
   if ( bafEmit->is_set ){
-    int nt = min( bafEmit->nSamples, omp_get_thread_limit());
+    int nt = min( bafEmit->nSamples, omp_get_max_threads());
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
     for ( sample=0; sample < bafEmit->nSamples; sample++){//START PARALLEL FOR
       double llh=0,ent=0;	
@@ -89,7 +89,7 @@ double Clone::get_all_total_llh(){
   //
   // SNV
   if( snvEmit->is_set ){
-    int nt = min( snvEmit->nSamples, omp_get_thread_limit());
+    int nt = min( snvEmit->nSamples,  omp_get_max_threads());
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
     for ( sample=0; sample < snvEmit->nSamples; sample++){//START PARALLEL FOR
       double llh = 0.0;
@@ -127,7 +127,7 @@ double Clone::get_cna_total_llh(){
   int sample;
   save_cna_alpha = 0;
   cna_total_llh  = 0.0;
-  int nt = min( cnaEmit->nSamples, omp_get_thread_limit());
+  int nt = min( cnaEmit->nSamples,  omp_get_max_threads());
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
   for ( sample=0; sample < cnaEmit->nSamples; sample++){
     double llh;
@@ -146,7 +146,7 @@ double Clone::get_baf_total_llh(){
   save_baf_alpha = 0;
   baf_total_llh = 0.0;
   int sample;
-  int nt = min( bafEmit->nSamples, omp_get_thread_limit());
+  int nt = min( bafEmit->nSamples,  omp_get_max_threads());
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
   for ( sample=0; sample< bafEmit->nSamples; sample++){
     double llh;
@@ -165,7 +165,7 @@ double Clone::get_snv_total_llh(){
   int sample;
   save_snv_alpha = 0;
   snv_total_llh  = 0.0;
-  int nt = min( snvEmit->nSamples, omp_get_thread_limit());
+  int nt = min( snvEmit->nSamples,  omp_get_max_threads());
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
   for ( sample=0; sample< snvEmit->nSamples; sample++){
     double llh;
