@@ -124,9 +124,9 @@ void Clone::set_snv_prior_map(){//either via BAF or else via CNA
       }
     }
     double p = snv_pen;//penalty for SNVs in cn higher than max BAF cn (multiple hits)
-    for (int cn=0; cn <= maxtcn; cn++){
+    for (int cn=0; cn <= maxtcn; cn++){//cn=total cn
       gsl_matrix_set_zero( snv_prior_from_cna_baf_map[cn]); 
-      for (int j=0; j<=cn; j++){
+      for (int j=0; j<=cn; j++){//j=minor cn
 	for (int i=0; i<= cn; i++){
 	  double pen = pow( p, max( 0, i - max(j,cn-j)) );
 	  gsl_matrix_set( snv_prior_from_cna_baf_map[cn], i, j, pen);

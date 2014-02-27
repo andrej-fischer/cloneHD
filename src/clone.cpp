@@ -74,6 +74,9 @@ Clone::Clone(){
   snvGrid  = 100;
   bulkGrid = 100;
   logzero = -1.0e6;
+  map1=NULL;
+  map2=NULL;
+  symmetrize_baf=0;
 }
 
 

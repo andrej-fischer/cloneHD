@@ -1,5 +1,10 @@
 # changelog for cloneHD/filterHD
 
+## v1.17.1 / to come
+
+*  BAF posterior symmetrized for output
+*  CNA transition matrix penalizes clones with zero copies of a segment
+	
 ## v1.17.0 / 25.02.2014 major release
 
 ### changed the way SNV priors are computed:

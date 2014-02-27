@@ -785,6 +785,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   Emission * bafEmit = myClone->bafEmit;
   Emission * snvEmit = myClone->snvEmit;
   bafEmit->connect = 0;
+  myClone->symmetrize_baf=1;
   // margin-map to get the posterior per clone...
   char buff[1024]; 
   sprintf( buff, "%s.clonal.margin_map.txt", opts.pre);

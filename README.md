@@ -185,7 +185,7 @@ Format of input files: the first two columns of all three input file
      If not specified, the normal copy number is used as limit for each chromosome.
 
      This number should be chosen conservatively, since it increases the
-     HMM dimensionality and can open the possibility for spurious solutions. 
+     HMM dimensionality and can open up the possibility for spurious solutions. 
 
 *    `--nmax [int:2]`  The maximum number of subclones to be tried.
 
@@ -200,7 +200,7 @@ Format of input files: the first two columns of all three input file
      the total log-likelihood. The best result out of `trials` independent,
      randomly seeded,  runs will be used.
 
-*    `--mean-tcn [file]`  Use mean total copy number constraint SNV data. 
+*    `--mean-tcn [file]`  Use a fixed mean total copy number for SNV data. 
 
      For a SNV data analysis, the cloneHD output file
      ending `*mean_tcn.txt` from a CNA(+BAF) run can be supplied here. Since
@@ -212,8 +212,11 @@ Format of input files: the first two columns of all three input file
      For a SNV data analysis, the cloneHD output file
      ending `*avail_cn.txt` from a CNA(+BAF) run can be supplied here. Since
      the subclonal decomposition can be different for SNVs, this option
-     ensures that the SNV genotype is consistent with the fraction of cells in which this number of copies is available.
-     Can only be used together with `--mean-tcn [file]`. In combination, this is a much stronger constraint.
+     ensures that the SNV genotype is consistent with the fraction of
+     cells in which this number of copies is available.
+     Can only be used together with `--mean-tcn [file]`. In
+     combination, this is a much stronger constraint than using
+     `mean-tcn` alone.
 
 ### Fuzzy segmentation options
 
@@ -244,15 +247,6 @@ with filterHD for data with persistence.
 *    `--cna-rnd [double:0.0]`
 *    `--baf-rnd [double:0.0]`
 *    `--snv-rnd [double:0.0]`
-
-A constant jump probability per base pair. If -1, then observations are
-uncorrellated along the genome. Can be learned with filterHD. No fuzzy
-data segmentation is performed. Very high-definition information
-available. Useful in combination with `--clones`.
-
-*    `--cna-jump [double:-1.0]`
-*    `--baf-jump [double:-1.0]`
-*    `--snv-jump [double:-1.0]`
 
 ## Advanced options
 
@@ -332,7 +326,18 @@ available. Useful in combination with `--clones`.
 *    `--snv-pen [double:0.01]`  The penalty for higher than expected
      genotypes.
 
-*    `--baf-pen [double:1.0]`  The penalty for complex minor allele status.
+*    `--baf-pen [double:1.0]`  The penalty for complex minor allele
+     status.
+
+*    `--cna-jump [double:-1.0]`
+*    `--baf-jump [double:-1.0]`
+*    `--snv-jump [double:-1.0]`
+
+A constant jump probability per base pair. If -1, then observations are
+uncorrellated along the genome. Can be learned with filterHD. No fuzzy
+data segmentation is performed.  Useful in combination with
+`--clones`, where very high-definition information
+available. Using this option will change the posterior output file format.
 
 ## Bulk options
 
@@ -366,4 +371,31 @@ The grid sizes for the pre-computed emission probabilities if fuzzy data segment
 *    `--snv-grid [int:100]`  
 
 # Tips and tricks
+
+*  Pre-filtering of data can be very important. If filterHD predicts
+   many more jumps than you would expect, it might be necessary to
+   filter the data, removing very short segments (with
+   `--filter-shortSeg 10`).
+
+*  Make sure that the bias field for the tumor CNA data is
+   meaningful. If a matched normal sample was sequenced with the same
+   pipeline, its read depth profile, as predicted by filterHD, can be used as a
+   bias field for the tumor CNA data. Follow the logic of the example
+   given here.
+
+*  filterHD can sometimes run into local optima. It might be useful to
+   fix initial values for the parameters via `--jumpi [double]` etc.
+
+*  By default, cloneHD runs with mass gauging enabled. This seems like
+   an overkill, but is actually quite useful because you can see some
+   alternative explanations during the course of the analysis.
+
+*  Don't put too much weight on the BIC criterion. It was calibrated
+   using simulated data. For real data, it should be supplied with
+   common sense and biological knowledge. Use `--force [int]` to use a
+   fixed number of subclones.
+
+*  For exome sequencing data, the read depth bias can be enormous. Use rather, if
+   available, the jumps seen in the BAF data for both CNA and BAF.
+
 

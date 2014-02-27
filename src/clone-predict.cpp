@@ -23,12 +23,13 @@ void Clone::set_TransMat_cna(){
 // only one clone can change its state,
 // or clones in the same state can change in parallel
 void Clone::set_TransMat_cna( gsl_matrix * Trans, int chr){
-  double norm;
+  double norm,p;
   gsl_vector_view row;
   int jumps,cni,cnf;
   for (int i=0; i<nLevels; i++){
     for (int j=0; j<nLevels; j++){
       jumps=0;
+      p=1.0;
       for(int k=0; k < nClones; k++){
 	if (copynumber[j][k] > maxtcn_per_clone[chr][k]){
 	  jumps = 2;
@@ -44,10 +45,11 @@ void Clone::set_TransMat_cna( gsl_matrix * Trans, int chr){
 	  else if (cni - cnf != copynumber[i][k] - copynumber[j][k]){
 	    jumps++;
 	  }
+	  if (copynumber[j][k] == 0) p*= 0.01;
 	}
       }
       if (jumps <= 1){
-	gsl_matrix_set( Trans, i, j, 1.0);
+	gsl_matrix_set( Trans, i, j, p);
       }
       else{
 	gsl_matrix_set( Trans, i, j, 0.0);

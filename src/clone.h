@@ -165,6 +165,9 @@ class Clone{
   gsl_matrix ** alpha_cna, ** alpha_baf, ** alpha_snv;
   gsl_matrix ** gamma_cna, ** gamma_baf, ** gamma_snv;
   double entropy(gsl_vector * x);
+  void sym_baf( gsl_vector * bafPost, gsl_vector * cnvPost);
+  gsl_matrix ** map1, ** map2;
+  int symmetrize_baf;
   // *** in clone-llh.cpp ****************************************************************************
   double get_cna_posterior(  int sample);
   double get_baf_posterior(  int sample);

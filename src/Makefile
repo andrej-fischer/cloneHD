@@ -14,7 +14,7 @@ cloneHD: $(cloneHDobj) cloneHD.o
 	$(CC) $(CC_FLAGS) $^ -o ../build/cloneHD $(LD_FLAGS)	
 %.o: %.cpp
 	$(CC) $(CC_FLAGS) -c $< -o $@
-$(cloneobj): clone.h $(cloneobj:.o=.cpp)
+$(cloneobj): clone.h# $(cloneobj:.o=.cpp)
 $(filterHDobj) $(cloneHDobj): $(.TARGET:.o=.h)
 clean:
 	rm -f ./*.o

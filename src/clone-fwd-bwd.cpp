@@ -136,12 +136,11 @@ void Clone::do_cna_Bwd(int sample, double& ent){
 void Clone::do_baf_Fwd( int sample, double& llh){
   int cnaSample = 0;
   int bafChr = bafEmit->chr[sample];
-  if (cnaEmit->is_set){
-    cnaSample = cnaEmit->idx_of[bafChr];
-    if (nClones > 0){
-      if (gamma_cna == NULL) abort();
-      if (gamma_cna[cnaSample] == NULL) abort();
-    }
+  if (!cnaEmit->is_set) abort();
+  cnaSample = cnaEmit->idx_of[bafChr];
+  if (nClones > 0){
+    if (gamma_cna == NULL) abort();
+    if (gamma_cna[cnaSample] == NULL) abort();
   }
   gsl_vector * prior = gsl_vector_alloc(nLevels);
   gsl_vector * post  = gsl_vector_alloc(nLevels);
@@ -165,33 +164,31 @@ void Clone::do_baf_Fwd( int sample, double& llh){
 	Clone::predict( prior, post, bafEmit, pj, flat);
       }
       //***CONSISTENCY WITH CNA***
-      if (cnaEmit->is_set){//connect to above, with CNA	
-	cna_evt = bafEmit->Event_of_idx[sample][idx];
-	if (cna_evt != last_cna_evt){//new BAF prior from CNA post
-	  cna_post = gsl_matrix_row( gamma_cna[cnaSample], cna_evt);
-	  get_baf_prior_from_cna_post( Prior, &cna_post.vector);
-	  last_cna_evt = cna_evt;
-	}
-	if (bafEmit->connect) gsl_vector_memcpy( mem, prior);
-	gsl_vector_memcpy( prior, Prior);
-	nidx = (evt < last_evt) ? bafEmit->idx_of_event[sample][evt+1] : bafEmit->nSites[sample];
-	if ( nidx-idx > 1){//exponentiate prior for all observations in this block
-	  gsl_vector_scale( prior, double(nidx-idx));//log-space!
+      cna_evt = bafEmit->Event_of_idx[sample][idx];
+      if (cna_evt != last_cna_evt){//new BAF prior from CNA post
+	cna_post = gsl_matrix_row( gamma_cna[cnaSample], cna_evt);
+	get_baf_prior_from_cna_post( Prior, &cna_post.vector);
+	last_cna_evt = cna_evt;
+      }
+      if (bafEmit->connect) gsl_vector_memcpy( mem, prior);
+      gsl_vector_memcpy( prior, Prior);
+      nidx = (evt < last_evt) ? bafEmit->idx_of_event[sample][evt+1] : bafEmit->nSites[sample];
+      if ( nidx-idx > 1){//exponentiate prior for all observations in this block
+	gsl_vector_scale( prior, double(nidx-idx));//log-space!
+	norm = log_vector_norm(prior);
+	gsl_vector_add_constant(prior,-norm);
+      }  
+      if (bafEmit->connect){//multiply two priors and rescale...
+	if (bafEmit->log_space){
+	  gsl_vector_add(prior,mem);
 	  norm = log_vector_norm(prior);
 	  gsl_vector_add_constant(prior,-norm);
-	}  
-	if (bafEmit->connect){//multiply two priors and rescale...
-	  if (bafEmit->log_space){
-	    gsl_vector_add(prior,mem);
-	    norm = log_vector_norm(prior);
-	    gsl_vector_add_constant(prior,-norm);
-	  }
-	  else{
-	    gsl_vector_mul(prior,mem);
-	    norm = gsl_blas_dasum(prior);
-	    if (norm!=norm || norm < 0.0) abort();
-	    gsl_vector_scale( prior, 1.0/norm);
-	  }
+	}
+	else{
+	  gsl_vector_mul(prior,mem);
+	  norm = gsl_blas_dasum(prior);
+	  if (norm!=norm || norm < 0.0) abort();
+	  gsl_vector_scale( prior, 1.0/norm);
 	}
       }
     }
@@ -201,7 +198,9 @@ void Clone::do_baf_Fwd( int sample, double& llh){
     //***UPDATE STEP***
     norm = Clone::update( prior, post, bafEmit, sample, evt);
     llh += norm;
-    if (save_baf_alpha == 1) gsl_matrix_set_row( alpha_baf[sample], evt, post);
+    if (save_baf_alpha == 1){
+      gsl_matrix_set_row( alpha_baf[sample], evt, post);
+    }
   }
   // cleanup    
   gsl_vector_free(prior);
@@ -216,12 +215,11 @@ void Clone::do_baf_Bwd( int sample, double& ent){
   if (alpha_baf[sample] == NULL || gamma_baf[sample] == NULL) abort();
   int cnaSample = 0;
   int bafChr = bafEmit->chr[sample];
-  if (cnaEmit->is_set){
-    cnaSample = cnaEmit->idx_of[bafChr];
-    if ( nClones>0 ){
-      if ( gamma_cna == NULL ) abort();
-      if ( gamma_cna[cnaSample] == NULL) abort();
-    }
+  if (!cnaEmit->is_set) abort();
+  cnaSample = cnaEmit->idx_of[bafChr];
+  if ( nClones>0 ){
+    if ( gamma_cna == NULL ) abort();
+    if ( gamma_cna[cnaSample] == NULL) abort();
   }
   gsl_vector * prior = gsl_vector_alloc(nLevels);
   gsl_vector * Prior = gsl_vector_alloc(nLevels);
@@ -248,33 +246,31 @@ void Clone::do_baf_Bwd( int sample, double& ent){
 	last_idx = idx;
       }
       //***CONSISTENCY WITH CNA***
-      if (cnaEmit->is_set){//connect with CNA...	
-	cna_evt = bafEmit->Event_of_idx[sample][idx];
-	if (cna_evt != last_cna_evt){
-	  cna_post = gsl_matrix_row( gamma_cna[cnaSample], cna_evt);
-	  get_baf_prior_from_cna_post( Prior, &cna_post.vector);
-	  last_cna_evt = cna_evt;
-	}
-	if (bafEmit->connect) gsl_vector_memcpy( mem, prior);
-	gsl_vector_memcpy( prior, Prior);
-	nidx = (evt < last_evt) ? bafEmit->idx_of_event[sample][evt+1] : bafEmit->nSites[sample];
-	if ( nidx-idx > 1){//exponentiate prior for all observations in this block
-	  gsl_vector_scale( prior, double(nidx-idx));//log-space!
+      cna_evt = bafEmit->Event_of_idx[sample][idx];
+      if (cna_evt != last_cna_evt){
+	cna_post = gsl_matrix_row( gamma_cna[cnaSample], cna_evt);
+	get_baf_prior_from_cna_post( Prior, &cna_post.vector);
+	last_cna_evt = cna_evt;
+      }
+      if (bafEmit->connect) gsl_vector_memcpy( mem, prior);
+      gsl_vector_memcpy( prior, Prior);
+      nidx = (evt < last_evt) ? bafEmit->idx_of_event[sample][evt+1] : bafEmit->nSites[sample];
+      if ( nidx-idx > 1){//exponentiate prior for all observations in this block
+	gsl_vector_scale( prior, double(nidx-idx));//log-space!
+	norm = log_vector_norm(prior);
+	gsl_vector_add_constant(prior,-norm);
+      }  	
+      if (bafEmit->connect){//multiply two priors and rescale...
+	if (bafEmit->log_space){
+	  gsl_vector_add(prior,mem);
 	  norm = log_vector_norm(prior);
 	  gsl_vector_add_constant(prior,-norm);
-	}  	
-	if (bafEmit->connect){//multiply two priors and rescale...
-	  if (bafEmit->log_space){
-	    gsl_vector_add(prior,mem);
-	    norm = log_vector_norm(prior);
-	    gsl_vector_add_constant(prior,-norm);
-	  }
-	  else{
-	    gsl_vector_mul(prior,mem);
-	    norm = gsl_blas_dasum(prior);
-	    if (norm!=norm || norm <0.0) abort();
-	    gsl_vector_scale(prior,1.0/norm);
-	  }
+	}
+	else{
+	  gsl_vector_mul(prior,mem);
+	  norm = gsl_blas_dasum(prior);
+	  if (norm!=norm || norm <0.0) abort();
+	  gsl_vector_scale(prior,1.0/norm);
 	}
       }
     }
@@ -297,6 +293,7 @@ void Clone::do_baf_Bwd( int sample, double& ent){
       if (norm <= 0.0 || norm != norm) abort();
       gsl_vector_scale( mem, 1.0/norm);
     }//multiply done
+    if (nClones > 0 && symmetrize_baf) Clone::sym_baf( mem, &cna_post.vector);
     gsl_matrix_set_row( gamma_baf[sample], evt, mem);
     //ent += Clone::entropy(mem);
     //***UPDATE STEP*** (normalization term not needed here)
@@ -561,4 +558,58 @@ void Clone::do_snv_Bwd( int sample, double& ent){
   gsl_vector_free(mem);
   gsl_vector_free(Prior);
   if (Trans!= NULL) gsl_matrix_free(Trans);
+}
+
+
+
+void Clone::sym_baf( gsl_vector * bafPost, gsl_vector * cnaPost){
+  if (map1==NULL && map2==NULL){
+    map1 = new gsl_matrix * [maxtcn+1];
+    for (int c=0; c<=maxtcn; c++){
+      map1[c] = gsl_matrix_calloc(maxtcn+1,maxtcn+1);
+      for (int i=0; i<=maxtcn; i++){
+	if (i>c) break;
+	for (int j=0; j<=maxtcn; j++){
+	  if (j>c) break;
+	  double val 
+	    = (i==j && 2*j == c) 
+	    ? 1.0 
+	    : ( (i==j || c-i==j) ? 0.5 : 0.0);
+	  gsl_matrix_set( map1[c], i, j, val);
+	}
+      } 
+    }
+    map2 = new gsl_matrix * [nLevels];
+    for (int l=0; l<nLevels; l++){
+      map2[l] = gsl_matrix_calloc(nLevels,nLevels);
+      for (int i=0; i<nLevels; i++){
+	for (int j=0; j<nLevels; j++){
+	  double val = 1.0;
+	  for (int n=0; n<nClones; n++){
+	    val *= gsl_matrix_get( map1[copynumber[l][n]], copynumber[i][n], copynumber[j][n]);
+	  }
+	  gsl_matrix_set(map2[l],i,j,val);
+	} 
+      }
+    }
+  }//allocated
+  gsl_vector * mem1 = gsl_vector_calloc(nLevels);
+  gsl_vector * mem2 = gsl_vector_calloc(nLevels);
+  for (int l=0; l<nLevels; l++){
+    gsl_blas_dgemv(CblasNoTrans,1.0,map2[l],bafPost,0.0,mem2);
+    double norm = gsl_blas_dasum(mem2);
+    if (norm <= 0 && cnaPost->data[l] > 1.0e-4){
+      abort();    
+    }
+    else if (norm > 0){
+      gsl_vector_scale(mem2, cnaPost->data[l] / norm);
+      gsl_vector_add(mem1, mem2);
+    }
+  }
+  double norm = gsl_blas_dasum(mem1);
+  if (norm<=0) abort();
+  gsl_vector_scale(mem1,1.0/norm);
+  gsl_vector_memcpy(bafPost,mem1);
+  gsl_vector_free(mem1);
+  gsl_vector_free(mem2);
 }
