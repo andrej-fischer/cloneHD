@@ -1,10 +1,12 @@
 # changelog for cloneHD/filterHD
 
-## v1.17.1 / to come
+## v1.17.1 / 01.03.2014
 
 *  BAF posterior symmetrized for output
 *  CNA transition matrix penalizes clones with zero copies of a segment
-	
+*  fixed bug in SNV prior computation
+*  added pre-processor directives for conditional openMP compilation
+
 ## v1.17.0 / 25.02.2014 major release
 
 ### changed the way SNV priors are computed:

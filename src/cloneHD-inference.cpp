@@ -458,7 +458,9 @@ double get_clones_cna( gsl_matrix *& clones,
       myClone->gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
       int s;
       snv_llh=0; 
+#ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
+#endif
       for ( s=0; s<snvEmit->nSamples; s++){  
 	int cna_sample = cnaEmit->idx_of[snvEmit->chr[s]];
 	myClone->alpha_cna[cna_sample]=NULL;
@@ -468,7 +470,9 @@ double get_clones_cna( gsl_matrix *& clones,
 	myClone->map_mean_tcn( cnaEmit, cna_sample, snvEmit);
 	double l;
 	myClone->do_snv_Fwd( s, l);
-	#pragma omp critical
+#ifdef _OPENMP
+#pragma omp critical
+#endif
 	{
 	  snv_llh += l;
 	}
@@ -534,7 +538,9 @@ double get_clones_cna( gsl_matrix *& clones,
       int s;
       snv_llh = 0.0;
       myClone->save_snv_alpha = 0; 
+#ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
+#endif
       for ( s=0; s<snvEmit->nSamples; s++){  
 	int cna_sample = cnaEmit->idx_of[snvEmit->chr[s]];
 	myClone->alpha_cna[cna_sample]=NULL;
@@ -544,7 +550,9 @@ double get_clones_cna( gsl_matrix *& clones,
 	myClone->map_mean_tcn( cnaEmit, cna_sample, snvEmit);
 	double l=0;
 	myClone->do_snv_Fwd(s,l);
+#ifdef _OPENMP
 #pragma omp critical
+#endif
 	{
 	  snv_llh += l;
 	}
@@ -1190,7 +1198,9 @@ void snv_bulk_update(Clone * myClone){
   }
   int cna_sample=0;
   int s;
+#ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
+#endif
   for ( s=0; s<snvEmit->nSamples; s++){  
     int snvChr = snvEmit->chr[s];
     if (cnaEmit->is_set && cnaEmit->chrs.count(snvChr) == 1){

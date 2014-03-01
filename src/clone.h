@@ -12,7 +12,11 @@
 #include <set>
 #include <vector>
 #include <algorithm>
+
+#ifdef _OPENMP
 #include <omp.h>
+#endif
+
 //#include <unordered_map>
 
 // GSL headers...

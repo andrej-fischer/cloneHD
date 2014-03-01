@@ -10,6 +10,9 @@
 #include <string>
 #include <map>
 #include <vector>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 // GSL headers...
 #include "gsl/gsl_vector.h"

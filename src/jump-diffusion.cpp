@@ -73,10 +73,15 @@ double JumpDiffusion::get_total_llh(){
   int sample;
   total_llh   = 0.0;
   // SAMPLES:
-#pragma omp parallel for schedule( dynamic, 1) default(shared)
+#ifdef _OPENMP
+  int nt = min( nSamples, omp_get_max_threads());
+#pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
+#endif
   for (sample=0; sample<nSamples; sample++){
     double llh = JumpDiffusion::do_Fwd(sample);
+#ifdef _OPENMP
 #pragma omp critical
+#endif
     {
       total_llh += llh;
     }
@@ -187,7 +192,9 @@ int JumpDiffusion::set_DiffProp( gsl_matrix * propagator, double sd){
 void JumpDiffusion::set_pstay(){
   int s;
   // SAMPLES:
+#ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
+#endif
   for (s=0; s<nSamples; s++){
     pstay[s][0] = 1.0;
     for (int l=1; l< nSites[s]; l++){

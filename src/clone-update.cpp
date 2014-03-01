@@ -601,7 +601,9 @@ void Clone::get_cnaEmitLog(){//only ever used for BAF data
     for (int s=0; s<cnaEmit->nSamples; s++){
       cnaEmitLog[t][s] = gsl_matrix_calloc( cnaEmit->nEvents[s], cnaEmit->gridSize+1);
       int evt;
-#pragma omp parallel for schedule( dynamic, 1) default(shared)      
+#ifdef _OPENMP
+#pragma omp parallel for schedule( dynamic, 1) default(shared)  
+#endif    
       for ( evt=0; evt<cnaEmit->nEvents[s]; evt++){
 	gsl_vector * mem = gsl_vector_calloc(cnaEmit->gridSize+1);
 	gsl_vector * rnd = gsl_vector_calloc(cnaEmit->gridSize+1);
@@ -648,7 +650,9 @@ void Clone::get_bafEmitLog(){//only ever used for BAF data
     for (int s=0; s<bafEmit->nSamples; s++){
       bafEmitLog[t][s] = gsl_matrix_calloc( bafEmit->nEvents[s], bafEmit->gridSize+1);      
       int evt;
+#ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
+#endif
       for (evt=0; evt<bafEmit->nEvents[s]; evt++){
 	unsigned int n,N;
 	gsl_vector * mem = gsl_vector_calloc(bafEmit->gridSize+1);
@@ -703,7 +707,9 @@ void Clone::get_snvEmitLog(){//only ever used for SNV data
       printf("\r%2i/%2i %2i/%2i...",t+1,nTimes,s+1,snvEmit->nSamples);
       cout<<flush;
       int evt;
+#ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
+#endif
       for (evt=0; evt<snvEmit->nEvents[s]; evt++){
 	gsl_matrix * mem     = gsl_matrix_calloc(s1,s2);
 	gsl_matrix * rnd_vec = gsl_matrix_calloc(s1,s2);

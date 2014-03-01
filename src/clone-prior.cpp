@@ -139,25 +139,21 @@ void Clone::set_snv_prior_map(){//either via BAF or else via CNA
       }
     } 
   }
-  else if (cnaEmit->is_set){//via CNA posterior only...
-    if ( snv_prior_from_cna_map == NULL){//allocate
-      snv_prior_from_cna_map = gsl_matrix_alloc( maxtcn+1, maxtcn+1);
-    }
-    gsl_matrix_set_zero( snv_prior_from_cna_map);  
-    double p = (snvEmit->connect) ? 1.0 : snv_pen;// penalty for high genotypes 
-    for (int cn=0; cn <= maxtcn; cn++){
-      for (int i=0; i <= cn; i++){
-	gsl_matrix_set( snv_prior_from_cna_map, i, cn, pow(p,i));
-      }
-      //normalize...
-      gsl_vector_view col = gsl_matrix_column( snv_prior_from_cna_map, cn);
-      double norm = gsl_blas_dasum(&col.vector);
-      if (norm <=0.0) abort();
-      gsl_vector_scale( &col.vector, 1.0 / norm);
-    }
+  //via CNA posterior only...
+  if ( snv_prior_from_cna_map == NULL){//allocate
+    snv_prior_from_cna_map = gsl_matrix_alloc( maxtcn+1, maxtcn+1);
   }
-  else{
-    abort();
+  gsl_matrix_set_zero( snv_prior_from_cna_map);  
+  double p = (snvEmit->connect) ? 1.0 : snv_pen;// penalty for high genotypes 
+  for (int cn=0; cn <= maxtcn; cn++){
+    for (int i=0; i <= cn; i++){
+      gsl_matrix_set( snv_prior_from_cna_map, i, cn, pow(p,i));
+    }
+    //normalize...
+    gsl_vector_view col = gsl_matrix_column( snv_prior_from_cna_map, cn);
+    double norm = gsl_blas_dasum(&col.vector);
+    if (norm <=0.0) abort();
+    gsl_vector_scale( &col.vector, 1.0 / norm);
   }
 }
 
