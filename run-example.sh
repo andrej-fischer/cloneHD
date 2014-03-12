@@ -6,10 +6,10 @@ export OMP_NUM_THREADS=4;
 part=$1
 
 # input data
-data="./test/data/"
-results="./test/results/"
-#data="/Users/af7/Projects/cloneHD/Test/data/"
-#results="/Users/af7/Projects/cloneHD/Test/results/"
+#data="./test/data/"
+#results="./test/results/"
+data="/Users/af7/Projects/cloneHD/Test/data/"
+results="/Users/af7/Projects/cloneHD/Test/results/"
 filterHD="./build/filterHD"
 cloneHD="./build/cloneHD"
 
@@ -58,7 +58,7 @@ then
 ### cloneHD ###
     echo "*** cloneHD ***"
     echo
-    cmd="$cloneHD --cna $tumorCNA --baf $tumorBAF --pre ${results}/tumor --bias $bias --seed 123 --trials 3\
+    cmd="$cloneHD --cna $tumorCNA --baf $tumorBAF --pre ${results}/tumor --bias $bias --seed 123 --trials 2\
  --nmax 3 --force --max-tcn 4 --cna-jumps $tumorCNAjumps --baf-jumps $tumorBAFjumps --min-jump 0.01 --restarts 20"    
     echo $cmd
     $cmd

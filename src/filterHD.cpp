@@ -159,14 +159,6 @@ int main (int argc, const char * argv[]){
     JumpDiffusion myJD( &myEmit, t);
     //find maximum-likelihood estimates of all parameters
     double llh = find_JD_parameters( &myJD, opts);
-    printf("Filtered sample %i of %i: llh = %.5e, --jump %.3e --sigma %.3e --rnd %.3e",
-	   t+1, nTimes, llh, myJD.jump, myJD.sigma, myJD.rnd_emit);
-    if (opts.mode == 2 || opts.mode==4) printf(" --shape %.3e", myJD.myEmit->shape);
-    cout<<endl;
-    if ( (opts.mode == 2 || opts.mode==4) && myJD.myEmit->shape > 1.0e3){
-      printf("With --shape %.3e, you might consider choosing mode %i.\n", 
-	     myJD.myEmit->shape, opts.mode==2 ? 1 : 3);
-    } 
     //filter out data points which are not compatible with the emission model
     if ( opts.reflect == 0 && (opts.filter_pVal|| opts.filter_shortSeg > 0) ){
       double crit=0.0;
@@ -215,8 +207,9 @@ int main (int argc, const char * argv[]){
     double mx = opts.reflect ? 0.5 : myJD.myEmit->xmax;
     double mn = myJD.myEmit->xmin;
     gsl_vector * post = gsl_vector_alloc(uidx+1);
-    for (int s=0; s < myJD.nSamples; s++){
-      //get posterior distribution with the ML parameters
+    double gof=0, xobs=0;
+    double gofNorm=0;
+    for (int s=0; s < myJD.nSamples; s++){//get posterior distribution with the ML parameters
       myJD.get_posterior(s);
       for (int l=0; l < myJD.nSites[s]; l++){
 	if (opts.reflect){//distribution in lower half
@@ -244,12 +237,28 @@ int main (int argc, const char * argv[]){
 	  }
 	}
 	fprintf(total_fp,"\n");
+	//goodness of fit...
+	if (mask==NULL || mask[s][l] == 1){
+	  xobs = double(myEmit.reads[t][s][l]) / double(myEmit.depths[t][s][l]);
+	  if (opts.reflect) xobs = min(xobs,1.0-xobs);
+	  gof += fabs(mean - xobs);
+	  gofNorm += 1.0;
+	}
       }
       gsl_matrix_free(myJD.gamma[s]);
       myJD.gamma[s] = NULL;
     }
     fclose(total_fp);
     gsl_vector_free(post);
+    // *** PROCLAIM RESULTS ***
+    printf("Filtered sample %i of %i: llh = %.5e, gof = %.5e, --jump %.3e --sigma %.3e --rnd %.3e",
+	   t+1, nTimes, llh,  gof/gofNorm, myJD.jump, myJD.sigma, myJD.rnd_emit);
+    if (opts.mode == 2 || opts.mode==4) printf(" --shape %.3e", myJD.myEmit->shape);
+    cout<<endl;
+    if ( (opts.mode == 2 || opts.mode==4) && myJD.myEmit->shape > 1.0e3){
+      printf("With --shape %.3e, you might consider choosing mode %i.\n", 
+	     myJD.myEmit->shape, opts.mode==2 ? 1 : 3);
+    } 
     // *** RESET ***
     myEmit.delete_old_Emit();
     myEmit.range_set = 0;
@@ -293,7 +302,7 @@ int main (int argc, const char * argv[]){
 	}
       }
     }
-    //print
+    //print filtered
     char buff[1024];  
     sprintf(buff,"%s.filtered.txt", opts.pre);
     FILE * filtered_fp = fopen(buff,"w");
