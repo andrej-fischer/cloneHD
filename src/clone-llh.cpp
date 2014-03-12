@@ -39,14 +39,15 @@ double Clone::get_all_total_llh(){
   cna_total_llh = 0.0;
   baf_total_llh = 0.0;
   snv_total_llh = 0.0;
-  int sample;
+  double * llhs = NULL;
+  int sample,nt;
 #ifdef _OPENMP
-  int nt = min( cnaEmit->nSamples, omp_get_max_threads());
+  nt = min( cnaEmit->nSamples, omp_get_max_threads());
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
 #endif
   for ( sample=0; sample < cnaEmit->nSamples; sample++){
     double llh,ent;   
-    Clone::do_cna_Fwd( sample, llh);
+    Clone::do_cna_Fwd( sample, llh, llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -79,8 +80,8 @@ double Clone::get_all_total_llh(){
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
 #endif
     for ( sample=0; sample < bafEmit->nSamples; sample++){//START PARALLEL FOR
-      double llh=0,ent=0;	
-      Clone::do_baf_Fwd( sample, llh);
+      double llh=0,ent=0;
+      Clone::do_baf_Fwd( sample, llh, llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -103,7 +104,7 @@ double Clone::get_all_total_llh(){
 #endif
     for ( sample=0; sample < snvEmit->nSamples; sample++){//START PARALLEL FOR
       double llh = 0.0;
-      Clone::do_snv_Fwd(sample, llh);
+      Clone::do_snv_Fwd(sample, llh, llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -135,17 +136,21 @@ double Clone::get_all_total_llh(){
   return(total_llh);
 }
 
+
+
+
 double Clone::get_cna_total_llh(){
   int sample;
   save_cna_alpha = 0;
   cna_total_llh  = 0.0;
+  double * llhs = NULL;
 #ifdef _OPENMP
   int nt = min( cnaEmit->nSamples,  omp_get_max_threads());
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
 #endif
   for ( sample=0; sample < cnaEmit->nSamples; sample++){
     double llh;
-    Clone::do_cna_Fwd( sample, llh);
+    Clone::do_cna_Fwd( sample, llh, llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -160,7 +165,8 @@ double Clone::get_cna_total_llh(){
 double Clone::get_baf_total_llh(){
   if ( nClones > 0 && cnaEmit->is_set && gamma_cna == NULL ) abort();
   save_baf_alpha = 0;
-  baf_total_llh = 0.0;
+  baf_total_llh  = 0.0;
+  double * llhs = NULL;
   int sample;
 #ifdef _OPENMP
   int nt = min( bafEmit->nSamples,  omp_get_max_threads());
@@ -168,7 +174,7 @@ double Clone::get_baf_total_llh(){
 #endif
   for ( sample=0; sample< bafEmit->nSamples; sample++){
     double llh;
-    Clone::do_baf_Fwd( sample, llh);
+    Clone::do_baf_Fwd( sample, llh, llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -180,18 +186,21 @@ double Clone::get_baf_total_llh(){
 }
 
 
+
+
 double Clone::get_snv_total_llh(){
   if ( nClones > 0 && cnaEmit->is_set && gamma_cna == NULL ) abort();
   int sample;
   save_snv_alpha = 0;
   snv_total_llh  = 0.0;
+  double * llhs  = NULL;
 #ifdef _OPENMP
   int nt = min( snvEmit->nSamples,  omp_get_max_threads());
 #pragma omp parallel for schedule( dynamic, 1) default(shared) num_threads(nt)
 #endif
   for ( sample=0; sample< snvEmit->nSamples; sample++){
     double llh;
-    Clone::do_snv_Fwd( sample, llh);
+    Clone::do_snv_Fwd( sample, llh, llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -213,7 +222,7 @@ double Clone::get_cna_posterior(int sample){
     alpha_cna[sample] = gsl_matrix_calloc( cnaEmit->nEvents[sample], nLevels);
   if (gamma_cna[sample] == NULL) 
     gamma_cna[sample] = gsl_matrix_calloc( cnaEmit->nEvents[sample], nLevels);
-  Clone::do_cna_Fwd( sample, llh);
+  Clone::do_cna_Fwd( sample, llh, cna_llhs);
   Clone::do_cna_Bwd( sample, entropy);
   gsl_matrix_free(alpha_cna[sample]);
   alpha_cna[sample] = NULL;
@@ -234,7 +243,7 @@ double Clone::get_baf_posterior(int sample){
     alpha_baf[sample] = gsl_matrix_calloc( bafEmit->nEvents[sample], nLevels);
   if (gamma_baf[sample] == NULL) 
     gamma_baf[sample] = gsl_matrix_calloc( bafEmit->nEvents[sample], nLevels);
-  Clone::do_baf_Fwd( sample, llh);
+  Clone::do_baf_Fwd( sample, llh, baf_llhs);
   Clone::do_baf_Bwd( sample, entropy);
   gsl_matrix_free(alpha_baf[sample]);
   alpha_baf[sample] = NULL;
@@ -256,7 +265,7 @@ double Clone::get_snv_posterior(int sample){
     alpha_snv[sample] = gsl_matrix_calloc( snvEmit->nEvents[sample], nLevels);
   if (gamma_snv[sample] == NULL) 
     gamma_snv[sample] = gsl_matrix_calloc( snvEmit->nEvents[sample], nLevels);
-  Clone::do_snv_Fwd( sample, llh);
+  Clone::do_snv_Fwd( sample, llh, snv_llhs);
   Clone::do_snv_Bwd( sample, ent);
   gsl_matrix_free(alpha_snv[sample]);
   alpha_snv[sample] = NULL;

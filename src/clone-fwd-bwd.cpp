@@ -20,7 +20,7 @@ double Clone::entropy(gsl_vector * x){
 
 
 //*** CNA FWD/BWD ***************************************************
-void Clone::do_cna_Fwd( int sample, double& llh){
+void Clone::do_cna_Fwd( int sample, double& llh, double*& llhs){
   gsl_vector * entry = gsl_vector_alloc(nLevels);
   gsl_vector * prior = gsl_vector_alloc(nLevels);
   gsl_vector * post  = gsl_vector_alloc(nLevels);
@@ -52,7 +52,7 @@ void Clone::do_cna_Fwd( int sample, double& llh){
       gsl_vector_set_all( prior, cnaEmit->log_space ? 0.0 : 1.0);
     }
     //***UPDATE***
-    norm = Clone::update( prior, post, cnaEmit, sample, evt);
+    norm = Clone::update( prior, post, cnaEmit, sample, evt, llhs);
     llh += norm;
     if (save_cna_alpha == 1) gsl_matrix_set_row( alpha_cna[sample], evt, post);
   }
@@ -78,6 +78,7 @@ void Clone::do_cna_Bwd(int sample, double& ent){
       gsl_matrix_memcpy(Trans,TransMat_cna[sample]);
     }
   }
+  double * llhs = NULL;
   int idx=0;
   gsl_vector_view alph;
   double pj = 1.0, norm=0;
@@ -119,7 +120,7 @@ void Clone::do_cna_Bwd(int sample, double& ent){
     gsl_matrix_set_row( gamma_cna[sample], evt, mem);
     //ent += Clone::entropy(mem);
     //***UPDATE STEP*** (normalization term not needed here)
-    Clone::update( prior, post, cnaEmit, sample, evt);
+    Clone::update( prior, post, cnaEmit, sample, evt, llhs);
   }
   // cleanup    
   gsl_vector_free(entry);
@@ -133,7 +134,7 @@ void Clone::do_cna_Bwd(int sample, double& ent){
 
 
 //***BAF FWD-BWD*********************************************************
-void Clone::do_baf_Fwd( int sample, double& llh){
+void Clone::do_baf_Fwd( int sample, double& llh, double*& llhs){
   int cnaSample = 0;
   int bafChr = bafEmit->chr[sample];
   if (!cnaEmit->is_set) abort();
@@ -196,7 +197,7 @@ void Clone::do_baf_Fwd( int sample, double& llh){
       gsl_vector_set_all( prior, bafEmit->log_space ? 0.0 : 1.0);
     }
     //***UPDATE STEP***
-    norm = Clone::update( prior, post, bafEmit, sample, evt);
+    norm = Clone::update( prior, post, bafEmit, sample, evt, llhs);
     llh += norm;
     if (save_baf_alpha == 1){
       gsl_matrix_set_row( alpha_baf[sample], evt, post);
@@ -231,6 +232,7 @@ void Clone::do_baf_Bwd( int sample, double& ent){
   gsl_vector_memcpy(prior,flat);
   gsl_vector_view cna_post;
   //ent = 0.0;
+  double * llhs = NULL;
   gsl_vector_view alph;
   double pj = 0.0, norm=0;
   int last_evt = bafEmit->nEvents[sample] - 1;
@@ -293,11 +295,11 @@ void Clone::do_baf_Bwd( int sample, double& ent){
       if (norm <= 0.0 || norm != norm) abort();
       gsl_vector_scale( mem, 1.0/norm);
     }//multiply done
-    if (nClones > 0 && symmetrize_baf) Clone::sym_baf( mem, &cna_post.vector);
+    //if (nClones > 0 && symmetrize_baf) Clone::sym_baf( mem, &cna_post.vector);
     gsl_matrix_set_row( gamma_baf[sample], evt, mem);
     //ent += Clone::entropy(mem);
     //***UPDATE STEP*** (normalization term not needed here)
-    Clone::update( prior, post, bafEmit, sample, evt);
+    Clone::update( prior, post, bafEmit, sample, evt, llhs);
   }
   // cleanup    
   gsl_vector_free(prior);
@@ -311,7 +313,7 @@ void Clone::do_baf_Bwd( int sample, double& ent){
 
 
 //***SNV FWD-BWD***************************************************
-void Clone::do_snv_Fwd(int sample, double& llh){
+void Clone::do_snv_Fwd(int sample, double& llh, double*& llhs){
   int snvChr = snvEmit->chr[sample];
   int cnaSample=-1, bafSample=-1;
   if (cnaEmit->is_set){
@@ -412,7 +414,7 @@ void Clone::do_snv_Fwd(int sample, double& llh){
       gsl_vector_set_all( prior, snvEmit->log_space ? 0.0 : 1.0);
     }
     //***UPDATE STEP***
-    norm = Clone::update( prior, post, snvEmit, sample, evt);
+    norm = Clone::update( prior, post, snvEmit, sample, evt, llhs);
     llh += norm;
     //printf("%i %e\n", snvEmit->loci[sample][idx], llh);
     if (save_snv_alpha == 1) gsl_matrix_set_row( alpha_snv[sample], evt, post);
@@ -462,6 +464,7 @@ void Clone::do_snv_Bwd( int sample, double& ent){
   gsl_vector_view alph;
   gsl_vector_view cna_post,baf_post;
   double pj = 1.0, norm=0;
+  double * llhs = NULL;
   int cna_evt=-1, last_cna_evt=-1;
   int baf_evt=-1, last_baf_evt=-1, baf_idx=0;
   int idx=0, nidx=0, oevt=-1;
@@ -550,7 +553,7 @@ void Clone::do_snv_Bwd( int sample, double& ent){
     gsl_matrix_set_row( gamma_snv[sample], evt, mem);
     //ent += Clone::entropy(mem);
     //***UPDATE STEP*** (normalization term not needed here)
-    Clone::update( prior, post, snvEmit, sample, evt);
+    Clone::update( prior, post, snvEmit, sample, evt, llhs);
   }
   // cleanup    
   gsl_vector_free(prior);
@@ -561,7 +564,7 @@ void Clone::do_snv_Bwd( int sample, double& ent){
 }
 
 
-
+/*
 void Clone::sym_baf( gsl_vector * bafPost, gsl_vector * cnaPost){
   if (map1==NULL && map2==NULL){
     map1 = new gsl_matrix * [maxtcn+1];
@@ -613,3 +616,4 @@ void Clone::sym_baf( gsl_vector * bafPost, gsl_vector * cnaPost){
   gsl_vector_free(mem1);
   gsl_vector_free(mem2);
 }
+*/

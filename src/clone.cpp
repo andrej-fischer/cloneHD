@@ -74,9 +74,13 @@ Clone::Clone(){
   snvGrid  = 100;
   bulkGrid = 100;
   logzero = -1.0e6;
-  map1=NULL;
-  map2=NULL;
-  symmetrize_baf=0;
+  //map1=NULL;
+  //map2=NULL;
+  //symmetrize_baf=0;
+  cna_llhs = NULL;
+  baf_llhs = NULL;
+  snv_llhs = NULL;
+  bafSymMap = NULL;
 }
 
 
@@ -118,7 +122,7 @@ void Clone::allocate( Emission * cna, Emission * baf, Emission * snv, const char
   cnaEmit = cna;
   bafEmit = baf;
   snvEmit = snv;
-  if (cnaEmit->is_set) nTimes  = cnaEmit->nTimes;
+  if (cnaEmit->is_set) nTimes  = cnaEmit->nTimes; 
   if (bafEmit->is_set) nTimes  = bafEmit->nTimes;
   if (snvEmit->is_set) nTimes  = snvEmit->nTimes;
   total_loci = 0;
@@ -183,6 +187,9 @@ void Clone::allocate( Emission * cna, Emission * baf, Emission * snv, const char
       log_tcn[chr] = NULL;
     }
   }
+  cna_llhs = new double [nTimes];
+  baf_llhs = new double [nTimes];
+  snv_llhs = new double [nTimes];
   allocated = 1;//done
 }
 
@@ -743,5 +750,23 @@ void Clone::get_mass_candidates(){
       z *= mass->data[t] / double(maj_ncn);
       gsl_matrix_set( mass_candidates, i, t, z);
     }
+  }
+}
+
+
+void Clone::set_bafSymMap(){
+  if (bafSymMap != NULL) abort();
+  bafSymMap = new gsl_matrix * [maxtcn+1];
+  for (int cn=0; cn<=maxtcn; cn++){
+    bafSymMap[cn] = gsl_matrix_calloc(maxtcn+1,maxtcn+1);    
+    for (int i=0; i<=cn; i++){
+      for (int j=0; j<=cn; j++){
+	double val 
+	  = ( j==i && 2*j == cn ) 
+	  ? 1.0 
+	  : ( (j==i || j==cn-i) ? 0.5 : 0.0);
+	gsl_matrix_set( bafSymMap[cn], i, j, val);
+      }
+    } 
   }
 }

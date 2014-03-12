@@ -105,24 +105,8 @@ class Clone{
   vector<int> levels_sorted;
   gsl_matrix * copynumber_post;
   gsl_vector * majcn_post;
-  // *** in clone-bulk.cpp ***************************************************************************
-  double bulk_fix;
-  void allocate_bulk_dist();
-  void allocate_bulk_mean();
-  void update_bulk( int time, int sample);
-  gsl_matrix **  bulk_prior;
-  gsl_matrix *** bulk_post;
-  gsl_matrix *** bulk_dist;
-  double **  bulk_prior_mean;
-  double *** bulk_post_mean;
-  double *** bulk_mean;
-  double ***  bulk_min;
-  void set_bulk_to_prior();
-  void set_bulk_to_post();
-  void get_bulk_min();
-  //SNV bulk updates
-  void update_bulk(int sample);
-  void get_bulk_post_dist( gsl_vector * bprior, gsl_vector * bpost, gsl_vector * emit, int time, int sample, int idx);
+  gsl_matrix ** bafSymMap;
+  void set_bafSymMap();
   // *** in clone-prior.cpp **************************************************************************
   int learn_priors;
   gsl_matrix * baf_prior_map;
@@ -159,48 +143,48 @@ class Clone{
   void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_vector * flat);
   void apply_maxtcn_mask( gsl_vector * prior, int chr, int log_space);
   // *** in clone-fwd-bwd.cpp ************************************************************************
-  void do_cna_Fwd( int sample, double& llh);
+  void do_cna_Fwd( int sample, double& llh, double*& llhs);
   void do_cna_Bwd( int sample, double& ent);
-  void do_baf_Fwd( int sample, double& llh);
+  void do_baf_Fwd( int sample, double& llh, double*& llhs);
   void do_baf_Bwd( int sample, double& ent);
-  void do_snv_Fwd( int sample, double& llh);
+  void do_snv_Fwd( int sample, double& llh, double*& llhs);
   void do_snv_Bwd( int sample, double& ent);
   int got_gamma, save_cna_alpha, save_baf_alpha, save_snv_alpha;
   gsl_matrix ** alpha_cna, ** alpha_baf, ** alpha_snv;
   gsl_matrix ** gamma_cna, ** gamma_baf, ** gamma_snv;
   double entropy(gsl_vector * x);
-  void sym_baf( gsl_vector * bafPost, gsl_vector * cnvPost);
-  gsl_matrix ** map1, ** map2;
-  int symmetrize_baf;
+  //void sym_baf( gsl_vector * bafPost, gsl_vector * cnvPost);
+  //gsl_matrix ** map1, ** map2;
+  //int symmetrize_baf;
   // *** in clone-llh.cpp ****************************************************************************
-  double get_cna_posterior(  int sample);
-  double get_baf_posterior(  int sample);
-  double get_snv_posterior(  int sample);
+  double get_cna_posterior(int sample);
+  double get_baf_posterior(int sample);
+  double get_snv_posterior(int sample);
   // log-likelihoods
   double total_llh, total_entropy; 
   double cna_total_llh, baf_total_llh, snv_total_llh;
+  double * cna_llhs, * baf_llhs, * snv_llhs;
   double get_all_total_llh();
   double get_cna_total_llh();
   double get_baf_total_llh();
   double get_snv_total_llh();
   // *** in clone-update.cpp *************************************************************************
-  // precomputed variables for cna update 
   // update step CNA
-  double update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, int sample, int site);
-  void update_cna( gsl_vector * prior, gsl_vector * post, int sample, int site);
-  void update_cna_event( gsl_vector * prior, gsl_vector * post, int sample, int evt);
-  void update_cna_site_noclone( gsl_vector * post, int sample, int site);
-  void update_cna_site_wclone( gsl_vector * prior, gsl_vector * post, int sample, int site);
+  double update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, int sample, int site, double*& llhs);
+  void update_cna( gsl_vector * prior, gsl_vector * post, int sample, int site, gsl_matrix * Post);
+  void update_cna_event( gsl_vector * prior, gsl_vector * post, int sample, int evt, gsl_matrix * Post);
+  void update_cna_site_noclone( gsl_vector * post, int sample, int site, gsl_matrix * Post);
+  void update_cna_site_wclone( gsl_vector * prior, gsl_vector * post, int sample, int site, gsl_matrix * Post);
   // update step BAF
-  void update_baf( gsl_vector * prior, gsl_vector * post, int sample, int evt);
-  void update_baf_event( gsl_vector * prior, gsl_vector * post, int sample, int evt);
-  void update_baf_site( gsl_vector * prior, gsl_vector * post, int sample, int site);
+  void update_baf( gsl_vector * prior, gsl_vector * post, int sample, int evt, gsl_matrix * Post);
+  void update_baf_event( gsl_vector * prior, gsl_vector * post, int sample, int evt, gsl_matrix * Post);
+  void update_baf_site( gsl_vector * prior, gsl_vector * post, int sample, int site, gsl_matrix * Post);
   // update step SNV
-  void update_snv( gsl_vector * prior, gsl_vector * post, int sample, int evt);
-  void update_snv_event( gsl_vector * prior, gsl_vector * post, int sample, int evt);
-  void update_snv_site_ncorr( gsl_vector * prior, gsl_vector * post, int sample, int site);
-  void update_snv_site_fixed( gsl_vector * prior, gsl_vector * post, int sample, int site);
-  void update_snv_site_nfixed( gsl_vector * prior, gsl_vector * post, int sample, int site);	
+  void update_snv( gsl_vector * prior, gsl_vector * post, int sample, int evt, gsl_matrix * Post);
+  void update_snv_event( gsl_vector * prior, gsl_vector * post, int sample, int evt, gsl_matrix * Post);
+  void update_snv_site_ncorr( gsl_vector * prior, gsl_vector * post, int sample, int site, gsl_matrix * Post);
+  void update_snv_site_fixed( gsl_vector * prior, gsl_vector * post, int sample, int site, gsl_matrix * Post);
+  void update_snv_site_nfixed( gsl_vector * prior, gsl_vector * post, int sample, int site, gsl_matrix * Post);	
   // 1D and 2D interpolation
   double get_interpolation(double x, double xmin, double xmax, double dx, gsl_vector * emit);
   double get_interpolation(double x, double xmin, double xmax,
@@ -220,4 +204,22 @@ class Clone{
   // BIC complecity penalty
   double complexity;
   void get_complexity();
+  // *** in clone-bulk.cpp ***************************************************************************
+  double bulk_fix;
+  void allocate_bulk_dist();
+  void allocate_bulk_mean();
+  void update_bulk( int time, int sample);
+  gsl_matrix **  bulk_prior;
+  gsl_matrix *** bulk_post;
+  gsl_matrix *** bulk_dist;
+  double **  bulk_prior_mean;
+  double *** bulk_post_mean;
+  double *** bulk_mean;
+  double ***  bulk_min;
+  void set_bulk_to_prior();
+  void set_bulk_to_post();
+  void get_bulk_min();
+  //SNV bulk updates
+  void update_bulk(int sample);
+  void get_bulk_post_dist( gsl_vector * bprior, gsl_vector * bpost, gsl_vector * emit, int time, int sample, int idx);
 };

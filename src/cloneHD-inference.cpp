@@ -190,8 +190,8 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
         cna_llh = cl;
         baf_llh = bl;
         snv_llh = sl;
-	      btrial  = trial;//trial with the best solution
-	      // keep results, sorted by sizw in t==1...	
+	btrial  = trial;//trial with the best solution
+	// keep results, sorted by sizw in t==1...	
         std::vector<int> idx;
         for (int i = 0; i < n; ++i) idx.push_back(i);
         SortDesc sd;
@@ -282,7 +282,7 @@ double get_clones( gsl_matrix *& clones,
   gsl_matrix_set_all( clones, 1.0/double(nC));
   myClone->set( clones );
   double llh=0;
-  if (myClone->cnaEmit->is_set){//CNA+
+  if (myClone->cnaEmit->is_set){//CNA + (BAF + SNV)
     llh = get_clones_cna( clones, Clones, mass, Mass, myClone, opts, cna_llh, baf_llh, snv_llh);
   }
   else if (myClone->snvEmit->is_set){//SNV-only
@@ -458,6 +458,7 @@ double get_clones_cna( gsl_matrix *& clones,
       myClone->gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
       int s;
       snv_llh=0; 
+      double*llhs;
 #ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
 #endif
@@ -469,7 +470,7 @@ double get_clones_cna( gsl_matrix *& clones,
 	myClone->get_mean_tcn( cna_sample);
 	myClone->map_mean_tcn( cnaEmit, cna_sample, snvEmit);
 	double l;
-	myClone->do_snv_Fwd( s, l);
+	myClone->do_snv_Fwd( s, l, llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -537,6 +538,7 @@ double get_clones_cna( gsl_matrix *& clones,
       myClone->gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
       int s;
       snv_llh = 0.0;
+      double * llhs = NULL;
       myClone->save_snv_alpha = 0; 
 #ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
@@ -549,7 +551,7 @@ double get_clones_cna( gsl_matrix *& clones,
 	myClone->get_mean_tcn(cna_sample);
 	myClone->map_mean_tcn( cnaEmit, cna_sample, snvEmit);
 	double l=0;
-	myClone->do_snv_Fwd(s,l);
+	myClone->do_snv_Fwd(s,l,llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif

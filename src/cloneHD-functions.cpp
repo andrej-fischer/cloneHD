@@ -784,8 +784,10 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   Emission * cnaEmit = myClone->cnaEmit;
   Emission * bafEmit = myClone->bafEmit;
   Emission * snvEmit = myClone->snvEmit;
-  bafEmit->connect = 0;
-  myClone->symmetrize_baf=1;
+  int nC = myClone->nClones;
+  int nT = myClone->nTimes;
+  //bafEmit->connect = 0;
+  //myClone->symmetrize_baf = 0;
   // margin-map to get the posterior per clone...
   char buff[1024]; 
   sprintf( buff, "%s.clonal.margin_map.txt", opts.pre);
@@ -809,11 +811,26 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     snv_utcn_fp = fopen( buff, "w");
     fprintf( snv_utcn_fp, "#chr site used-mean-total-copynumber\n");
   }
+  //LLHs per data track per sample
+  sprintf( buff, "%s.clonal.txt", opts.pre);
+  FILE * clonal_fp = fopen( buff, "a");
+  for (int t=0; t<nT; t++){
+    myClone->cna_llhs[t] = 0;
+    myClone->baf_llhs[t] = 0;
+    myClone->snv_llhs[t] = 0;
+  }
   // print CNA posterior distributions..
   if (cnaEmit->is_set){
+    //file pointers and headers...
     sprintf( buff, "%s.cna.posterior.txt", opts.pre);
     FILE * cna_fp = fopen( buff, "w");
-    print_clonal_header( cna_fp, myClone, cnaEmit, opts);
+    print_posterior_header( cna_fp, myClone, cnaEmit, opts);
+    FILE ** cnapc_fp = new FILE * [nC];
+    for (int n=0;n<nC;n++){//per subclone
+      sprintf( buff, "%s.cna.subclone-%i.txt", opts.pre, n+1);
+      cnapc_fp[n] = fopen( buff, "w");
+      print_perclone_header( cnapc_fp[n], myClone, cnaEmit, opts);
+    }
     sprintf( buff,"%s.mean_tcn.txt", opts.pre); 
     FILE * mntcn_fp =  fopen(buff,"w");
     fprintf( mntcn_fp, "#chr site mean-total-copynumber\n");
@@ -828,6 +845,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       myClone->gamma_cna[s] = NULL;
       myClone->get_cna_posterior(s);
       print_posterior( cna_fp, myClone, cnaEmit, s, opts);
+      print_perclone_posterior( cnapc_fp, myClone, cnaEmit, s, opts);
       //get and print mean total copynumber...
       myClone->get_mean_tcn(s);
       print_mean_tcn( mntcn_fp, myClone, cnaEmit, s, opts);
@@ -858,11 +876,26 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       if ( snvSample >= 0 && snvEmit->mean_tcn != NULL){
 	print_mean_tcn( snv_utcn_fp,  myClone, snvEmit, snvSample, opts);
       }
+    }
+    fclose(cna_fp);
+    for (int n=0; n<nC; n++) fclose(cnapc_fp[n]);
+    // CNA llhs/gofs per sample
+    fprintf(clonal_fp, "# cna llh and gof per sample\n");
+    for (int t=0; t<myClone->nTimes; t++){
+      fprintf(clonal_fp, "%.8e\n", myClone->cna_llhs[t]);
     }//...all CNA posteriors printed.
-    if (bafEmit->is_set){//print BAF posterior...
+    //
+    //print BAF posterior...
+    if (bafEmit->is_set){
       sprintf( buff, "%s.baf.posterior.txt", opts.pre);
       FILE * baf_fp = fopen( buff, "w");
-      print_clonal_header( baf_fp, myClone, bafEmit, opts);
+      print_posterior_header( baf_fp, myClone, bafEmit, opts);
+      FILE ** bafpc_fp = new FILE * [nC];
+      for (int n=0;n<nC;n++){//per subclone
+	sprintf( buff, "%s.baf.subclone-%i.txt", opts.pre, n+1);
+	bafpc_fp[n] = fopen( buff, "w");
+	print_perclone_header( bafpc_fp[n], myClone, bafEmit, opts);
+      }
       myClone->alpha_baf = new gsl_matrix * [bafEmit->nSamples];
       myClone->gamma_baf = new gsl_matrix * [bafEmit->nSamples];  
       for (int s=0; s < bafEmit->nSamples; s++){
@@ -870,19 +903,31 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
 	myClone->gamma_baf[s] = NULL;
 	myClone->get_baf_posterior(s);
 	print_posterior( baf_fp, myClone, bafEmit, s, opts);
+	print_perclone_posterior( bafpc_fp, myClone, bafEmit, s, opts);
 	//get cn availability via BAF...
 	myClone->get_avail_cn( bafEmit, s);      
 	print_avail_cn( avcn_fp, myClone, bafEmit, s, opts);
       }
       fclose(baf_fp);
+      for (int n=0; n<nC; n++) fclose(bafpc_fp[n]);
+      //llh and gof per sample
+      fprintf(clonal_fp, "# baf llh and gof per sample\n");
+      for (int t=0; t<myClone->nTimes; t++){
+	fprintf(clonal_fp, "%.8e\n", myClone->baf_llhs[t]);
+      }    
     }
-    fclose(cna_fp);
     fclose(mntcn_fp);
     fclose(avcn_fp);
     if (snvEmit->is_set){//print SNV posterior...
       sprintf( buff, "%s.snv.posterior.txt", opts.pre);
       FILE * snv_fp = fopen( buff, "w");
-      print_clonal_header( snv_fp, myClone, snvEmit, opts);
+      print_posterior_header( snv_fp, myClone, snvEmit, opts);
+      FILE ** snvpc_fp = new FILE * [nC];
+      for (int n=0;n<nC;n++){//per subclone
+	sprintf( buff, "%s.snv.subclone-%i.txt", opts.pre, n+1);
+	snvpc_fp[n] = fopen( buff, "w");
+	print_perclone_header( snvpc_fp[n], myClone, snvEmit, opts);
+      }
       myClone->alpha_snv = new gsl_matrix * [snvEmit->nSamples];
       myClone->gamma_snv = new gsl_matrix * [snvEmit->nSamples];   
       for (int s=0; s < snvEmit->nSamples; s++){
@@ -890,12 +935,18 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
 	myClone->gamma_snv[s] = NULL;
 	myClone->get_snv_posterior(s);
 	print_posterior( snv_fp, myClone, snvEmit, s, opts);
+	print_perclone_posterior( snvpc_fp, myClone, snvEmit, s, opts);
 	gsl_matrix_free(myClone->gamma_snv[s]);
 	myClone->gamma_snv[s] = NULL;
       }
       fclose(snv_fp);
+      for (int n=0; n<nC; n++) fclose(snvpc_fp[n]);
       delete [] myClone->gamma_snv;
       delete [] myClone->alpha_snv;
+      fprintf(clonal_fp, "# snv llh and gof per sample\n");
+      for (int t=0; t<myClone->nTimes; t++){
+	fprintf(clonal_fp, "%.8e\n", myClone->snv_llhs[t]);
+      }
     }
     // clean up posterior...
     for (int s=0; s < cnaEmit->nSamples; s++) gsl_matrix_free(myClone->gamma_cna[s]);
@@ -910,7 +961,13 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   else if (snvEmit->is_set){//SNV only...
     sprintf( buff, "%s.snv.posterior.txt", opts.pre);
     FILE * snv_fp = fopen( buff, "w");
-    print_clonal_header( snv_fp, myClone, snvEmit, opts);
+    print_posterior_header( snv_fp, myClone, snvEmit, opts);
+    FILE ** snvpc_fp = new FILE * [nC];
+    for (int n=0;n<nC;n++){//per subclone
+      sprintf( buff, "%s.snv.subclone-%i.txt", opts.pre, n+1);
+      snvpc_fp[n] = fopen( buff, "w");
+      print_perclone_header( snvpc_fp[n], myClone, snvEmit, opts);
+    }
     myClone->alpha_snv = new gsl_matrix * [snvEmit->nSamples];
     myClone->gamma_snv = new gsl_matrix * [snvEmit->nSamples];    
     for (int s=0; s < snvEmit->nSamples; s++){
@@ -918,15 +975,22 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       myClone->gamma_snv[s] = NULL;
       myClone->get_snv_posterior(s);
       print_posterior( snv_fp, myClone, snvEmit, s, opts);
+      print_perclone_posterior( snvpc_fp, myClone, snvEmit, s, opts);
       gsl_matrix_free( myClone->gamma_snv[s]);
       myClone->gamma_snv[s] = NULL;
       //used mean total copynumber...
       print_mean_tcn( snv_utcn_fp,  myClone, snvEmit, s, opts);
     }
     fclose(snv_fp);
+    for (int n=0; n<nC; n++) fclose(snvpc_fp[n]);
     delete [] myClone->gamma_snv;
     delete [] myClone->alpha_snv;
+    fprintf(clonal_fp, "# snv llh and gof per sample\n");
+    for (int t=0; t<myClone->nTimes; t++){
+      fprintf(clonal_fp, "%.8e\n", myClone->snv_llhs[t]);
+    }
   }
+  fclose(clonal_fp);
   if (snv_utcn_fp != NULL) fclose(snv_utcn_fp);
   if (baf_utcn_fp != NULL) fclose(baf_utcn_fp);
   //SNV BULK
@@ -962,7 +1026,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
 }
 
 
-void print_clonal_header(FILE * fp, Clone * myClone, Emission * myEmit, cmdl_opts& opts){
+void print_posterior_header(FILE * fp, Clone * myClone, Emission * myEmit, cmdl_opts& opts){
   fprintf( fp,"#copynumbers:\n");
   for (int k=0; k < myClone->nLevels; k++){
     for (int f=0; f<myClone->nClones; f++){
@@ -985,15 +1049,26 @@ void print_clonal_header(FILE * fp, Clone * myClone, Emission * myEmit, cmdl_opt
   }
 }
 
+void print_perclone_header(FILE * fp, Clone * myClone, Emission * myEmit, cmdl_opts& opts){
+  if (opts.print_all || myEmit->coarse_grained == 0 ){
+    fprintf( fp,"#chr locus ");
+  }
+  else{
+    fprintf( fp,"#chr first-locus nloci last-locus ");
+  }
+  for (int cn=0; cn<=myClone->maxtcn; cn++) fprintf( fp,"%i ", cn);
+  fprintf( fp,"\n");
+}
+
 
 void print_posterior( FILE * post_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts){
+  gsl_matrix * post=NULL;
+  if ( myEmit == myClone->cnaEmit) post =  myClone->gamma_cna[s];
+  if ( myEmit == myClone->bafEmit) post =  myClone->gamma_baf[s];
+  if ( myEmit == myClone->snvEmit) post =  myClone->gamma_snv[s];
   for (int evt=0; evt < myEmit->nEvents[s]; evt++){   
     int first = myEmit->idx_of_event[s][evt];     
     int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1] - 1 : myEmit->nSites[s]-1; 
-    gsl_matrix * post=NULL;
-    if ( myEmit == myClone->cnaEmit) post =  myClone->gamma_cna[s];
-    if ( myEmit == myClone->bafEmit) post =  myClone->gamma_baf[s];
-    if ( myEmit == myClone->snvEmit) post =  myClone->gamma_snv[s];
     if( opts.print_all || myEmit->coarse_grained == 0 ){
       for (int idx=first; idx<=last; idx++){
       	fprintf( post_fp, "%i %6i", myEmit->chr[s], myEmit->loci[s][idx]);
@@ -1013,6 +1088,80 @@ void print_posterior( FILE * post_fp, Clone * myClone, Emission * myEmit, int s,
       fprintf( post_fp,"\n");
     }
   }
+}
+
+
+void print_perclone_posterior( FILE ** fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts){
+  int maxtcn = myClone->maxtcn;
+  int nC = myClone->nClones;
+  gsl_vector * perclone = gsl_vector_alloc(nC*(maxtcn+1));
+  gsl_matrix * gamma = NULL;
+  gsl_vector * cnapc = NULL;
+  int myChr = myEmit->chr[s], cnaSample=0;
+  if ( myEmit == myClone->cnaEmit) gamma = myClone->gamma_cna[s];
+  if ( myEmit == myClone->snvEmit) gamma = myClone->gamma_snv[s];
+  if ( myEmit == myClone->bafEmit){//BAF: need to symmetrize posterior per clone
+    gamma = myClone->gamma_baf[s];
+    cnaSample = myClone->cnaEmit->idx_of[myChr];
+    if (myClone->gamma_cna == NULL || myClone->gamma_cna[cnaSample] == NULL) abort();
+    if (myClone->bafSymMap == NULL) myClone->set_bafSymMap();
+    cnapc = gsl_vector_alloc(nC*(maxtcn+1));
+  } 
+  gsl_vector_view post,cnapost;
+  gsl_vector * ppc = gsl_vector_alloc(maxtcn+1);
+  gsl_vector * mem = gsl_vector_alloc(maxtcn+1);
+  for (int evt=0; evt < myEmit->nEvents[s]; evt++){   
+    int first = myEmit->idx_of_event[s][evt];     
+    int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1] - 1 : myEmit->nSites[s]-1; 
+    post = gsl_matrix_row( gamma, evt);
+    gsl_blas_dgemv(CblasNoTrans, 1.0, myClone->margin_map, &post.vector, 0.0, perclone);
+    if ( myEmit == myClone->bafEmit){
+      int cnaEvt = myEmit->Event_of_idx[s][first];
+      cnapost = gsl_matrix_row( myClone->gamma_cna[cnaSample], cnaEvt);
+      gsl_blas_dgemv(CblasNoTrans, 1.0, myClone->margin_map, &cnapost.vector, 0.0, cnapc);
+    }
+    for (int n=0; n<nC; n++){	
+      post = gsl_vector_subvector( perclone, n*(maxtcn+1), maxtcn+1);
+      if ( myEmit == myClone->bafEmit){//symmetrize BAF
+	gsl_vector_set_zero(ppc);	
+	for (int cn=0; cn<=maxtcn; cn++){
+	  double wt = cnapc->data[n*(maxtcn+1)+cn];
+	  gsl_blas_dgemv( CblasNoTrans, 1.0, myClone->bafSymMap[cn], &post.vector, 0.0, mem);
+	  double norm = gsl_blas_dasum(mem);
+	  if (norm <= 0 && wt > 1.0e-4){
+	    abort();    
+	  }
+	  else if (norm > 0){
+	    gsl_vector_scale(mem, wt / norm);
+	    gsl_vector_add(ppc, mem);
+	  }
+	}
+      }
+      else{
+	gsl_vector_memcpy( ppc, &post.vector);
+      }
+      if( opts.print_all || myEmit->coarse_grained == 0 ){
+	for (int idx=first; idx<=last; idx++){
+	  fprintf( fp[n], "%i %6i", myChr, myEmit->loci[s][idx]);
+	  for (int j=0; j<=myClone->maxtcn; j++){
+	    fprintf( fp[n], " %.3f", ppc->data[j]);
+	  }
+	  fprintf( fp[n],"\n");
+	}
+      }
+      else{
+	fprintf(fp[n], "%i %6i %6i %6i",myChr,myEmit->loci[s][first],last-first+1,myEmit->loci[s][last]);
+	for (int j=0; j<=myClone->maxtcn; j++){
+	  fprintf( fp[n], " %.3f", ppc->data[j]);
+	}
+	fprintf(fp[n],"\n");
+      }
+    }
+  }
+  gsl_vector_free(perclone);
+  gsl_vector_free(ppc);
+  gsl_vector_free(mem);
+  if (cnapc!=NULL) gsl_vector_free(cnapc);
 }
 
 void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * myEmit, int s, cmdl_opts& opts){
