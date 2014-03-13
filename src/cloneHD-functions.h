@@ -71,6 +71,7 @@ void print_perclone_header( FILE * fp,  Clone * myClone, Emission * myEmit, cmdl
 void print_perclone_posterior( FILE ** fp,  Clone * myClone, Emission * myEmit,  int s, cmdl_opts& opts);
 void print_mean_tcn( FILE * mntcn_fp, Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
 void print_avail_cn( FILE * avcn_fp,  Clone * myClone, Emission * cnaEmit, int s, cmdl_opts& opts);
+void print_gof( Clone * myClone, Emission * myEmit, cmdl_opts& opts);
 
 void get_cna_data(Emission * cnaEmit, cmdl_opts& opts, int& nTimes);
 void get_baf_data(Emission * bafEmit, cmdl_opts& opts, int& nTimes, int& nT);

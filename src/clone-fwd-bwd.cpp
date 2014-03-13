@@ -18,10 +18,32 @@ double Clone::entropy(gsl_vector * x){
   return(H);
 }
 
+void Clone::scale_prior( gsl_vector*& prior, int n){
+  gsl_vector_scale( prior, double(n));//log-space!
+  double norm = log_vector_norm(prior);
+  gsl_vector_add_constant( prior, -norm);
+}
+
+void Clone::combine_prior( gsl_vector*& prior, gsl_vector*& mem, int n){
+  double norm;
+  if (prior->data[0] <= 0.0){//log-space
+    if (n > 1) Clone::scale_prior(mem,n);
+    gsl_vector_add( prior, mem);
+    norm = log_vector_norm(prior);
+    gsl_vector_add_constant(prior,-norm);
+  }
+  else{
+    gsl_vector_mul( prior, mem);
+    norm = gsl_blas_dasum(prior);
+    if (norm!=norm || norm < 0.0) abort();
+    gsl_vector_scale( prior, 1.0/norm);
+  }
+}
 
 //*** CNA FWD/BWD ***************************************************
 void Clone::do_cna_Fwd( int sample, double& llh, double*& llhs){
   gsl_vector * entry = gsl_vector_alloc(nLevels);
+  gsl_vector * mem   = gsl_vector_alloc(nLevels);
   gsl_vector * prior = gsl_vector_alloc(nLevels);
   gsl_vector * post  = gsl_vector_alloc(nLevels);
   gsl_matrix * Trans = NULL;
@@ -34,15 +56,18 @@ void Clone::do_cna_Fwd( int sample, double& llh, double*& llhs){
     }
   }
   double norm = 0.0, pj=1.0;
-  int idx=0;
+  int idx=0, nidx=0, last_evt = cnaEmit->nEvents[sample]-1;
   llh = 0.0;
-  for (int evt=0; evt < cnaEmit->nEvents[sample]; evt++){
+  for (int evt=0; evt <= last_evt ; evt++){
     idx = cnaEmit->idx_of_event[sample][evt];
     //***PREDICT STEP***
     if (nClones > 0){
       if (cnaEmit->connect && evt > 0){//connect to the left...
 	pj = cnaEmit->pjump[sample][idx];
 	Clone::predict( prior, post, cnaEmit, pj, Trans);
+	nidx = (evt < last_evt) ? cnaEmit->idx_of_event[sample][evt+1] : cnaEmit->nSites[sample];
+	gsl_vector_memcpy( mem, entry);
+	Clone::combine_prior( prior, mem, nidx-idx);
       }
       else{
 	gsl_vector_memcpy(prior,entry);
@@ -60,6 +85,7 @@ void Clone::do_cna_Fwd( int sample, double& llh, double*& llhs){
   gsl_vector_free(prior);
   gsl_vector_free(post);
   gsl_vector_free(entry);
+  gsl_vector_free(mem);
   if (Trans != NULL) gsl_matrix_free(Trans);
 }
 
@@ -79,7 +105,7 @@ void Clone::do_cna_Bwd(int sample, double& ent){
     }
   }
   double * llhs = NULL;
-  int idx=0;
+  int idx=0, nidx=0;
   gsl_vector_view alph;
   double pj = 1.0, norm=0;
   int last_evt = cnaEmit->nEvents[sample]-1;
@@ -93,6 +119,9 @@ void Clone::do_cna_Bwd(int sample, double& ent){
 	pj = cnaEmit->pjump[sample][last_idx];
 	last_idx = idx;
 	Clone::predict( prior, post, cnaEmit, pj, Trans);
+	nidx = (evt < last_evt) ? cnaEmit->idx_of_event[sample][evt+1] : cnaEmit->nSites[sample];
+	gsl_vector_memcpy(mem,entry);
+	Clone::combine_prior( prior, mem, nidx-idx);
       }
       else{
 	gsl_vector_memcpy(prior,entry);
@@ -175,26 +204,14 @@ void Clone::do_baf_Fwd( int sample, double& llh, double*& llhs){
 	get_baf_prior_from_cna_post( Prior, &cna_post.vector);
 	last_cna_evt = cna_evt;
       }
-      if (bafEmit->connect) gsl_vector_memcpy( mem, prior);
-      gsl_vector_memcpy( prior, Prior);
       nidx = (evt < last_evt) ? bafEmit->idx_of_event[sample][evt+1] : bafEmit->nSites[sample];
-      if ( nidx-idx > 1){//exponentiate prior for all observations in this block
-	gsl_vector_scale( prior, double(nidx-idx));//log-space!
-	norm = log_vector_norm(prior);
-	gsl_vector_add_constant(prior,-norm);
-      }  
-      if (bafEmit->connect){//multiply two priors and rescale...
-	if (bafEmit->log_space){
-	  gsl_vector_add(prior,mem);
-	  norm = log_vector_norm(prior);
-	  gsl_vector_add_constant(prior,-norm);
-	}
-	else{
-	  gsl_vector_mul(prior,mem);
-	  norm = gsl_blas_dasum(prior);
-	  if (norm!=norm || norm < 0.0) abort();
-	  gsl_vector_scale( prior, 1.0/norm);
-	}
+      if (bafEmit->connect){
+	gsl_vector_memcpy( mem, Prior);
+	Clone::combine_prior( prior, mem, nidx-idx);
+      }
+      else{
+	gsl_vector_memcpy( prior, Prior);
+	if (nidx-idx > 1) Clone::scale_prior( prior, nidx-idx);
       }
     }
     else{//nClones == 0
@@ -258,26 +275,14 @@ void Clone::do_baf_Bwd( int sample, double& ent){
 	get_baf_prior_from_cna_post( Prior, &cna_post.vector);
 	last_cna_evt = cna_evt;
       }
-      if (bafEmit->connect) gsl_vector_memcpy( mem, prior);
-      gsl_vector_memcpy( prior, Prior);
       nidx = (evt < last_evt) ? bafEmit->idx_of_event[sample][evt+1] : bafEmit->nSites[sample];
-      if ( nidx-idx > 1){//exponentiate prior for all observations in this block
-	gsl_vector_scale( prior, double(nidx-idx));//log-space!
-	norm = log_vector_norm(prior);
-	gsl_vector_add_constant(prior,-norm);
-      }  	
-      if (bafEmit->connect){//multiply two priors and rescale...
-	if (bafEmit->log_space){
-	  gsl_vector_add(prior,mem);
-	  norm = log_vector_norm(prior);
-	  gsl_vector_add_constant(prior,-norm);
-	}
-	else{
-	  gsl_vector_mul(prior,mem);
-	  norm = gsl_blas_dasum(prior);
-	  if (norm!=norm || norm <0.0) abort();
-	  gsl_vector_scale(prior,1.0/norm);
-	}
+      if (bafEmit->connect){
+	gsl_vector_memcpy( mem, Prior);
+	Clone::combine_prior( prior, mem, nidx-idx);
+      }
+      else{
+	gsl_vector_memcpy( prior, Prior);
+	if (nidx-idx > 1) Clone::scale_prior( prior, nidx-idx);
       }
     }
     else{//nClones==0
@@ -387,27 +392,14 @@ void Clone::do_snv_Fwd(int sample, double& llh, double*& llhs){
 	  last_cna_evt = cna_evt;
 	  last_baf_evt = baf_evt;
 	}
-	if (snvEmit->connect) gsl_vector_memcpy( mem, prior);
-	gsl_vector_memcpy( prior, Prior);
 	nidx = (evt < last_evt) ? snvEmit->idx_of_event[sample][evt+1] : snvEmit->nSites[sample];
-	if ( nidx-idx > 1){//exponentiate prior for all observations in this block
-	  gsl_vector_scale( prior, double(nidx-idx));//log-space!
-	  norm = log_vector_norm(prior);
-	  gsl_vector_add_constant(prior,-norm);
-	}  
-	// multiply the two priors and rescale...
 	if (snvEmit->connect){
-	  if (snvEmit->log_space){
-	    gsl_vector_add(prior,mem);
-	    norm = log_vector_norm(prior);
-	    gsl_vector_add_constant(prior,-norm);
-	  }
-	  else{
-	    gsl_vector_mul(prior,mem);
-	    norm = gsl_blas_dasum(prior);
-	    if (norm!=norm || norm <= 0.0) abort();
-	    gsl_vector_scale(prior,1.0/norm);
-	  }
+	  gsl_vector_memcpy( mem, Prior);
+	  Clone::combine_prior( prior, mem, nidx-idx);
+	}
+	else{
+	  gsl_vector_memcpy( prior, Prior);
+	  if (nidx-idx > 1) Clone::scale_prior( prior, nidx-idx);
 	}
       }
       else if ( !snvEmit->connect ){
@@ -508,27 +500,14 @@ void Clone::do_snv_Bwd( int sample, double& ent){
 	  last_cna_evt = cna_evt;
 	  last_baf_evt = baf_evt;
 	}
-	if (snvEmit->connect) gsl_vector_memcpy( mem, prior);
-	gsl_vector_memcpy( prior, Prior);
 	nidx = (evt < last_evt) ? snvEmit->idx_of_event[sample][evt+1] : snvEmit->nSites[sample];
-	if ( nidx-idx > 1){//exponentiate prior for all observations in this block
-	  gsl_vector_scale( prior, double(nidx-idx));//log-space!
-	  norm = log_vector_norm(prior);
-	  gsl_vector_add_constant(prior,-norm);
-	}  
-	// multiply two priors and rescale...
 	if (snvEmit->connect){
-	  if (snvEmit->log_space){
-	    gsl_vector_add(prior,mem);
-	    norm = log_vector_norm(prior);
-	    gsl_vector_add_constant(prior,-norm);
-	  }
-	  else{
-	    gsl_vector_mul(prior,mem);
-	    norm = gsl_blas_dasum(prior);
-	    if (norm!=norm || norm <0.0) abort();
-	    gsl_vector_scale(prior,1.0/norm);
-	  }
+	  gsl_vector_memcpy( mem, Prior);
+	  Clone::combine_prior( prior, mem, nidx-idx);
+	}
+	else{
+	  gsl_vector_memcpy( prior, Prior);
+	  if (nidx-idx > 1) Clone::scale_prior( prior, nidx-idx);
 	}
       }
       else if ( !snvEmit->connect ){

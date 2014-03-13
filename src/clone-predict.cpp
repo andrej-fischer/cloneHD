@@ -31,10 +31,10 @@ void Clone::set_TransMat_cna( gsl_matrix * Trans, int chr){
       jumps=0;
       p=1.0;
       for(int k=0; k < nClones; k++){
-	if (copynumber[j][k] > maxtcn_per_clone[chr][k]){
+	/*if (copynumber[j][k] > maxtcn_per_clone[chr][k]){
 	  jumps = 2;
 	  break;
-	}
+	  }*/
 	if( copynumber[i][k] != copynumber[j][k]){
 	  if ( jumps==0 ){
 	    cni = copynumber[i][k];
@@ -45,7 +45,7 @@ void Clone::set_TransMat_cna( gsl_matrix * Trans, int chr){
 	  else if (cni - cnf != copynumber[i][k] - copynumber[j][k]){
 	    jumps++;
 	  }
-	  if (copynumber[j][k] == 0) p*= 0.01;
+	  //if (copynumber[j][k] == 0) p*= 0.01;
 	}
       }
       if (jumps <= 1){

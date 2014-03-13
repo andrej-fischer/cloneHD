@@ -786,8 +786,6 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   Emission * snvEmit = myClone->snvEmit;
   int nC = myClone->nClones;
   int nT = myClone->nTimes;
-  //bafEmit->connect = 0;
-  //myClone->symmetrize_baf = 0;
   // margin-map to get the posterior per clone...
   char buff[1024]; 
   sprintf( buff, "%s.clonal.margin_map.txt", opts.pre);
@@ -892,7 +890,9 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     for (int t=0; t<myClone->nTimes; t++){
       fprintf( clonal_fp, "%.8e %.4f\n", 
 	       myClone->cna_llhs[t], myClone->cna_gofs[t] / double(cnaEmit->total_loci));
-    }//...all CNA posteriors printed.
+    }
+    if (cnaEmit->coarse_grained) print_gof( myClone, cnaEmit, opts);
+    //...all CNA posteriors printed.
     //
     //print BAF posterior...
     if (bafEmit->is_set){
@@ -928,6 +928,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
 	fprintf(clonal_fp, "%.8e %.4f\n", 
 		myClone->baf_llhs[t], myClone->baf_gofs[t] / double(bafEmit->total_loci));
       }    
+      if (bafEmit->coarse_grained) print_gof( myClone, bafEmit, opts);
     }
     fclose(mntcn_fp);
     fclose(avcn_fp);
@@ -964,6 +965,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
 	fprintf( clonal_fp, "%.8e %.4f\n", 
 		 myClone->snv_llhs[t], myClone->snv_gofs[t] / double(snvEmit->total_loci));
       }
+      if (snvEmit->coarse_grained) print_gof( myClone, snvEmit, opts);
     }
     // clean up posterior...
     for (int s=0; s < cnaEmit->nSamples; s++) gsl_matrix_free(myClone->gamma_cna[s]);
@@ -1010,6 +1012,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       fprintf( clonal_fp, "%.8e %.4f\n", 
 	       myClone->snv_llhs[t], myClone->snv_gofs[t] / double(snvEmit->total_loci));
     }
+    if (snvEmit->coarse_grained) print_gof( myClone, snvEmit, opts);
   }
   fclose(clonal_fp);
   if (snv_utcn_fp != NULL) fclose(snv_utcn_fp);
@@ -1247,3 +1250,41 @@ void print_avail_cn( FILE * avcn_fp, Clone * myClone, Emission * myEmit, int s, 
   }
 }
 
+
+
+void print_gof( Clone * myClone, Emission * myEmit, cmdl_opts& opts){
+  if (myEmit->coarse_grained == 0) abort();
+  double *** gofs = NULL;
+  FILE * gof_fp = NULL;
+  char buff[1024];
+  if ( myEmit == myClone->cnaEmit){
+    gofs = myClone->cna_all_gofs;
+    sprintf( buff, "%s.cna.gof.txt", opts.pre);
+    gof_fp = fopen( buff, "w");
+  }
+  if ( myEmit == myClone->bafEmit){
+    gofs = myClone->baf_all_gofs;
+    sprintf( buff, "%s.baf.gof.txt", opts.pre);
+    gof_fp = fopen( buff, "w");
+  }
+  if ( myEmit == myClone->snvEmit){
+    gofs = myClone->snv_all_gofs;
+    sprintf( buff, "%s.snv.gof.txt", opts.pre);
+    gof_fp = fopen( buff, "w");
+  }
+  fprintf( gof_fp,"#chr first-locus nloci last-locus gof\n");
+  for (int s=0;s<myEmit->nSamples; s++){
+    for (int evt=0; evt < myEmit->nEvents[s]; evt++){   
+      int first = myEmit->idx_of_event[s][evt];     
+      int last  = (evt < myEmit->nEvents[s]-1) ?  myEmit->idx_of_event[s][evt+1] - 1 : myEmit->nSites[s]-1; 
+      fprintf( gof_fp, "%i %6i %6i %6i", 
+	       myEmit->chr[s], myEmit->loci[s][first], last-first+1, myEmit->loci[s][last]
+	       );
+      for (int t=0; t< myClone->nTimes; t++){
+	fprintf( gof_fp, " %12.2f", gofs[t][s][evt]);
+      }
+      fprintf( gof_fp,"\n");
+    }
+  }
+  fclose(gof_fp);
+}

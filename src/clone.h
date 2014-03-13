@@ -143,6 +143,8 @@ class Clone{
   void predict( gsl_vector * prior, gsl_vector * post, Emission * myEmit, double pj, gsl_vector * flat);
   void apply_maxtcn_mask( gsl_vector * prior, int chr, int log_space);
   // *** in clone-fwd-bwd.cpp ************************************************************************
+  void combine_prior(gsl_vector*& prior, gsl_vector*& mem, int n);
+  void scale_prior(gsl_vector*& prior, int n);
   void do_cna_Fwd( int sample, double& llh, double*& llhs);
   void do_cna_Bwd( int sample, double& ent);
   void do_baf_Fwd( int sample, double& llh, double*& llhs);
