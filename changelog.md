@@ -1,5 +1,17 @@
 # changelog for cloneHD/filterHD
 
+## v1.17.2 / 13.03.2014
+
+*  new output: posterior per subclone, goodness of fit (GOF) per
+   segment
+*  changed file name `*clonal.txt` -> `*summary.txt`
+*  filterHD STDOUT includes now GOF per sample
+*  cloneHD `*summary.txt` includes now LLH per sample
+*  cloneHD `*summary.txt` includes now GOF per sample
+*  changed `_` to `-` in all file names
+*  fixed bug: BAF now symmetrized only in per-subclone-posterior
+*  new CNA prior to penalize homozygous deletions
+	
 ## v1.17.1 / 01.03.2014
 
 *  BAF posterior symmetrized for output
@@ -45,7 +57,7 @@
 *  introduced different grid sizes for CNA, BAF and SNV
 *  fixed bug in Clone::get_interpolation(), at the boundaries
 *  fixed bug in Clone::trapezoidal() (affected --bulk-prior vs --bulk-mean consistency)
-	
+
 ## v1.16.6 / 12.02.2014
 
 *  fixed major bug for SNV false positive emission rate and prior

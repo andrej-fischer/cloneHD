@@ -1,9 +1,11 @@
 # How to get cloneHD and filterHD?
 
 The current stable release, including pre-compiled executable binaries
-of filterHD and cloneHD for Mac OS X (64bit), can be found at
-<ftp://ftp.sanger.ac.uk/pub/teams/153/cloneHD/>.  The source code can
-also be downloaded here.
+of filterHD and cloneHD for Mac OS X (64bit), can be found at:
+
+`ftp://ftp.sanger.ac.uk/pub/teams/153/cloneHD/`  
+
+The source code can also be downloaded here.
 
 # Run a test with simulated data
 

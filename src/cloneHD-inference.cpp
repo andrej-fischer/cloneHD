@@ -87,7 +87,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
   }
   //output file pointer 
   char clonal_out[1024];
-  sprintf( clonal_out, "%s.clonal.txt", opts.pre);
+  sprintf( clonal_out, "%s.summary.txt", opts.pre);
   FILE * clonal_fp = fopen(clonal_out,"w");
   fprintf(clonal_fp, "# n cna-llh baf-llh snv-llh total-llh total-bic\n");
   //containers for the best estimates, given n...

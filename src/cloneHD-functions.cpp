@@ -101,7 +101,7 @@ void get_track(const char * track_fn,
   stringstream line_ss;
   ifs.open( track_fn, ios::in);
   if (ifs.fail()){
-    printf("ERROR in get_track(): file %s cannot be opened.\n", track_fn);
+    printf("ERROR: file %s cannot be opened.\n", track_fn);
     exit(1);
   }
   if (mean == NULL){
@@ -788,7 +788,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   int nT = myClone->nTimes;
   // margin-map to get the posterior per clone...
   char buff[1024]; 
-  sprintf( buff, "%s.clonal.margin_map.txt", opts.pre);
+  sprintf( buff, "%s.margin_map.txt", opts.pre);
   FILE * margin_fp = fopen( buff, "w");
   for (int i=0; i<(int) myClone->margin_map->size1; i++){
     for (int j=0; j<(int) myClone->margin_map->size2; j++){
@@ -800,17 +800,17 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   // used total copynumber...
   FILE * baf_utcn_fp=NULL, * snv_utcn_fp=NULL; 
   if ( bafEmit->is_set ){
-    sprintf( buff, "%s.baf.used_mean_tcn.txt", opts.pre);
+    sprintf( buff, "%s.baf.used-mean-tcn.txt", opts.pre);
     baf_utcn_fp = fopen( buff, "w");
     fprintf( baf_utcn_fp, "#chr site used-mean-total-copynumber\n");
   }
   if ( snvEmit->is_set ){
-    sprintf( buff, "%s.snv.used_mean_tcn.txt", opts.pre);
+    sprintf( buff, "%s.snv.used-mean-tcn.txt", opts.pre);
     snv_utcn_fp = fopen( buff, "w");
     fprintf( snv_utcn_fp, "#chr site used-mean-total-copynumber\n");
   }
   //LLHs & GOFs per data track per sample
-  sprintf( buff, "%s.clonal.txt", opts.pre);
+  sprintf( buff, "%s.summary.txt", opts.pre);
   FILE * clonal_fp = fopen( buff, "a");
   for (int t=0; t<nT; t++){
     myClone->cna_llhs[t] = 0;
@@ -837,10 +837,10 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
 	print_perclone_header( cnapc_fp[n], myClone, cnaEmit, opts);
       }
     }
-    sprintf( buff,"%s.mean_tcn.txt", opts.pre); 
+    sprintf( buff,"%s.mean-tcn.txt", opts.pre); 
     FILE * mntcn_fp =  fopen(buff,"w");
     fprintf( mntcn_fp, "#chr site mean-total-copynumber\n");
-    sprintf( buff,"%s.available_cn.txt", opts.pre); 
+    sprintf( buff,"%s.avail-cn.txt", opts.pre); 
     FILE * avcn_fp =  fopen(buff,"w");
     fprintf( avcn_fp, "#chr site copynumber-availability\n");
     //allocate space for the posterior

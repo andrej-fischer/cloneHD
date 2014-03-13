@@ -199,7 +199,7 @@ int main (int argc, const char * argv[]){
     }
     // print posterior information to file
     char buff[1024];
-    sprintf(buff,"%s.posterior.%i.txt", opts.pre, t+1);
+    sprintf(buff,"%s.posterior-%i.txt", opts.pre, t+1);
     FILE * total_fp = fopen(buff,"w");
     fprintf(total_fp, "#sample site mean std-dev jump-prob");
     fprintf(total_fp, " posterior %.5e %.5e\n", myJD.myEmit->xmin,  myJD.myEmit->xmax);

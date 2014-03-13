@@ -115,7 +115,7 @@ double Clone::get_all_total_llh(){
     }//END PARALLEL FOR
   }
   //cleanup...
-  if (save_cna_alpha==1){
+  if (cnaEmit->is_set && save_cna_alpha==1){
     for ( sample=0; sample < cnaEmit->nSamples; sample++){
       gsl_matrix_free(gamma_cna[sample]);
     }
@@ -124,7 +124,7 @@ double Clone::get_all_total_llh(){
     alpha_cna = NULL;
     gamma_cna = NULL;
   }
-  if (save_baf_alpha==1){
+  if (bafEmit->is_set && save_baf_alpha==1){
     for ( sample=0; sample < bafEmit->nSamples; sample++){
       gsl_matrix_free(gamma_baf[sample]);
     }
