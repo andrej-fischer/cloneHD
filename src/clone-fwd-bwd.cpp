@@ -118,6 +118,10 @@ void Clone::do_cna_Bwd(int sample, double& ent){
       gsl_vector_scale(mem,1.0/norm);
     }//multiply done.
     gsl_matrix_set_row( gamma_cna[sample], evt, mem);
+    if (get_gofs){
+      Clone::get_cna_gof(mem,sample,evt);
+      for (int t=0;t<nTimes;t++) cna_gofs[t] += cna_all_gofs[t][sample][evt];
+    }
     //ent += Clone::entropy(mem);
     //***UPDATE STEP*** (normalization term not needed here)
     Clone::update( prior, post, cnaEmit, sample, evt, llhs);
@@ -297,6 +301,10 @@ void Clone::do_baf_Bwd( int sample, double& ent){
     }//multiply done
     //if (nClones > 0 && symmetrize_baf) Clone::sym_baf( mem, &cna_post.vector);
     gsl_matrix_set_row( gamma_baf[sample], evt, mem);
+    if (get_gofs){
+      Clone::get_baf_gof(mem,sample,evt);
+      for (int t=0;t<nTimes;t++) baf_gofs[t] += baf_all_gofs[t][sample][evt];
+    }
     //ent += Clone::entropy(mem);
     //***UPDATE STEP*** (normalization term not needed here)
     Clone::update( prior, post, bafEmit, sample, evt, llhs);
@@ -551,6 +559,10 @@ void Clone::do_snv_Bwd( int sample, double& ent){
       gsl_vector_scale( mem, 1.0/norm);
     }
     gsl_matrix_set_row( gamma_snv[sample], evt, mem);
+    if (get_gofs){
+      Clone::get_snv_gof(mem,sample,evt);
+      for (int t=0;t<nTimes;t++) snv_gofs[t] += snv_all_gofs[t][sample][evt];
+    }
     //ent += Clone::entropy(mem);
     //***UPDATE STEP*** (normalization term not needed here)
     Clone::update( prior, post, snvEmit, sample, evt, llhs);
@@ -562,6 +574,123 @@ void Clone::do_snv_Bwd( int sample, double& ent){
   gsl_vector_free(Prior);
   if (Trans!= NULL) gsl_matrix_free(Trans);
 }
+
+
+//*** GODNESS OF FITS **********************************************************
+void Clone::allocate_all_gofs(){
+  if (cnaEmit->is_set) cna_all_gofs = new double ** [nTimes];
+  if (bafEmit->is_set) baf_all_gofs = new double ** [nTimes];
+  if (snvEmit->is_set) snv_all_gofs = new double ** [nTimes];
+  for (int t=0;t<nTimes;t++){
+    if (cnaEmit->is_set){
+      cna_all_gofs[t] = new double * [cnaEmit->nSamples];
+      for (int s=0;s<cnaEmit->nSamples; s++)
+	cna_all_gofs[t][s] = new double [cnaEmit->nEvents[s]];
+    }
+    if (bafEmit->is_set){
+      baf_all_gofs[t] = new double * [bafEmit->nSamples];
+      for (int s=0;s<bafEmit->nSamples; s++)
+	baf_all_gofs[t][s] = new double [bafEmit->nEvents[s]];
+    }
+    if (snvEmit->is_set){
+      snv_all_gofs[t] = new double * [snvEmit->nSamples];
+      for (int s=0;s<snvEmit->nSamples; s++)
+	snv_all_gofs[t][s] = new double [snvEmit->nEvents[s]];
+    }
+  }
+}
+
+
+
+void Clone::get_cna_gof(gsl_vector * post, int s, int evt){
+  int cnaChr = cnaEmit->chr[s];
+  for (int t=0; t<nTimes; t++) cna_all_gofs[t][s][evt] = 0;
+  int first = cnaEmit->idx_of_event[s][evt];     
+  int last 
+    = (evt < cnaEmit->nEvents[s]-1) 
+    ? cnaEmit->idx_of_event[s][evt+1] - 1 
+    : cnaEmit->nSites[s]-1; 
+  unsigned int n,N;
+  double xobs,x,b,g;
+  for (int idx=first; idx<=last; idx++){
+    b = (cnaEmit->bias == NULL) ? 1.0 : cnaEmit->bias[s][idx];
+    for (int t=0; t<nTimes; t++){
+      n = cnaEmit->reads[t][s][idx];
+      N = cnaEmit->depths[t][s][idx];
+      xobs = double(n)/double(N);
+      g = 0;
+      for (int l=0; l<nLevels; l++){
+	x = tcn[cnaChr][t][l] * b * mass->data[t];
+	g += post->data[l] * fabs(xobs-x);
+      }
+      cna_all_gofs[t][s][evt] += g;
+    }
+  }
+}
+
+
+
+void Clone::get_baf_gof(gsl_vector * post, int s, int evt){
+  int bafChr = bafEmit->chr[s];
+  for (int t=0; t<nTimes; t++) baf_all_gofs[t][s][evt] = 0;
+  int first = bafEmit->idx_of_event[s][evt];     
+  int last 
+    = (evt < bafEmit->nEvents[s]-1) 
+    ? bafEmit->idx_of_event[s][evt+1] - 1 
+    : bafEmit->nSites[s]-1; 
+  unsigned int n,N;
+  double xobs,x,mntcn,g;
+  for (int idx=first; idx<=last; idx++){
+    for (int t=0; t<nTimes; t++){
+      n = bafEmit->reads[t][s][idx];
+      N = bafEmit->depths[t][s][idx];
+      xobs = double(n)/double(N);
+      xobs = min(xobs,1.0-xobs);
+      g = 0;
+      mntcn = bafEmit->mean_tcn[t][s][evt];
+      for (int l=0; l<nLevels; l++){
+	x = tcn[bafChr][t][l] / mntcn;
+	x = min(x,1.0-x);
+	g += post->data[l] * fabs(xobs-x);
+      }
+      baf_all_gofs[t][s][evt] += g;
+    }
+  }
+}
+
+void Clone::get_snv_gof(gsl_vector * post, int s, int evt){
+  int snvChr = snvEmit->chr[s];
+  for (int t=0; t<nTimes; t++) snv_all_gofs[t][s][evt] = 0;
+  int first = snvEmit->idx_of_event[s][evt];     
+  int last 
+    = (evt < snvEmit->nEvents[s]-1) 
+    ? snvEmit->idx_of_event[s][evt+1] - 1 
+    : snvEmit->nSites[s]-1; 
+  unsigned int n,N;
+  double xobs=0,x=0,y=0,b=0,mntcn=1,g=0;
+  for (int idx=first; idx<=last; idx++){
+    for (int t=0; t<nTimes; t++){
+      n = snvEmit->reads[t][s][idx];
+      N = snvEmit->depths[t][s][idx];
+      xobs = double(n)/double(N);
+      mntcn 
+	= (snvEmit->mean_tcn == NULL) 
+	? tcn[snvChr][t][level_of[snvChr]] 
+	: snvEmit->mean_tcn[t][s][evt];
+      if (bulk_mean != NULL){
+	b = (bulk_fix >= 0.0) ? bulk_fix : bulk_mean[t][s][idx];
+	y =  b * (1.0-purity[t]) * double(normal_copy[snvChr]) / mntcn;
+      }
+      g=0;
+      for (int l=0; l<nLevels; l++){
+	x = y + clone_spectrum[t][l] / mntcn; 
+	g += post->data[l] * fabs(xobs-x);
+      }
+      snv_all_gofs[t][s][evt] += g;
+    }
+  }
+}
+
 
 
 /*

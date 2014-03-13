@@ -74,12 +74,13 @@ Clone::Clone(){
   snvGrid  = 100;
   bulkGrid = 100;
   logzero = -1.0e6;
-  //map1=NULL;
-  //map2=NULL;
-  //symmetrize_baf=0;
   cna_llhs = NULL;
   baf_llhs = NULL;
   snv_llhs = NULL;
+  cna_gofs = NULL;
+  baf_gofs = NULL;
+  snv_gofs = NULL;
+  get_gofs = 0;
   bafSymMap = NULL;
 }
 
@@ -99,6 +100,12 @@ Clone::~Clone(){
     if (log_mass!=NULL) gsl_vector_free(log_mass);
     if (nmean!=NULL) gsl_vector_free(nmean);
     if (min_purity!=NULL) gsl_vector_free(min_purity);
+    delete [] cna_llhs;
+    delete [] baf_llhs;
+    delete [] snv_llhs;
+    delete [] cna_gofs;
+    delete [] baf_gofs;
+    delete [] snv_gofs;
   }
   if (freqs != NULL) gsl_matrix_free(freqs);
   if (margin_map != NULL) gsl_matrix_free(margin_map);
@@ -190,6 +197,9 @@ void Clone::allocate( Emission * cna, Emission * baf, Emission * snv, const char
   cna_llhs = new double [nTimes];
   baf_llhs = new double [nTimes];
   snv_llhs = new double [nTimes];
+  cna_gofs = new double [nTimes];
+  baf_gofs = new double [nTimes];
+  snv_gofs = new double [nTimes];
   allocated = 1;//done
 }
 
@@ -397,12 +407,8 @@ void Clone::set_all_levels(){
       int lev=0;
       for (int j=0; j<nClones;j++){
 	lev += maxtcn_per_clone[chr][j] * (j<nClones-1 ? pow(maxtcn+1,nClones-1-j) : 1);
-	//printf("%i", maxtcn_per_clone[chr][j]);
       }
       level_of[chr] = lev;
-      //printf(" = %i = ",lev);
-      //for (int j=0; j<nClones;j++) printf("%i", copynumber[lev][j]);
-      //cout<<endl;
     }
   }
 }

@@ -153,6 +153,13 @@ class Clone{
   gsl_matrix ** alpha_cna, ** alpha_baf, ** alpha_snv;
   gsl_matrix ** gamma_cna, ** gamma_baf, ** gamma_snv;
   double entropy(gsl_vector * x);
+  int get_gofs;
+  void allocate_all_gofs();
+  void get_cna_gof(gsl_vector * post, int sample, int evt);
+  void get_baf_gof(gsl_vector * post, int sample, int evt);
+  void get_snv_gof(gsl_vector * post, int sample, int evt);
+  double * cna_gofs, * baf_gofs, * snv_gofs;
+  double *** cna_all_gofs, *** baf_all_gofs, *** snv_all_gofs;
   //void sym_baf( gsl_vector * bafPost, gsl_vector * cnvPost);
   //gsl_matrix ** map1, ** map2;
   //int symmetrize_baf;

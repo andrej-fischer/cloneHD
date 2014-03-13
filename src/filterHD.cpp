@@ -216,7 +216,8 @@ int main (int argc, const char * argv[]){
 	  gsl_vector_view lower = gsl_matrix_subrow( myJD.gamma[s], l, 0, uidx+1);
 	  gsl_vector_memcpy( post, &lower.vector);
 	  double norm = gsl_blas_dasum(post);
-	  norm = (norm - 0.5*(post->data[0] + post->data[uidx])) * myJD.myEmit->dx;
+	  norm -= 0.5*(post->data[0] + post->data[uidx]);
+	  norm *= myEmit.dx;
 	  if (norm <= 0.0) abort();
 	  gsl_vector_scale(post,1.0/norm);
 	}
@@ -232,17 +233,23 @@ int main (int argc, const char * argv[]){
 		chrs[s], myJD.loci[s][l], mean, sqrt(var), exp(myJD.pjump[s][l]));
 	if(opts.dist==1){// full posterior distribution? LARGE!
 	  for (int i=0; i <= myJD.gridSize; i++){
-	    double p = gsl_matrix_get( myJD.gamma[s], l, i);
-	    fprintf(total_fp, " %.2e", p); 
+	    fprintf(total_fp, " %.2e", gsl_matrix_get( myJD.gamma[s], l, i)); 
 	  }
 	}
 	fprintf(total_fp,"\n");
 	//goodness of fit...
 	if (mask==NULL || mask[s][l] == 1){
 	  xobs = double(myEmit.reads[t][s][l]) / double(myEmit.depths[t][s][l]);
-	  if (opts.reflect) xobs = min(xobs,1.0-xobs);	  
-	  if (myEmit.bias != NULL) mean *= myEmit.bias[s][l];
-	  gof += fabs(mean - xobs);
+	  if (opts.reflect) xobs = min(xobs,1.0-xobs);	 
+	  double x=0,g=0,dg=0;
+	  double b = (myEmit.bias == NULL) ? 1.0 : myEmit.bias[s][l];
+	  for (int i=0; i<=uidx; i++){
+	    x = myEmit.xgrid[i] * b;
+	    dg = fabs(x - xobs) * post->data[i];
+	    if (i==0||i==uidx) dg *= 0.5;
+	    g += dg;
+	  }
+	  gof += g * myEmit.dx;
 	  gofNorm += 1.0;
 	}
       }
