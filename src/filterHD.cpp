@@ -240,7 +240,8 @@ int main (int argc, const char * argv[]){
 	//goodness of fit...
 	if (mask==NULL || mask[s][l] == 1){
 	  xobs = double(myEmit.reads[t][s][l]) / double(myEmit.depths[t][s][l]);
-	  if (opts.reflect) xobs = min(xobs,1.0-xobs);
+	  if (opts.reflect) xobs = min(xobs,1.0-xobs);	  
+	  if (myEmit.bias != NULL) mean *= myEmit.bias[s][l];
 	  gof += fabs(mean - xobs);
 	  gofNorm += 1.0;
 	}
