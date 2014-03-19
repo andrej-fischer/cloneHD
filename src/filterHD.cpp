@@ -135,6 +135,12 @@ int main (int argc, const char * argv[]){
     get_bias( opts.bias_fn, &myEmit);
   }
   // *** POSTERIOR JUMP TRACK ACROSS ALL TIME POINTS ***
+  double ** mean = new double * [nSamples];
+  double ** std  = new double * [nSamples];
+  for (int s=0; s<nSamples; s++){
+    mean[s] = new double [nSites[s]];
+    std[s]  = new double [nSites[s]];
+  }
   double ** jumps = NULL;
   if (opts.jumps==1){
     jumps = new double * [nSamples];
@@ -162,58 +168,21 @@ int main (int argc, const char * argv[]){
     JumpDiffusion myJD( &myEmit, t);
     //find maximum-likelihood estimates of all parameters
     double llh = find_JD_parameters( &myJD, opts);
-    //filter out data points which are not compatible with the emission model
-    if ( opts.reflect == 0 && (opts.filter_pVal|| opts.filter_shortSeg > 0) ){
-      double crit=0.0;
-      for (int s=0; s < myJD.nSamples; s++) crit += double(myJD.nSites[s]);
-      crit = 10.0/crit; 
-      for (int s=0; s < myJD.nSamples; s++){
-	myJD.get_posterior(s);
-	double * mean = new double [myJD.nSites[s]];
-	double msd    = 0.0;
-	for (int l=0; l < myJD.nSites[s]; l++){
-	  gsl_vector_view post =  gsl_matrix_row(myJD.gamma[s],l);
-	  mean[l] = get_mean( &post.vector, myJD.myEmit->xmin, myJD.myEmit->xmax);
-	  msd += sqrt( get_var( &post.vector, myJD.myEmit->xmin, myJD.myEmit->xmax, mean[l]) );
-	}
-	msd /= double(myJD.nSites[s]);
-	if (opts.filter_pVal){
-	  for (int l=0; l < myJD.nSites[s]; l++){
-	    //gsl_vector_view post =  gsl_matrix_row(myJD.gamma[s],l);
-	    //double mean = get_mean( &post.vector, myJD.myEmit->xmin, myJD.myEmit->xmax);
-	    double pval = myEmit.get_pval( t, s, l, mean[l]);
-	    if (pval < crit) mask[s][l] = 0;
-	  }
-	}
-	gsl_matrix_free(myJD.gamma[s]);
-	myJD.gamma[s] = NULL;
-	if (opts.filter_shortSeg > 0){
-	  int last=0;
-	  for (int l=0; l < myJD.nSites[s]; l++){
-	    if ( l>0 && fabs(mean[l]-mean[l-1]) > 4.0*msd){
-	      if ( l < last + opts.filter_shortSeg) 
-		for (int i=last;i<l;i++) mask[s][i] = 0;
-	      last = l;
-	    }
-	  }
-	}
-	delete [] mean;
-      }
-    }
-    // print posterior information to file
-    char buff[1024];
-    sprintf(buff,"%s.posterior-%i.txt", opts.pre, t+1);
-    FILE * total_fp = fopen(buff,"w");
-    fprintf(total_fp, "#sample site mean std-dev jump-prob");
-    fprintf(total_fp, " posterior %.5e %.5e\n", myJD.myEmit->xmin,  myJD.myEmit->xmax);
+    //calculate means and standard deviations...
     int uidx  = opts.reflect ? int(0.5*double( myJD.gridSize)) :  myJD.gridSize;
     double mx = opts.reflect ? 0.5 : myJD.myEmit->xmax;
     double mn = myJD.myEmit->xmin;
     gsl_vector * post = gsl_vector_alloc(uidx+1);
-    double gof=0, xobs=0;
-    double gofNorm=0;
+    double crit = 10.0/double(total_nLoci);
+    char buff[1024];
+    sprintf(buff,"%s.posterior-%i.txt", opts.pre, t+1);
+    FILE * total_fp = fopen(buff,"w");
+    fprintf(total_fp, "#sample site mean std-dev jump-prob");
+    fprintf(total_fp, " posterior %.5e %.5e\n", myJD.myEmit->xmin, myJD.myEmit->xmax);
+    double gof=0, xobs=0,gofNorm=0;
     for (int s=0; s < myJD.nSamples; s++){//get posterior distribution with the ML parameters
       myJD.get_posterior(s);
+      double mstd = 0.0;
       for (int l=0; l < myJD.nSites[s]; l++){
 	if (opts.reflect){//distribution in lower half
 	  gsl_vector_view lower = gsl_matrix_subrow( myJD.gamma[s], l, 0, uidx+1);
@@ -227,13 +196,36 @@ int main (int argc, const char * argv[]){
 	else{
 	  gsl_matrix_get_row( post, myJD.gamma[s], l);
 	}
-	double mean = get_mean( post, mn, mx);
-	double var  = get_var(  post, mn, mx, mean);
+	mean[s][l] = get_mean( post, mn, mx);
+	std[s][l]  = sqrt(get_var(post,mn,mx,mean[s][l]));
+	mstd += std[s][l];
 	if (opts.jumps==1){
 	  jumps[s][l] *= exp(myJD.pnojump[s][l]);
 	}
+      }
+      mstd /= double(myJD.nSites[s]);
+      //filter out data points which are not compatible with the emission model
+      if (opts.filter_pVal){
+	for (int l=0; l < myJD.nSites[s]; l++){
+	  double pval = myEmit.get_pval( t, s, l, mean[s][l]);
+	  if (pval < crit) mask[s][l] = 0;
+	}
+      }
+      if (opts.filter_shortSeg > 0){
+	int last=0;
+	for (int l=1; l < myJD.nSites[s]; l++){
+	  if (fabs(mean[s][l] - mean[s][l-1]) > 4.0*mstd){
+	    if (l < last + opts.filter_shortSeg){
+	      for (int i=last; i<l; i++) mask[s][i] = 0;
+	    }
+	    last = l;
+	  }
+	}
+      }
+      // print posterior information to file
+      for (int l=0; l < myJD.nSites[s]; l++){
 	fprintf(total_fp, "%i %6i %.2e %.2e %.2e", 
-		chrs[s], myJD.loci[s][l], mean, sqrt(var), exp(myJD.pjump[s][l]));
+		chrs[s], myJD.loci[s][l], mean[s][l], std[s][l], exp(myJD.pjump[s][l]));
 	if(opts.dist==1){// full posterior distribution? LARGE!
 	  for (int i=0; i <= myJD.gridSize; i++){
 	    fprintf(total_fp, " %.2e", gsl_matrix_get( myJD.gamma[s], l, i)); 
@@ -298,22 +290,8 @@ int main (int argc, const char * argv[]){
     }
     fclose(jumps_fp);
   }
-  //FILTERED?
+  //print filtered
   if (opts.filter_pVal || opts.filter_shortSeg > 0){
-    //filter short segments for reflected data
-    if ( opts.reflect && opts.filter_shortSeg > 0){
-      for (int s=0; s < myEmit.nSamples; s++){
-	int last=0;
-	for (int l=0; l < myEmit.nSites[s]; l++){
-	  if ( l>0 && myEmit.pjump[s][l] > 0.01 ){
-	    if ( l < last + opts.filter_shortSeg) 
-	      for (int i=last;i<l;i++) mask[s][i] = 0;
-	    last = l;
-	  }
-	}
-      }
-    }
-    //print filtered
     char buff[1024];  
     sprintf(buff,"%s.filtered.txt", opts.pre);
     FILE * filtered_fp = fopen(buff,"w");
@@ -321,7 +299,7 @@ int main (int argc, const char * argv[]){
       for (int l=0; l < myEmit.nSites[s]; l++){
 	if( mask[s][l] == 1 ){
 	  fprintf( filtered_fp, "%i %6i", chrs[s], myEmit.loci[s][l]);
-	  for (int t=0;t<nTimes;t++) 
+	  for (int t=0; t<nTimes; t++) 
 	    fprintf( filtered_fp, " %3i %3i", myEmit.reads[t][s][l], myEmit.depths[t][s][l]);
 	  fprintf( filtered_fp, "\n");
 	}
@@ -331,6 +309,12 @@ int main (int argc, const char * argv[]){
     delete [] mask;
     fclose(filtered_fp);
   }
+  for (int s=0; s < myEmit.nSamples; s++){
+    delete [] mean[s];
+    delete [] std[s];
+  }
+  delete [] mean;
+  delete [] std;
   //done
   return (0);
 }

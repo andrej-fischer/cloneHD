@@ -795,6 +795,7 @@ void Emission::get_eprob_wBias( gsl_vector * eprob,
 double Emission::get_pval(int time, int sample, int site, double mean){
   unsigned int n = reads[time][sample][site];
   unsigned int N = depths[time][sample][site];
+  if (reflect) n = min(n,N-n);
   double pval=0;
   if (mode==1){//binomial
     if (mean==0.0){

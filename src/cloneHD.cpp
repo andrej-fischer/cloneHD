@@ -82,6 +82,7 @@ int main (int argc, const char * argv[]){
   // *** ALLOCATE CLONE ***
   Clone myClone;
   myClone.allocate( &cnaEmit, &bafEmit, &snvEmit, opts.chr_fn);
+  myClone.cna_pen  = opts.cna_pen;//CNA penalty for zero total copies
   myClone.baf_pen  = opts.baf_pen;//BAF penalty for complex chr status
   myClone.snv_fpr  = opts.snv_fpr;//SNV false-positive rate
   myClone.snv_fpf  = opts.snv_fpf;//SNV frequency of false positives
@@ -281,6 +282,9 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--snv-shape") == 0){
       opts.snv_shape = atof(argv[opt_idx]);
     }
+    else if ( opt_switch.compare("--cna-pen") == 0){
+      opts.cna_pen = atof(argv[opt_idx]);
+    }
     else if ( opt_switch.compare("--baf-pen") == 0){
       opts.baf_pen = atof(argv[opt_idx]);
     }
@@ -377,6 +381,7 @@ void default_opts(cmdl_opts& opts){
   opts.cna_shape = -1.0;//shape parameters
   opts.baf_shape = -1.0;
   opts.snv_shape = -1.0;
+  opts.cna_pen   = 0.9;
   opts.baf_pen   = 1.0;
   opts.snv_pen   = 0.01;
   opts.bulk_fix   = -1.0;//constant bulk for SNV
@@ -440,7 +445,7 @@ void test_opts(cmdl_opts& opts){
 }
 
 void print_opts(){
-  cout<<endl<<"./build/cloneHD --cna [file] --snv [file] --baf [file] --pre [string:./out] --clones [file] --purity [file] --chr [file] --bias [file] --max-tcn [file/int:4] --mean-tcn [file] --avail-cn [file] --seed [int:time(0)] --trials [int:1] --restarts [int:10] --nmax [int:3] --force [int] --cna-jump [double] --baf-jump [double] --snv-jump [double] --cna-jumps [files] --baf-jumps [file] --snv-jumps [file] --cna-rnd [double:0] --baf-rnd [double:0] --snv-rnd [double:0] --snv-fpfreq [double:0.01] --snv-fprate [double:0.001] --cna-shape [double:inf] --baf-shape [double:inf] --snv-shape [double:inf] --baf-pen [double:1.0] --snv-pen [double:0.01] --min-occ [double:0.01] --min-jump [double:0.01] --learn-priors [0/1:0] --mass-gauging [0/1:1] --bulk-prior [file] --bulk-mean [file] --bulk-fix [double:0] --bulk-sigma [double] --bulk-updates [int:0] --cna-grid [int:300] --snv-grid [int:100] --baf-grid [int:100]";
+  cout<<endl<<"./build/cloneHD --cna [file] --snv [file] --baf [file] --pre [string:./out] --clones [file] --purity [file] --chr [file] --bias [file] --max-tcn [file/int:4] --mean-tcn [file] --avail-cn [file] --seed [int:time(0)] --trials [int:1] --restarts [int:10] --nmax [int:3] --force [int] --cna-jump [double] --baf-jump [double] --snv-jump [double] --cna-jumps [files] --baf-jumps [file] --snv-jumps [file] --cna-rnd [double:0] --baf-rnd [double:0] --snv-rnd [double:0] --snv-fpfreq [double:0.01] --snv-fprate [double:0.001] --cna-shape [double:inf] --baf-shape [double:inf] --snv-shape [double:inf] --cna-pen [double:0.9] --baf-pen [double:1.0] --snv-pen [double:0.01] --min-occ [double:0.01] --min-jump [double:0.01] --learn-priors [0/1:0] --mass-gauging [0/1:1] --bulk-prior [file] --bulk-mean [file] --bulk-fix [double:0] --bulk-sigma [double] --bulk-updates [int:0] --cna-grid [int:300] --snv-grid [int:100] --baf-grid [int:100]";
   cout<<endl;
   exit(0);
 }
