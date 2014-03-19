@@ -334,6 +334,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
       if (opts.learn_priors>0) opts.learn_priors = 1;
     }   
     else{
+      cout<<opt_switch<<" ?"<<endl;
       cout<<"Usage see:"<<endl;
       cout<<"cloneHD --print-options"<<endl;
       exit(0);

@@ -77,7 +77,10 @@ struct cmdl_opts{
 
 //*** OWN FUNCTIONS ***
 void get_opts( int argc, const char ** argv, cmdl_opts& opts);
+void test_opts(cmdl_opts& opts);
+void default_opts(cmdl_opts& opts);
 void print_opts();
+
 double Q( const gsl_vector * x, void * p);
 double find_JD_parameters(JumpDiffusion * myJD, cmdl_opts& opts);
 struct fpar{
@@ -334,10 +337,7 @@ int main (int argc, const char * argv[]){
 // *** MAIN END ***
 
 
-// get command line arguments...
-void get_opts( int argc, const char ** argv, cmdl_opts& opts){
-  int opt_idx = 1;
-  string opt_switch;
+void default_opts(cmdl_opts& opts){
   opts.data_fn  = NULL;
   opts.bias_fn  = NULL;
   opts.pre      = "./out";
@@ -360,6 +360,13 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
   opts.jumps  = 0;
   opts.reflect = 0;
   opts.min_jump = 0.0;
+}
+
+// get command line arguments...
+void get_opts( int argc, const char ** argv, cmdl_opts& opts){
+  default_opts(opts);
+  int opt_idx = 1;
+  string opt_switch;  
   while ( opt_idx < argc && (argv[opt_idx][0] == '-')){
     opt_switch = argv[opt_idx];
     if ( opt_switch.compare("--print-options") == 0){
@@ -442,71 +449,30 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     opt_switch.clear();
     opt_idx++;
   }
+  test_opts(opts);
+}
+
+
+void test_opts(cmdl_opts& opts){
   if (opts.mode==0){
     cout<<"ERROR: choose emission mode with --mode [1,2,3,4]\n";
     exit(1);
   }
   if (opts.bias_fn != NULL){
-    if( opts.filter_pVal || opts.filter_shortSeg){
-      cout<<"ERROR: --bias [file] and --filter-pVal or --filter-shortSeg [int] cannot be used together\n";
+    if( opts.filter_pVal ){
+      cout<<"ERROR: --bias [file] and --filter-pVal [0/1] cannot be used together\n";
       exit(1);
     }
   }
   if(opts.reflect==1 && (opts.mode==3||opts.mode==4)){
-     cout<<"ERROR: --reflect [0/1] can only be used in mode 1 and 2.\n";
-     exit(1);
+    cout<<"ERROR: --reflect [0/1] can only be used in mode 1 and 2.\n";
+    exit(1);
   }
   if (opts.filter_shortSeg > 0 && opts.min_jump == 0.0 && opts.reflect == 1) opts.min_jump = 1.0e-5;
 }
 
 void print_opts(){
-  cout<<"# All filterHD command line options to be used in shell scripts"<<endl;
-  cout<<"# the input data"<<endl;
-  cout<<"data=[file]"<<endl;
-  cout<<"# the emission mode (1=Binomia, 2=Beta-Binomial, 3=Poisson, 4=Negative-Binomial)"<<endl;
-  cout<<"mode=[1/2/3/4]"<<endl;
-  cout<<"# the output prefix (default: ./out)"<<endl;
-  cout<<"pre=[string]"<<endl;
-  cout<<"# the file to use for a bias field (filterHD posterior output)"<<endl;
-  cout<<"bias=[file]"<<endl;
-  //
-  cout<<"# fix the jump probability (per base)"<<endl;
-  cout<<"jump=[double]"<<endl;
-  cout<<"# fix the diffusion constant (per base)"<<endl;
-  cout<<"sigma=[double]"<<endl;
-  cout<<"# fix the random error rate (optional)"<<endl;
-  cout<<"rnd=[double]"<<endl;
-  cout<<"# fix the shape parameter (optional)"<<endl;
-  cout<<"shape=[double]"<<endl;
-  //
-  cout<<"# initialize the jump probability (per base)"<<endl;
-  cout<<"jumpi=[double]"<<endl;
-  cout<<"# initialize the diffusion constant (per base)"<<endl;
-  cout<<"sigmai=[double]"<<endl;
-  cout<<"# initialize the random error rate"<<endl;
-  cout<<"rndi=[double]"<<endl;
-  cout<<"# initialize the shape parameter"<<endl;
-  cout<<"shapei=[double]"<<endl;
-  //
-  cout<<"# the grid size"<<endl;
-  cout<<"grid=[int:100]"<<endl;
-  cout<<"# whether to print posterior distributions"<<endl;
-  cout<<"dist=[0/1:0]"<<endl;
-  cout<<"# whether to print posterior jump probabilities"<<endl;
-  cout<<"jumps=[0/1:0]"<<endl;
-  cout<<"# whether to filter sites that are random "<<endl;
-  cout<<"filter-pVal=[0/1:0]"<<endl;
-  cout<<"# whether to filter sites in short segments "<<endl;
-  cout<<"filter-shortSeg=[int:0]"<<endl;
-  //
-  cout<<"# fix lower end of range for hidden data"<<endl;
-  cout<<"xmin=[double]"<<endl;
-  cout<<"# fix upper end of range for hidden data"<<endl;
-  cout<<"xmax=[double]"<<endl;
-  //
-  cout<<"cmd=\"filterHD --data $data --mode $mode --bias $bias --pre $pre --grid $grid --jump $jump --sigma --sigma --rnd $rnd --shape $shape --jumps $jumps --dist $dist --filter-pVal $filterpVal --filter-shortSeg $filtershortSeg --jumpi $jumpi --sigmai $sigmai --rndi $rndi --shapei $shapei --xmin $xmin --xmax $xmax"<<endl;
-  cout<<"echo $cmd"<<endl;
-  cout<<"$cmd"<<endl;
+  cout<<"filterHD --data [file] --mode [1,2,3,4] --bias [file] --pre [string:./out] --grid [int:100] --jump [double] --sigma [double] --sigma [double] --rnd [double] --shape [double] --jumps [0/1:0] --dist [0/1:0] --filter-pVal [0/1:0] --filter-shortSeg [int] --jumpi [double] --sigmai [double] --rndi [double] --shapei [double] --xmin [double] --xmax [double]"<<endl;
   exit(0);
 }
 

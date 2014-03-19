@@ -110,7 +110,8 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     llh = 0.0;
     if (cnaEmit->is_set){// ***CNA***
       //with CNA data, the mass must be found even for n=0...
-      best_mass[0] = gsl_vector_alloc(nT);
+      best_mass[0]   = gsl_vector_alloc(nT);
+      best_clones[0] = gsl_matrix_calloc(nT,1);
       if ( Mass == NULL ){//need to get masses...
        cna_llh = cna_only_mass_noclones(  best_mass[0], myClone, 0, steps);
        myClone->set_mass(best_mass[0]);	

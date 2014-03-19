@@ -173,6 +173,7 @@ class Clone{
   double total_llh, total_entropy; 
   double cna_total_llh, baf_total_llh, snv_total_llh;
   double * cna_llhs, * baf_llhs, * snv_llhs;
+  double cna_total_ent, baf_total_ent, snv_total_ent;
   double get_all_total_llh();
   double get_cna_total_llh();
   double get_baf_total_llh();

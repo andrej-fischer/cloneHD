@@ -24,7 +24,7 @@ void Clone::set_cna_prior( gsl_vector * prior, int sample){
       //cns.clear();
       double p=1.0;
       for (int j=0; j<nClones; j++){
-	if (copynumber[i][j]==0) p *= 0.9;
+	if (copynumber[i][j]==0) p *= 0.9;//penalty for no copies
 	if (copynumber[i][j] > maxtcn_per_clone[chr][j]) p = 0.0;
       }
       // cns.insert( copynumber[i][j] );

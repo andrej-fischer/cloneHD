@@ -16,7 +16,7 @@ cloneHD="./build/cloneHD"
 normalCNA="${data}/normal.cna.txt"
 tumorCNA="${data}/tumor.cna.txt"
 tumorBAF="${data}/tumor.baf.txt"
-bias="${results}/normal.cna.posterior.1.txt"
+bias="${results}/normal.cna.posterior-1.txt"
 tumorCNAjumps="${results}/tumor.cna.bias.jumps.txt"
 tumorBAFjumps="${results}/tumor.baf.jumps.txt"
 
@@ -59,9 +59,9 @@ then
     echo "*** cloneHD ***"
     echo
     cmd="$cloneHD --cna $tumorCNA --baf $tumorBAF --pre ${results}/tumor --bias $bias --seed 123 --trials 2\
- --nmax 3 --force --max-tcn 4 --cna-jumps $tumorCNAjumps --baf-jumps $tumorBAFjumps --min-jump 0.01 --restarts 20"    
+ --nmax 3 --force --max-tcn 5 --cna-jumps $tumorCNAjumps --baf-jumps $tumorBAFjumps --min-jump 0.01 --restarts 10"    
     echo $cmd
     $cmd
     echo
-    cat ${results}/tumor.clonal.txt
+    cat ${results}/tumor.summary.txt
 fi

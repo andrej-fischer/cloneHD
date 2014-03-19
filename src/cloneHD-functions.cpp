@@ -779,7 +779,9 @@ void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, 
 }
 
 
-// *** PRINT ALL RESULTS ***
+
+
+// *** PRINT ALL RESULTS ************************************************************************
 void  print_all_results( Clone * myClone, cmdl_opts& opts){
   Emission * cnaEmit = myClone->cnaEmit;
   Emission * bafEmit = myClone->bafEmit;
@@ -822,6 +824,9 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   }
   myClone->get_gofs = 1;
   myClone->allocate_all_gofs();
+  myClone->cna_total_ent = 0;
+  myClone->baf_total_ent = 0;
+  myClone->snv_total_ent = 0;
   // print CNA posterior distributions..
   if (cnaEmit->is_set){
     //file pointers and headers...
@@ -886,13 +891,12 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     fclose(cna_fp);
     if (nC>0) for (int n=0; n<nC; n++) fclose(cnapc_fp[n]);
     // CNA llhs/gofs per sample...
-    fprintf(clonal_fp, "# cna llh gof\n");
+    fprintf(clonal_fp, "# cna-llh cna-gof\n");
     for (int t=0; t<myClone->nTimes; t++){
       fprintf( clonal_fp, "%.8e %.4f\n", 
 	       myClone->cna_llhs[t], myClone->cna_gofs[t] / double(cnaEmit->total_loci));
     }
     if (cnaEmit->coarse_grained) print_gof( myClone, cnaEmit, opts);
-    //...all CNA posteriors printed.
     //
     //print BAF posterior...
     if (bafEmit->is_set){
@@ -923,7 +927,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       fclose(baf_fp);
       if (nC>0) for (int n=0; n<nC; n++) fclose(bafpc_fp[n]);
       //llh and gof per sample
-      fprintf(clonal_fp, "# baf llh gof\n");
+      fprintf(clonal_fp, "# baf-llh baf-gof\n");
       for (int t=0; t<myClone->nTimes; t++){
 	fprintf(clonal_fp, "%.8e %.4f\n", 
 		myClone->baf_llhs[t], myClone->baf_gofs[t] / double(bafEmit->total_loci));
@@ -960,7 +964,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       if (nC>0) for (int n=0; n<nC; n++) fclose(snvpc_fp[n]);
       delete [] myClone->gamma_snv;
       delete [] myClone->alpha_snv;
-      fprintf(clonal_fp, "# snv llh gof\n");
+      fprintf(clonal_fp, "# snv-llh snv-gof\n");
       for (int t=0; t<myClone->nTimes; t++){
 	fprintf( clonal_fp, "%.8e %.4f\n", 
 		 myClone->snv_llhs[t], myClone->snv_gofs[t] / double(snvEmit->total_loci));
@@ -1007,13 +1011,16 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     if (nC>0) for (int n=0; n<nC; n++) fclose(snvpc_fp[n]);
     delete [] myClone->gamma_snv;
     delete [] myClone->alpha_snv;
-    fprintf(clonal_fp, "# snv llh and gof per sample\n");
+    fprintf(clonal_fp, "# snv-llh snv-gof\n");
     for (int t=0; t<myClone->nTimes; t++){
       fprintf( clonal_fp, "%.8e %.4f\n", 
 	       myClone->snv_llhs[t], myClone->snv_gofs[t] / double(snvEmit->total_loci));
     }
     if (snvEmit->coarse_grained) print_gof( myClone, snvEmit, opts);
   }
+  //
+  fprintf(clonal_fp, "# cna-ent baf-ent snv-ent\n");
+  fprintf(clonal_fp, "%.4e %.4e %.4e\n", myClone->cna_total_ent, myClone->baf_total_ent, myClone->snv_total_ent);
   fclose(clonal_fp);
   if (snv_utcn_fp != NULL) fclose(snv_utcn_fp);
   if (baf_utcn_fp != NULL) fclose(baf_utcn_fp);
