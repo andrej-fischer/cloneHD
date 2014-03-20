@@ -142,7 +142,7 @@ int main (int argc, const char * argv[]){
     std[s]  = new double [nSites[s]];
   }
   double ** jumps = NULL;
-  if (opts.jumps==1){
+  if (opts.jumps==1){//compunded jump probabilities
     jumps = new double * [nSamples];
     for (int s=0; s<nSamples; s++){
       jumps[s] = new double [nSites[s]];
@@ -151,7 +151,7 @@ int main (int argc, const char * argv[]){
       }
     }
   }
-  int ** mask = NULL;
+  int ** mask = NULL;//the mask is used to filter out loci
   if (opts.filter_pVal || opts.filter_shortSeg > 0){
     mask = new int * [nSamples];
     for (int s=0; s<nSamples; s++){

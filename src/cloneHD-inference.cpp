@@ -585,9 +585,10 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
   int steps;
   double llh=0;
   gsl_vector * mem = gsl_vector_alloc(nC);
+  myClone->initialize_snv_prior_param();
   //STEP 1: learn clones with fixed priors...
-  if (snvEmit->av_cn == NULL){
-    myClone->initialize_snv_prior_param();
+  if (myClone->learn_priors && snvEmit->av_cn == NULL){
+    //myClone->initialize_snv_prior_param();
     printf("Using these SNV copynumber prior parameters\n");
     for (int i=0; i<=myClone->maxtcn; i++){
       for (int j=0; j<=myClone->maxtcn; j++){
@@ -595,10 +596,8 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
       }
       cout<<endl;
     }
-    if (myClone->learn_priors){
-      if (priors==NULL) abort();
-      gsl_matrix_memcpy( priors, myClone->initial_snv_prior_param);
-    }
+    if (priors==NULL) abort();
+    gsl_matrix_memcpy( priors, myClone->initial_snv_prior_param);
   }
   if ( Clones == NULL ){
     for (int t=0; t<nT; t++){

@@ -369,20 +369,31 @@ void Clone::get_avail_cn(Emission * myEmit, int sample){
 
 void Clone::get_snv_prior_from_av_cn(gsl_vector * prior, int sample, int evt){
   if (snvEmit->av_cn==NULL) abort();
+  int snvChr = snvEmit->chr[sample];
   int found=0;
   prior->data[0] = 0;
   for (int l=1; l<nLevels; l++){
     found=0;
-    for (int t=0;t<nTimes;t++){
-      for (int cn=0;cn<=maxtcn;cn++){
+    prior->data[l] = (snv_prior[snvChr])->data[l];
+    for (int j=0; j<nClones; j++){//genotype bigger than maximum?
+      if ( copynumber[l][j] > maxtcn_per_clone[snvChr][j]){
+	prior->data[l] = 0.0;
+	found = 1;
+	break;
+      }
+    }
+    if (found) continue;
+    for (int t=0;t<nTimes;t++){//genotype not available?
+      for (int cn=0; cn<=maxtcn; cn++){
        if (cn_usage[t][cn][l] > snvEmit->av_cn[t][sample][evt][cn]){
          found=1;
+	 prior->data[l] *= 0.01;
          break;
        }
+       if (found) break;
       }
       if (found) break;
     }
-    prior->data[l] = found ? 0.01 : 1.0;
   }
   double norm = gsl_blas_dasum(prior);
   if (norm<=0) abort();
