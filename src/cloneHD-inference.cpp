@@ -612,6 +612,8 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
   else{
     gsl_matrix_memcpy( clones, Clones);
     myClone->set(Clones);
+    llh = myClone->get_snv_total_llh();
+    report_results( 0, 0, llh, 0, NULL, Clones);
   }     
   //STEP 2: for uncorrelated SNV data, without availability constraint,
   // learn clones and SNV prior parameter...
