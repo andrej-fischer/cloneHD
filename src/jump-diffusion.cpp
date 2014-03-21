@@ -310,7 +310,10 @@ double JumpDiffusion::do_Fwd(int s){
       norm  = gsl_blas_dasum(prior);
       norm -= 0.5*(prior->data[0] + prior->data[gridSize]);
       norm *= myEmit->dx;
-      if (norm <=0 || norm != norm) abort();
+      if (norm <=0 || norm != norm){
+	cout<<"ERROR\n";
+	abort();
+      }
       gsl_vector_scale( prior, 1.0 / norm);
       llh += log(norm);// get part of the total log-likelihood
     }

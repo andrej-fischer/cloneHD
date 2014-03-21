@@ -13,7 +13,7 @@ double Clone::update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, 
   gsl_vector * mem  = NULL;
   if (llhs != NULL){
     Post = gsl_matrix_alloc( nTimes, nLevels);
-    mem  = gsl_evctor_alloc( nLevels);
+    mem  = gsl_vector_alloc( nLevels);
   }
   if (myEmit == cnaEmit){
     Clone::update_cna( prior, post, sample, evt, Post);
@@ -324,6 +324,10 @@ void Clone::update_snv_event( gsl_vector * prior, gsl_vector * post, int sample,
     for (int level=0; level<nLevels; level++){
       if (prior->data[level] <= logzero) continue;
       double a = clone_spectrum[time][level] / mntcn;
+      if (a<0.0){
+	cout<<"here\n";
+	abort();
+      }
       if (a > 1.0){//outside range...
 	int idx  = snvEmit->idx_of_event[sample][evt];
 	int nidx 

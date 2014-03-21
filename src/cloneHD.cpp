@@ -122,6 +122,9 @@ int main (int argc, const char * argv[]){
     cnaEmit.log_space      = 1;
     cnaEmit.coarse_grained = 1;
     printf("Collapsed CNA data to %5i segments based on potential jump events.\n", cnaEmit.total_events);
+    //for (int s=0;s<cnaEmit.nSamples;s++) printf("%f ", double(cnaEmit.nEvents[s]) / double(cnaEmit.nSites[s]));
+    //cout<<endl;
+    //exit(0);
     cout<<"Precomputing for CNA..."<<flush;
     myClone.get_cnaEmitLog();
     cout<<"done."<<endl;

@@ -26,7 +26,7 @@ void Clone::scale_prior( gsl_vector*& prior, int n){
 
 void Clone::combine_prior( gsl_vector*& prior, gsl_vector*& mem, int n){
   double norm;
-  if (prior->data[0] <= 0.0){//log-space
+  if ( gsl_vector_max(prior) <= 0.0){//log-space
     if (n > 1) Clone::scale_prior(mem,n);
     gsl_vector_add( prior, mem);
     norm = log_vector_norm(prior);

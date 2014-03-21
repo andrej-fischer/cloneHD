@@ -287,11 +287,17 @@ void Clone::get_mean_tcn(int sample){//only ever used for cnaEmit
   }
   else{//nClones > 0
     if (gamma_cna[sample] == NULL) abort();
+    double mn;
     for (int t=0; t<nTimes; t++){
       for (int evt=0; evt < cnaEmit->nEvents[sample]; evt++){
        gsl_vector_view TCN  = gsl_vector_view_array( tcn[chr][t], nLevels);
        gsl_vector_view post = gsl_matrix_row( gamma_cna[sample], evt);
-       gsl_blas_ddot( &TCN.vector, &post.vector, &(cnaEmit->mean_tcn[t][sample][evt]));
+       gsl_blas_ddot( &TCN.vector, &post.vector, &mn);
+       if (mn<=0.0){
+	 cout<<"ERROR\n";
+	 abort();
+       }
+       cnaEmit->mean_tcn[t][sample][evt] = mn;
       }
     }
   }

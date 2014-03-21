@@ -892,7 +892,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     if (nC>0) for (int n=0; n<nC; n++) fclose(cnapc_fp[n]);
     // CNA llhs/gofs per sample...
     fprintf(clonal_fp, "# cna-gof\n");
-    for (int t=0; t<myClone->nTimes; t++){
+    for (int t=0; t<nT; t++){
       fprintf( clonal_fp, "%.4f\n", 
 	       //myClone->cna_llhs[t], 
 	       myClone->cna_gofs[t] / double(cnaEmit->total_loci));
@@ -929,7 +929,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       if (nC>0) for (int n=0; n<nC; n++) fclose(bafpc_fp[n]);
       //llh and gof per sample
       fprintf(clonal_fp, "# baf-gof\n");
-      for (int t=0; t<myClone->nTimes; t++){
+      for (int t=0; t<nT; t++){
 	fprintf(clonal_fp, "%.4f\n", 
 		//myClone->baf_llhs[t], 
 		myClone->baf_gofs[t] / double(bafEmit->total_loci));
@@ -967,7 +967,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       delete [] myClone->gamma_snv;
       delete [] myClone->alpha_snv;
       fprintf(clonal_fp, "# snv-gof\n");
-      for (int t=0; t<myClone->nTimes; t++){
+      for (int t=0; t<nT; t++){
 	fprintf( clonal_fp, "%.4f\n", 
 		 //myClone->snv_llhs[t], 
 		 myClone->snv_gofs[t] / double(snvEmit->total_loci));
@@ -1015,7 +1015,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     delete [] myClone->gamma_snv;
     delete [] myClone->alpha_snv;
     fprintf(clonal_fp, "# snv-gof\n");
-    for (int t=0; t<myClone->nTimes; t++){
+    for (int t=0; t<nT; t++){
       fprintf( clonal_fp, "%.4f\n", 
 	       //myClone->snv_llhs[t], 
 	       myClone->snv_gofs[t] / double(snvEmit->total_loci));
