@@ -10,7 +10,11 @@ using namespace std;
 // general update step...
 double Clone::update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, int sample, int evt, double*& llhs){ 
   gsl_matrix * Post = NULL;
-  if (llhs != NULL) Post = gsl_matrix_alloc( nTimes, nLevels);
+  gsl_vector * mem  = NULL;
+  if (llhs != NULL){
+    Post = gsl_matrix_alloc( nTimes, nLevels);
+    mem  = gsl_evctor_alloc( nLevels);
+  }
   if (myEmit == cnaEmit){
     Clone::update_cna( prior, post, sample, evt, Post);
   }
@@ -25,13 +29,14 @@ double Clone::update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, 
   if (myEmit->log_space){
     if (Post!=NULL){
       for (int t=0; t<nTimes; t++){
-	gsl_vector_view row = gsl_matrix_row(Post,t);
-	gsl_vector_add( &row.vector, prior);
-	norm = log_vector_norm( &row.vector );
+	gsl_matrix_get_row(mem,Post,t);
+	gsl_vector_add( mem, prior);
+	norm = log_vector_norm( mem );
 	if ( norm != norm ) abort();
 	llhs[t] += norm;
       }
       gsl_matrix_free(Post);
+      gsl_vector_free(mem);
     }
     gsl_vector_add( post, prior);
     norm = log_vector_norm( post );
@@ -44,6 +49,7 @@ double Clone::update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, 
       if (Post != NULL){
 	for (int t=0; t<nTimes; t++) llhs[t] += logzero;
 	gsl_matrix_free(Post);
+	gsl_vector_free(mem);
       }
       gsl_vector_memcpy( post, prior);
       return(logzero);
@@ -51,13 +57,14 @@ double Clone::update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, 
     else{
       if (Post!=NULL){
 	for (int t=0; t<nTimes; t++){
-	  gsl_vector_view row = gsl_matrix_row(Post,t);
-	  gsl_vector_mul( &row.vector, prior);
-	  norm = gsl_blas_dasum(&row.vector);
+	  gsl_matrix_get_row(mem,Post,t);
+	  gsl_vector_mul( mem, prior);
+	  norm = gsl_blas_dasum(mem);
 	  if ( norm != norm || norm <= 0.0) abort();
 	  llhs[t] += log(norm);
 	}
 	gsl_matrix_free(Post);
+	gsl_vector_free(mem);
       }
       gsl_vector_mul( post, prior);
       norm = gsl_blas_dasum(post);
