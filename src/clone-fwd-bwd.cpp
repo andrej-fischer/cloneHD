@@ -361,7 +361,7 @@ void Clone::do_snv_Fwd(int sample, double& llh, double*& llhs){
   double norm = 0.0, pj=0.0;
   int cna_evt=-1, last_cna_evt=-1;
   int baf_evt=-1, last_baf_evt=-1, baf_idx=0;
-  int oevt=-1, idx=0, nidx=0, nLoci=1, last_evt=(snvEmit->nEvents[sample]-1);
+  int idx=0, nidx=0, nLoci=1, last_evt=(snvEmit->nEvents[sample]-1);
   llh = 0.0;
   for (int evt=0; evt <= last_evt; evt++){
     idx  = snvEmit->idx_of_event[sample][evt];
@@ -405,9 +405,8 @@ void Clone::do_snv_Fwd(int sample, double& llh, double*& llhs){
 	}
       }
       else if ( !snvEmit->connect ){
-	if (snvEmit->av_cn != NULL && evt != oevt){
+	if (snvEmit->av_cn != NULL && (evt == 0 || snvEmit->mean_tcn[0][sample][evt-1] != snvEmit->mean_tcn[0][sample][evt])){
 	  Clone::get_snv_prior_from_av_cn( Prior, sample, evt);
-	  oevt = evt;
 	}
 	gsl_vector_memcpy( prior, Prior);
       }
@@ -418,10 +417,8 @@ void Clone::do_snv_Fwd(int sample, double& llh, double*& llhs){
     //***UPDATE STEP***
     norm = Clone::update( prior, post, snvEmit, sample, evt, llhs);
     llh += norm;
-    //printf("%i %e\n", snvEmit->loci[sample][idx], llh);
     if (save_snv_alpha == 1) gsl_matrix_set_row( alpha_snv[sample], evt, post);
   }
-  //exit(0);
   // cleanup    
   gsl_vector_free(mem);
   gsl_vector_free(prior);
@@ -469,7 +466,7 @@ void Clone::do_snv_Bwd( int sample, double& ent){
   double * llhs = NULL;
   int cna_evt=-1, last_cna_evt=-1;
   int baf_evt=-1, last_baf_evt=-1, baf_idx=0;
-  int idx=0, nidx=0, oevt=-1, nLoci=1;
+  int idx=0, nidx=0, nLoci=1;
   int last_evt = snvEmit->nEvents[sample]-1;
   int last_idx = snvEmit->idx_of_event[sample][last_evt];
   for (int evt = last_evt; evt >= 0 ; evt--){
@@ -514,9 +511,8 @@ void Clone::do_snv_Bwd( int sample, double& ent){
 	}
       }
       else if ( !snvEmit->connect ){
-	if (snvEmit->av_cn != NULL && evt != oevt){
+	if (snvEmit->av_cn != NULL && (evt == last_evt || snvEmit->mean_tcn[0][sample][evt+1] != snvEmit->mean_tcn[0][sample][evt])){
 	  Clone::get_snv_prior_from_av_cn( Prior, sample, evt);
-	  oevt = evt;
 	}
 	gsl_vector_memcpy( prior, Prior);
       }

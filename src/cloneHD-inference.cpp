@@ -14,10 +14,10 @@ using namespace std;
 
 
 void report_results(double cllh, double bllh, double sllh, int steps, gsl_vector * mass, gsl_matrix * freq){
-  if (cllh != 0.0) printf("cna-llh = %e ", cllh);
-  if (bllh != 0.0) printf("baf-llh = %e ", bllh);
-  if (sllh != 0.0) printf("snv-llh = %e ", sllh);
-  printf("tot-llh = %e ", cllh+bllh+sllh);
+  if (cllh != 0.0) printf("cna-llh = %.8e ", cllh);
+  if (bllh != 0.0) printf("baf-llh = %.8e ", bllh);
+  if (sllh != 0.0) printf("snv-llh = %.8e ", sllh);
+  printf("tot-llh = %.8e ", cllh+bllh+sllh);
   printf("(%i)\n", steps);
   if (mass != NULL || freq != NULL){
     int nT = (mass != NULL) ? (int) mass->size : (int) freq->size1;
@@ -150,12 +150,13 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
       myClone->set_bulk_to_prior();
     }
     llh = cna_llh + baf_llh + snv_llh;//n==0 total LLH
-    max_bic = 2.0*llh;//n==0 BIC...
-    if (cnaEmit->is_set){//no. parameters
+    myClone->get_complexity();
+    max_bic = 2.0*llh -  myClone->complexity;//n==0 BIC...
+    printf("complexity = %f\n", myClone->complexity);
+    /*if (cnaEmit->is_set){//no. parameters
       double complexity = double(myClone->nTimes)*log( double(myClone->total_loci) );
-      max_bic -= complexity;
-      printf("complexity = %f\n", complexity);
-    }
+      max_bic -= complexity;   
+      }*/
     report_results( cna_llh, baf_llh, snv_llh, steps, best_mass[0], NULL);
     printf("\nno clone best total llh = %+.6e, bic = %+.6e\n", llh, max_bic);
     cout<<endl;
@@ -215,7 +216,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     myClone->get_complexity();
     printf("complexity = %f\n", myClone->complexity);
     bic = 2.0*max_llh - myClone->complexity;
-    printf("%i clone best total llh (trial %i) = %+.6e, bic = %+.6e\n\n", n, btrial+1, max_llh, bic);
+    printf("%i clone best total llh (trial %i) = %+.8e, bic = %+.8e\n\n", n, btrial+1, max_llh, bic);
     fprintf(clonal_fp, "%i %.10e %.10e %.10e %.10e %.10e\n", n, cna_llh, baf_llh, snv_llh, max_llh, bic);
     // test BIC value...
     if (bic > max_bic || (opts.force > 0 && opts.force == n) ){
@@ -237,7 +238,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
       }
       if (best_clones[n] != NULL){
 	for (int f=0; f<n; f++){
-	  fprintf(clonal_fp, "%.6f ", gsl_matrix_get( best_clones[n], t, f));
+	  fprintf(clonal_fp, "%.4f ", gsl_matrix_get( best_clones[n], t, f));
 	}
       }
       fprintf(clonal_fp, "\n");
@@ -248,6 +249,9 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
   myClone->set(best_clones[bestn]);
   if (best_mass[bestn] != NULL){
     myClone->set_mass(best_mass[bestn]);
+  }
+  if (!cnaEmit->is_set && snvEmit->is_set && !snvEmit->connect){
+    myClone->initialize_snv_prior_param();
   }
   if (best_priors[bestn] != NULL && bestn > 0){
     myClone->set_snv_prior( best_priors[bestn] );

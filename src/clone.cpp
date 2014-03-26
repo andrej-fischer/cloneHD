@@ -35,6 +35,7 @@ Clone::Clone(){
   copynumber       = NULL;
   copynumber_post  = NULL;
   initial_snv_prior_param= NULL;
+  pinit = 0.5;
   learn_priors = 0;
   cn_usage = NULL;
   clone_spectrum   = NULL;
@@ -556,7 +557,7 @@ void Clone::get_complexity(){
     for (int j=0; j<nClones; j++){
       val *= (double) maxtcn_per_clone[chr][j] + 1;
     }
-    val -= 1.0;
+    //val -= 1.0;
     if (cnaEmit->is_set && cnaEmit->chrs.count(chr)==1){
       cnaC += val*double(cnaEmit->nSites[cnaEmit->idx_of[chr]]);
       cnaN += double(cnaEmit->nSites[cnaEmit->idx_of[chr]]);      
@@ -574,15 +575,13 @@ void Clone::get_complexity(){
   double size=0;
   if (cnaEmit->is_set){
     complexity += cnaC / cnaN;
-    size += cnaN;
+    size += cnaN*double(nTimes);
+    if (bafEmit->is_set) size += bafN*double(nTimes);
+    if (snvEmit->is_set) size += snvN*double(nTimes);
   }
-  /*if (bafEmit->is_set){
-    complexity += bafC / bafN;
-    size += bafN;
-    }*/
   else if (snvEmit->is_set){
     complexity += snvC / snvN;
-    size += snvN;
+    size += snvN*double(nTimes);;
     if (learn_priors){
       std::set<int>::iterator iter;
       for (iter=all_maxtcn.begin(); iter!=all_maxtcn.end(); iter++){

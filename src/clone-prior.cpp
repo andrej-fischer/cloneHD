@@ -44,11 +44,11 @@ void Clone::set_cna_prior( gsl_vector * prior, int sample){
 }
 
 //used in SNV-only mode, w/o correlation and w/o cn-info...
-void Clone::initialize_snv_prior_param(){// SNV prior, conditional on max-cn
+void Clone::initialize_snv_prior_param(){// SNV prior, conditional on max-tcn
   if (initial_snv_prior_param != NULL) gsl_matrix_free(initial_snv_prior_param);
   initial_snv_prior_param = gsl_matrix_calloc( maxtcn+1, maxtcn+1);
   gsl_matrix_set( initial_snv_prior_param, 0, 0, snv_fpr);
-  double p = 0.5;// initial penalty for higher genotypes
+  double p = pinit;// initial penalty for higher genotypes
   for (int cn=1; cn <= maxtcn; cn++){
     if ( all_maxtcn.count(cn) == 0 ) continue;
     gsl_vector_view subrow = gsl_matrix_subrow( initial_snv_prior_param, cn, 0, cn+1);
@@ -150,7 +150,7 @@ void Clone::set_snv_prior_map(){//either via BAF or else via CNA
     snv_prior_from_cna_map = gsl_matrix_alloc( maxtcn+1, maxtcn+1);
   }
   gsl_matrix_set_zero( snv_prior_from_cna_map);  
-  double p = (snvEmit->connect) ? 1.0 : snv_pen;// penalty for high genotypes 
+  double p = snvEmit->connect ? 1.0 : 0.5;// penalty for high genotypes 
   for (int cn=0; cn <= maxtcn; cn++){
     for (int i=0; i <= cn; i++){
       gsl_matrix_set( snv_prior_from_cna_map, i, cn, pow(p,i));
@@ -381,19 +381,20 @@ void Clone::get_snv_prior_from_av_cn(gsl_vector * prior, int sample, int evt){
   for (int l=1; l<nLevels; l++){
     found=0;
     prior->data[l] = (snv_prior[snvChr])->data[l];
-    for (int j=0; j<nClones; j++){//genotype bigger than maximum?
+    /*for (int j=0; j<nClones; j++){//genotype bigger than maximum?
       if ( copynumber[l][j] > maxtcn_per_clone[snvChr][j]){
 	prior->data[l] = 0.0;
 	found = 1;
 	break;
       }
-    }
-    if (found) continue;
+      }
+      if (found) continue;
+    */
     for (int t=0;t<nTimes;t++){//genotype not available?
       for (int cn=0; cn<=maxtcn; cn++){
        if (cn_usage[t][cn][l] > snvEmit->av_cn[t][sample][evt][cn]){
          found=1;
-	 prior->data[l] *= 0.01;
+	 prior->data[l] *= snv_pen;
          break;
        }
        if (found) break;
@@ -402,7 +403,7 @@ void Clone::get_snv_prior_from_av_cn(gsl_vector * prior, int sample, int evt){
     }
   }
   double norm = gsl_blas_dasum(prior);
-  if (norm<=0) abort();
+  if (norm <= 0.0) abort();
   gsl_vector_scale(prior, (1.0-snv_fpr)/norm);
   prior->data[0] = snv_fpr;
 }

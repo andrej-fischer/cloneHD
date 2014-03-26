@@ -109,6 +109,7 @@ double find_optimum_wrestarts( int nSimplex,
 			       int verbose
 			       ){
   steps=0;
+  int talk=0;
   double fbest = find_local_optimum( nSimplex, simplex, lower, other, range, params, obj_fn, prec, steps, verbose);
   if (restarts > 0 && nSimplex>0 && simplex != NULL){
     double eps = 0.99;
@@ -122,12 +123,12 @@ double find_optimum_wrestarts( int nSimplex,
       other_best = gsl_vector_alloc(other->size);
       gsl_vector_memcpy(other_best,other);
     }
-    //printf("%-3i: %.8e\n", 0, fbest);
+    if (talk) printf("%-3i: %.8e\n", 0, fbest);
     cout<<flush;
     int ct=1;
     while (restarts>0){
-      //printf("\r%-3i: ", ct);
-      //cout<<flush;
+      if (talk) printf("\r%-3i: ", ct);
+      cout<<flush;
       for (int i=0; i<nSimplex;i++){
 	simplex_random_step_uniform(simplex_best[i], simplex[i], lower->data[i], eps);
       }
@@ -135,12 +136,12 @@ double find_optimum_wrestarts( int nSimplex,
       //find new local optimum...
       double ftest = find_local_optimum( nSimplex, simplex, lower, other, range, params, obj_fn, prec, steps, verbose);
       //test new value...
-      if (ftest<fbest){
+      if (ftest < fbest){
 	for (int i=0; i<nSimplex;i++) gsl_vector_memcpy(simplex_best[i], simplex[i]);
 	if (other!=NULL) gsl_vector_memcpy(other_best,other);
 	fbest = ftest;
 	eps *= 0.95;
-	//printf("%-3i: %.8e\n", ct, fbest);
+	if (talk) printf("\r%-3i: %.8e\n", ct, fbest);
       }
       restarts--;
       ct++;
@@ -148,8 +149,8 @@ double find_optimum_wrestarts( int nSimplex,
     //set to best...
     for (int i=0; i<nSimplex;i++) gsl_vector_memcpy(simplex[i],simplex_best[i]);
     if (other!=NULL) gsl_vector_memcpy(other,other_best);
-    //printf("\r");
-    //cout<<flush;
+    if (talk) printf("\r");
+    cout<<flush;
     //cleanup...
     for (int i=0; i<nSimplex;i++) gsl_vector_free(simplex_best[i]);
     delete [] simplex_best;

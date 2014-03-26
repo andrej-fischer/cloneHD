@@ -86,7 +86,7 @@ int main (int argc, const char * argv[]){
   myClone.baf_pen  = opts.baf_pen;//BAF penalty for complex chr status
   myClone.snv_fpr  = opts.snv_fpr;//SNV false-positive rate
   myClone.snv_fpf  = opts.snv_fpf;//SNV frequency of false positives
-  myClone.snv_pen  = (bafEmit.is_set ? opts.snv_pen : 0.5);//penalty for high SNV genotypes
+  myClone.snv_pen  = opts.snv_pen;//penalty for high SNV genotypes
   myClone.bulk_fix = opts.bulk_fix;
   myClone.cnaGrid  = opts.cnaGrid;
   myClone.bafGrid  = opts.bafGrid;
@@ -433,6 +433,10 @@ void test_opts(cmdl_opts& opts){
   }
   if (opts.cna_fn != NULL && (opts.mntcn_fn != NULL || opts.avcn_fn != NULL )){
     cout<<"ERROR: --mean-tcn [file] and --avail-cn [file] cannot be used with --cna [file].\n";
+    exit(1);
+  }
+  if ( opts.mntcn_fn == NULL && opts.avcn_fn != NULL ){
+    cout<<"ERROR: --avail-cn [file] can only be used together with --mean-tcn [file].\n";
     exit(1);
   }
   if ( opts.cna_fn != NULL && opts.cna_jump < 0.0 && opts.cna_jumps_fn == NULL ){

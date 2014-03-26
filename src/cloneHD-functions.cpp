@@ -366,9 +366,22 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
     line.clear();
     getline( ifs, line);
     if (line.empty()) break;
-    if (line[0] == '#') continue;
     line_ss.clear();
     line_ss.str(line);
+    if (line[0] == '#'){
+      string mode;
+      while (line_ss.good()) line_ss >> mode;
+      if (mode.compare("cna")==0){
+	myClone->pinit = 0.5;
+      }
+      else if (mode.compare("baf")==0){
+	myClone->pinit = 1.0;
+      }
+      else{
+	abort();
+      }
+      continue;
+    }
     if (old_chr == -1 && locus == -1){//check format
       int cols=0;
       while(line_ss >> x) cols++;
@@ -847,7 +860,7 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     fprintf( mntcn_fp, "#chr site mean-total-copynumber\n");
     sprintf( buff,"%s.avail-cn.txt", opts.pre); 
     FILE * avcn_fp =  fopen(buff,"w");
-    fprintf( avcn_fp, "#chr site copynumber-availability\n");
+    fprintf( avcn_fp, "#chr site genotype-availability via %s\n", bafEmit->is_set ? "baf" : "cna");
     //allocate space for the posterior
     myClone->alpha_cna = new gsl_matrix * [cnaEmit->nSamples];
     myClone->gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
@@ -1158,19 +1171,20 @@ void print_perclone_posterior( FILE ** fp, Clone * myClone, Emission * myEmit, i
     for (int n=0; n<nC; n++){	
       post = gsl_vector_subvector( perclone, n*(maxtcn+1), maxtcn+1);
       if ( myEmit == myClone->bafEmit){//symmetrize BAF
-	gsl_vector_set_zero(ppc);	
+	gsl_vector_set_zero(ppc);
+	double WT=0;
 	for (int cn=0; cn<=maxtcn; cn++){
 	  double wt = cnapc->data[n*(maxtcn+1)+cn];
 	  gsl_blas_dgemv( CblasNoTrans, 1.0, myClone->bafSymMap[cn], &post.vector, 0.0, mem);
 	  double norm = gsl_blas_dasum(mem);
-	  if (norm <= 0 && wt > 1.0e-4){
-	    abort();    
-	  }
-	  else if (norm > 0){
+	  if (norm > 0){
 	    gsl_vector_scale(mem, wt / norm);
 	    gsl_vector_add(ppc, mem);
+	    WT += wt;
 	  }
 	}
+	if (WT <= 0.0) abort();
+	gsl_vector_scale(ppc,1.0/WT);
       }
       else{
 	gsl_vector_memcpy( ppc, &post.vector);

@@ -124,6 +124,7 @@ class Clone{
   void set_snv_prior( gsl_matrix * prior_param );
   gsl_matrix * initial_snv_prior_param;
   void initialize_snv_prior_param();
+  double pinit;
   // mean total c.n. and available c.n.
   void get_mean_tcn(int sample);//for cna only
   void map_mean_tcn( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv
