@@ -43,7 +43,9 @@ fuzzy data segmentation and data filtering.
 ![cna gof](/images/cna.gof.png "CNA goodness of fit")
 ![baf gof](/images/baf.gof.png "BAF goodness of fit")
 ![cna post](/images/cna.post.png "CNA posterior")
+![cna real](/images/cna.real.png "CNA real profile")
 ![baf post](/images/baf.post.png "BAF posterior")
+![baf real](/images/baf.real.png "BAF real profile")
 ![snv gof](/images/snv.gof.png "SNV goodness of fit")
 
 Visualization of the cloneHD output for the simulated data set. From
