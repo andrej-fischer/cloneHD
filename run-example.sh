@@ -6,16 +6,17 @@ export OMP_NUM_THREADS=4;
 part=$1
 
 # input data
-#data="./test/data/"
-#results="./test/results/"
-data="/Users/af7/Projects/cloneHD/Test/data/"
-results="/Users/af7/Projects/cloneHD/Test/results/"
+data="./test/data/"
+results="./test/results/"
+#data="/Users/af7/Projects/cloneHD/Test/data/"
+#results="/Users/af7/Projects/cloneHD/Test/results/"
 filterHD="./build/filterHD"
 cloneHD="./build/cloneHD"
 
 normalCNA="${data}/normal.cna.txt"
 tumorCNA="${data}/tumor.cna.txt"
 tumorBAF="${data}/tumor.baf.txt"
+tumorSNV="${data}/tumor.snv.txt"
 bias="${results}/normal.cna.posterior-1.txt"
 tumorCNAjumps="${results}/tumor.cna.bias.jumps.txt"
 tumorBAFjumps="${results}/tumor.baf.jumps.txt"
@@ -59,9 +60,14 @@ then
     echo "*** cloneHD ***"
     echo
     cmd="$cloneHD --cna $tumorCNA --baf $tumorBAF --pre ${results}/tumor --bias $bias --seed 123 --trials 2\
- --nmax 3 --force --max-tcn 5 --cna-jumps $tumorCNAjumps --baf-jumps $tumorBAFjumps --min-jump 0.01 --restarts 10"    
+ --nmax 3 --force --max-tcn 4 --cna-jumps $tumorCNAjumps --baf-jumps $tumorBAFjumps --min-jump 0.01 --restarts 10"    
     echo $cmd
     $cmd
     echo
     cat ${results}/tumor.summary.txt
+    cmd="$cloneHD --snv $tumorSNV --pre ${results}/tumor --seed 123 --trials 2\
+ --nmax 3 --force --max-tcn 4 --restarts 10 --mean-tcn ${results}/tumor.mean-tcn.txt --avail-cn ${results}/tumor.avail-cn.txt"    
+    echo $cmd
+    $cmd
+    echo
 fi

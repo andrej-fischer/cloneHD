@@ -179,7 +179,7 @@ int main (int argc, const char * argv[]){
     FILE * total_fp = fopen(buff,"w");
     fprintf(total_fp, "#sample site mean std-dev jump-prob");
     fprintf(total_fp, " posterior %.5e %.5e\n", myJD.myEmit->xmin, myJD.myEmit->xmax);
-    double gof=0, xobs=0,gofNorm=0;
+    double gof=0, xobs=0, gofNorm=0;
     for (int s=0; s < myJD.nSamples; s++){//get posterior distribution with the ML parameters
       myJD.get_posterior(s);
       double mstd = 0.0;
@@ -201,6 +201,21 @@ int main (int argc, const char * argv[]){
 	mstd += std[s][l];
 	if (opts.jumps==1){
 	  jumps[s][l] *= exp(myJD.pnojump[s][l]);
+	}
+	//goodness of fit...
+	if (mask==NULL || mask[s][l] == 1){
+	  xobs = double(myEmit.reads[t][s][l]) / double(myEmit.depths[t][s][l]);
+	  if (opts.reflect) xobs = min(xobs,1.0-xobs);	 
+	  double x=0,g=0,dg=0;
+	  double b = (myEmit.bias == NULL) ? 1.0 : myEmit.bias[s][l];
+	  for (int i=0; i<=uidx; i++){
+	    x = myEmit.xgrid[i] * b;
+	    dg = fabs(x - xobs) * post->data[i];
+	    if (i==0||i==uidx) dg *= 0.5;
+	    g += dg;
+	  }
+	  gof += g * myEmit.dx;
+	  gofNorm += 1.0;
 	}
       }
       mstd /= double(myJD.nSites[s]);
@@ -232,21 +247,6 @@ int main (int argc, const char * argv[]){
 	  }
 	}
 	fprintf(total_fp,"\n");
-	//goodness of fit...
-	if (mask==NULL || mask[s][l] == 1){
-	  xobs = double(myEmit.reads[t][s][l]) / double(myEmit.depths[t][s][l]);
-	  if (opts.reflect) xobs = min(xobs,1.0-xobs);	 
-	  double x=0,g=0,dg=0;
-	  double b = (myEmit.bias == NULL) ? 1.0 : myEmit.bias[s][l];
-	  for (int i=0; i<=uidx; i++){
-	    x = myEmit.xgrid[i] * b;
-	    dg = fabs(x - xobs) * post->data[i];
-	    if (i==0||i==uidx) dg *= 0.5;
-	    g += dg;
-	  }
-	  gof += g * myEmit.dx;
-	  gofNorm += 1.0;
-	}
       }
       gsl_matrix_free(myJD.gamma[s]);
       myJD.gamma[s] = NULL;

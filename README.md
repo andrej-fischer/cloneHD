@@ -41,16 +41,16 @@ jump-diffusion propagator. It can be used for scale-free smoothing,
 fuzzy data segmentation and data filtering. 
 
 ![cna gof](/images/cna.gof.png "CNA goodness of fit")
-![cna gof](/images/cna.post.png "CNA posterior")
 ![baf gof](/images/baf.gof.png "BAF goodness of fit")
-![cna gof](/images/baf.post.png "BAF posterior")
+![cna post](/images/cna.post.png "CNA posterior")
+![baf post](/images/baf.post.png "BAF posterior")
+![snv gof](/images/snv.gof.png "SNV goodness of fit")
 
 Visualization of the cloneHD output for the simulated data set. From
 top to bottom: (i) the bias corrected read depth data and the cloneHD
-posterior mean emission rate (ii) the total copy number posterior
-distribution for subclone 1 with f1=0.52 and subclone 2 with f2=0.07
-(iii) the BAF and (iv) the minor allele posterior. (Plots created with Wolfram
-[Mathematica](http://www.wolfram.com/mathematica/).)
+posterior mean emission rate (ii) the BAF (iii-iv) the total and minor copy number posterior
+distribution for subclone 1 with f1=0.52 and subclone 2 with f2=0.07 and (v) the SNV goodness of fit, where each SNV is assigned to a genotype according to the its posterior, and the observed SNV freequency is scaled by one half of the local mean total copynumber. 
+(All plots are created with Wolfram [Mathematica](http://www.wolfram.com/mathematica/).)
 
 # filterHD command line arguments
 
