@@ -1,17 +1,16 @@
 # changelog for cloneHD/filterHD
 
-## v1.17.2 / 13.03.2014
+## v1.17.2 / 27.03.2014
 
 *  new output: posterior per subclone, goodness of fit (GOF) per
    segment
 *  changed file name `*clonal.txt` -> `*summary.txt`
 *  filterHD STDOUT includes now GOF per sample
-*  cloneHD `*summary.txt` includes now LLH per sample
 *  cloneHD `*summary.txt` includes now GOF per sample
 *  changed `_` to `-` in all file names
 *  fixed bug: BAF now symmetrized only in per-subclone-posterior
-*  new CNA prior to penalize homozygous deletions
-	
+*  new CNA prior to penalize homozygous deletions `--cna-pen [double:0.9]`
+
 ## v1.17.1 / 01.03.2014
 
 *  BAF posterior symmetrized for output
@@ -30,9 +29,9 @@
    be learned with `--learn-priors 1`.
 *  if SNV only and `--max-tcn [int/file]` is given, this data is used
    to fix the total c.n. per chr and subclone; mean total c.n. is
-   calculated on the fly; SNV prior parameters can be learned with 
-   `--learn-priors 1`. 
-*  if SNV only and `--max-tcn [int/file]` and `--avail-cn [file]` are 
+   calculated on the fly; SNV prior parameters can be learned with
+   `--learn-priors 1`.
+*  if SNV only and `--max-tcn [int/file]` and `--avail-cn [file]` are
    given, SNV prior is calculated according to c.n. availability.
 
 ### more changes
@@ -40,7 +39,7 @@
 *  changed option `--copynumber [file]` to  `--mean-tcn [file]`
 *  new option  `--avail-cn [file]`
 *  changed option `--maxcn [int:4]` to `--max-tcn [file/int]`
-*  changed option `--snv-err [double]` to `--snv-fpfreq [double]` 
+*  changed option `--snv-err [double]` to `--snv-fpfreq [double]`
 *  changed option `--snv-fpr [double]` to `--snv-fprate [double]`
 *  output file `*used-tcn.txt` to `*used_mean_tcn.txt`
 *  output file `*copynumber.txt` to `*mean_tcn.txt`

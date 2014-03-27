@@ -18,21 +18,21 @@ data with a matched normal. All command line arguments are explained below.
 
 # Compilation  
 
-To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to your GSL installation location (if non-standard). Then type 
+For Mac OS X (64bit), there are pre-compiled binaries available on the ftp server above. To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to your GSL installation location (if non-standard). Then type 
 
 `$ make`
 
 in the source directory. The two executables, `filterHD` and
-`cloneHD`, will be in `./build`.
+`cloneHD`, will be in `./build`. For debugging with gdb, use `make -f Makefile.debug`.
 
 # What are cloneHD and filterHD for?
 
 cloneHD is a software for reconstructing the subclonal structure of a
-population from next-generation short-read sequencing data. Read depth
+population from short-read sequencing data. Read depth
 data, B-allele count data and somatic nucleotide variant (SNV) data can be
-used for the inference. cloneHD can find the number of subclonal
-populations, their copy number profiles, their B-allele status and all
-SNV genotypes with high resolution.
+used for the inference. cloneHD can estimate the number of subclonal
+populations, their fractions in the sample, their individual total copy number profiles, 
+their B-allele status and all the SNV genotypes with high resolution.
 
 filterHD is a general purpose probabilistic filtering algorithm for one-dimensional
 discrete data, similar in spirit to a Kalman filter. It is a continuous state
@@ -49,9 +49,15 @@ fuzzy data segmentation and data filtering.
 ![snv gof](/images/snv.gof.png "SNV goodness of fit")
 
 Visualization of the cloneHD output for the simulated data set. From
-top to bottom: (i) the bias corrected read depth data and the cloneHD
-posterior mean emission rate (ii) the BAF (iii-iv) the total and minor copy number posterior
-distribution for subclone 1 with f1=0.52 and subclone 2 with f2=0.07 and (v) the SNV goodness of fit, where each SNV is assigned to a genotype according to the its posterior, and the observed SNV freequency is scaled by one half of the local mean total copynumber. 
+top to bottom: 
+(i) The bias corrected read depth data and the cloneHD
+prediction (red).
+(ii) The BAF (B-allele frequency), reflected at 0.5 and the cloneHD prediction (red).
+(iii) The total copy number posterior.
+(iii) The real total copy number profile.
+(iii) The minor copy number posterior.
+(iii) The real minor copy number profile.
+(iv) The observed SNV frequencies, corrected for local ploidy, and per genotype (SNVs are assigned ramdomly according to the cloneHD SNV posterior).
 (All plots are created with Wolfram [Mathematica](http://www.wolfram.com/mathematica/).)
 
 # filterHD command line arguments
@@ -61,7 +67,7 @@ distribution for subclone 1 with f1=0.52 and subclone 2 with f2=0.07 and (v) the
 *    `--data [file]`  Input data. 
 
      The file format is the same as below for `--cna`, `--baf` or
-     `--snv`. Samples are processed one by one.
+     `--snv`. Multiple amples are processed independently, one by one.
 
 *    `--mode [1/2/3/4]`  Emission modes.
 
@@ -76,61 +82,64 @@ distribution for subclone 1 with f1=0.52 and subclone 2 with f2=0.07 and (v) the
 
 *    `--pre [string:"./out"]`  Prefix for all output files.
 
-*    `--dist [0/1:0]`  Whether to print the  posterior distribution. 
-
-     Files can be big. The posterior mean, std-dev and
-     jump probability are printed in all cases to files
-     `*posterior.*.txt`, one for each sample in the input.
+*    `--dist [0/1:0]`  Whether to print also the  posterior distribution. 
+     
+     The posterior mean, std-dev and jump probability are always printed  to files
+     `pre.posterior-[int].txt`, one for each sample in the input. With 1, the
+     whole posterior distribution is also printed, so files can be big. 
 
 *    `--jumps [0/1:0]`  Whether to print posterior jump probability. 
 
      The posterior jump probability is compounded over all samples. It
-     can be used with `--min-jump [double]` below, to consolidate jumps..
+     can be used with `--min-jump [double]` below, to consolidate jumps.
 
 *    `--reflect [0/1:0]`  If 1, binomial observations `n in N` and
      `(N-n) in N` are assumed to be identical. Use this option for BAF data.
 
 ## Parameter options
 
-The HMM underlying filterHD is determined by these four
+The HMM underlying filterHD is determined by these four global
 parameters. They can all be fixed, otherwise they are learned from the data.
 
-*    `--jump [double]`  The jump probability per length unit (bp).
-*    `--sigma [double]`  The diffusion constant. 
-*    `--shape [double]`  The shape parameter for modes 2/4. If >1000, use modes 1/3.
-*    `--rnd [double]`  The rate of random emissions.
+*    `--jump [double]`   Fix the jump probability per length unit (bp).
+*    `--sigma [double]`  Fix the diffusion constant. 
+*    `--shape [double]`  Fix the shape parameter for modes 2/4. If >1000, use modes 1/3.
+*    `--rnd [double]`    Fix the rate of random emissions.
 
 For all of the above parameters, initial values for the numerical
 optimization can be given. This might be useful if you suspect several
-local optima.
+local optima and want to start in the neighbourhood of a particular one.
 
 *    `--jumpi [double]`
 *    `--sigmai [double]`
 *    `--shapei [double]`
 *    `--rndi [double]`
 
-## Advanced options
+## Further advanced options
 
 *    `--min-jump [double:0.0]`  Consolidate jumps down to `--min-jump`.
 
      The posterior jump probability track will be consolidated by merging neighboring jump events into
-     unique jumps, down to the minimum value given here. Can only be used with
+     unique jumps, down to the minimum value given here. Can only be used together with
      `--jumps 1`. 
 
-*    `--filter-pVal [0/1:0]`  Use p-Val filter.
+*    `--filter-pVal [0/1:0]`  Use p-Value filter.
 
      Filter sites where the p-Value of the
-     observation is below 10/nSites, where nSites is the total number
+     observation is below `10/nSites`, where `nSites` is the total number
      of sites in a sample.
 
-*    `--filter-shortSeg [int:0]` Use short segment filter.
+*    `--filter-shortSeg [int:0]` Use short-segment filter.
 
-     Filter sites within short segments between jumps. All filtered data will be in the file ending `*filtered.txt`.
+     Filter sites within short segments between jumps. All filtered data will be in the file ending `pre.filtered.txt`, which will be in the same format as the input file.
 
-*    `--grid [int:100]`  Set grid size.
+*    `--grid [int:100]`  Set the grid size.
 
      The grid size for the internal representation of continuous distributions. For large ranges in
-     mode 3/4, it can make sense to increase resolution.
+     mode 3/4, it can make sense to increase this resolution.
+
+## filterHD output files
+
 
 
 
@@ -139,8 +148,8 @@ local optima.
 ## Typical usage options
 
 Format of input files: the first two columns of all three input file
-    types are always chromosome and coordinate of each observation. Chromosomes
-    are expected to be integers (X->23,Y->24). 
+    types are always chromosome and coordinate of each observation. Both
+    are expected to be integers (change X->23,Y->24). 
 
 *   `--cna [file]` Read depth data file. 
 
@@ -168,7 +177,8 @@ Format of input files: the first two columns of all three input file
 
 *    `--snv [file]` Somatic nucleotide variant read count data file.
 
-     Format: For each sample, there are two additional columns with (i) the number of reads of the somatic variant allele and (ii) the total read depth at that locus.
+     Format: For each sample, there are two additional columns with (i) the number 
+     of reads of the somatic variant allele and (ii) the total read depth at that locus.
 
         1  1314  12  92   28  72  etc.
         1  1287  47  99   32  80
@@ -179,54 +189,58 @@ Format of input files: the first two columns of all three input file
 
 *    `--bias [file]`  The bias field for the read depth data. 
 
-     This must be a filterHD `*posterior.*.txt` file, typically from a
-     filterHD run on matched-normal read depth data, to estimate the
-     technical read depth modulation.
+     This must be a filterHD `pre.posterior-[int].txt` file, typically from a
+     filterHD run on matched-normal read depth data. This is used to take into account
+     the technical read depth modulation. Make sure that this is comparable between 
+     matched normal and tumor (see below).
 
-*    `--max-tcn [int]`  The maximum total copy number.
+*    `--max-tcn [int]`  The maximum total copy number to be available.
 
      This is used as an upper limit for the total copy number genome wide (in all chr).
      If not specified, the normal copy number is used as limit for each chromosome.
-
      This number should be chosen conservatively, since it increases the
      HMM dimensionality and can open up the possibility for spurious solutions. 
+     It is also possible to specify upper limits per chr and subclone (see below).
 
 *    `--nmax [int:2]`  The maximum number of subclones to be tried.
 
-     All subclone numbers from 0 to `nmax` will be used and the one
-     with maximum BIC chosen for output.
+     All subclone numbers `n` from `0..nmax` will be used and the one
+     with maximum BIC chosen for output. BIC is affected by model complexity, 
+     which is a combination of `n` and `max-tcn` (see below).
 
-*    `--force [int]`  Fix the number of subclones to be used.
+*    `--force [int]`  Fix the number `n` of subclones to be used.
 
 *    `--trials [int:1]`  The number of independent optimizations.
 
-     Global parameters are found numerically by local maximization of
+     Global parameters, fractions `f` and mass `M`, are found numerically by local maximization of
      the total log-likelihood. The best result out of `trials` independent,
-     randomly seeded,  runs will be used.
+     newly seeded, runs will be used.
+
+### snv-mode options
 
 *    `--mean-tcn [file]`  Use a fixed mean total copy number for SNV data. 
 
      For a SNV data analysis, the cloneHD output file
-     ending `*mean_tcn.txt` from a CNA(+BAF) run can be supplied here. Since
+     ending `pre.mean-tcn.txt` from a CNA(+BAF) run can be supplied here. Since
      the subclonal decomposition can be different for SNVs, this option
      ensures that a reasonable mean total copy number is used.
 
 *    `--avail-cn [file]`  Use SNV copy number availablility constraint.
 
      For a SNV data analysis, the cloneHD output file
-     ending `*avail_cn.txt` from a CNA(+BAF) run can be supplied here. Since
+     ending `pre.avail-cn.txt` from a CNA(+BAF) analysis can be supplied here. Since
      the subclonal decomposition can be different for SNVs, this option
      ensures that the SNV genotype is consistent with the fraction of
-     cells in which this number of copies is available.
-     Can only be used together with `--mean-tcn [file]`. In
-     combination, this is a much stronger constraint than using
+     cells in which this number of copies is available, at all.
+     This can only be used together with `--mean-tcn [file]` option. In
+     combination, this is usually a much stronger constraint than using
      `mean-tcn` alone.
 
 ### Fuzzy segmentation options
 
 For data with persistence along the genome, a fuzzy segmentation can
-be used based on the filterHD posterior jump probability (must be
-`*jumps.txt` file). Data between potential jump sites, with a jump
+be used based on the filterHD posterior jump probability (must be a
+`pre.jumps.txt` file). Data between potential jump sites, with a jump
 probability of at least `min-jump`, is collapsed. The jump probability
 is used in the HMM transition.
 
@@ -245,31 +259,32 @@ models are used (Poisson or Binomial).
 *    `--baf-shape [double:inf]`
 *    `--snv-shape [double:inf]`
 
-The rate for indiviual random emissions per data set. Can be learned
-with filterHD for data with persistence.
+The rate for indiviual random emissions per data set. 
 
 *    `--cna-rnd [double:0.0]`
 *    `--baf-rnd [double:0.0]`
 *    `--snv-rnd [double:0.0]`
 
+Both can be learned with filterHD for data with persistence.
+
 ## Advanced options
 
-*    `--clones [file]`  Use fixed mass(es) and/or subclonal frequencies. 
+*    `--clones [file]` Use fixed mass(es) `M` and/or subclonal fractions `f`. 
 
-     Either all mass parameters, or all subclonal frequencies, or both 
-     can be given (for each sample in the data input). The likelihoods
+     Either all mass parameters, or all subclonal fractions, or both 
+     can be given (for each sample in the input data). The likelihoods
      and posteriors will be computed under these conditions. 
      Remaining parameters will be learned.
   
      Format: One line per sample. The first column, if greater than
-     1.0, is interpreted as mass; the remaining as subclonal frequencies.
+     1.0, is interpreted as mass; the remaining as subclonal fractions.
 
         30.0 0.64 0.12
         28.0 0.31 0.23
 
     More than one parameter set can be given (as a continued list). Then,
     only the likelihoods are computed and printed to a file ending
-    `*llh-values.txt`.  Useful for mapping the log-likelihood surface
+    `pre.llh-values.txt`.  Useful for mapping the log-likelihood surface
     or comparing several given solutions.
 
 *    `--purity [file]`  Use fixed purities, i.e. lower bounds for the sum of

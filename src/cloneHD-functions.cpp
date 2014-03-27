@@ -41,7 +41,7 @@ void get_baf_data(Emission * bafEmit, cmdl_opts& opts, int& nTimes, int& nT){
   if (opts.cna_jumps_fn!=NULL) bafEmit->connect = 1;
   get_dims( opts.baf_fn, nT, chrs, nSites, bafEmit->connect);
   if (nTimes > 0 && nT != nTimes){
-    cout<<"ERROR in cloneHD main(): incompatible no. samples in CNA and BAF data.\n";
+    cout<<"ERROR: incompatible no. samples in CNA and BAF data.\n";
     exit(1);
   }
   nTimes = nT;
@@ -64,7 +64,7 @@ void get_snv_data(Emission * snvEmit, cmdl_opts& opts, int& nTimes, int& nT){
   if (opts.snv_jumps_fn!=NULL) snvEmit->connect = 1;
   get_dims( opts.snv_fn, nT, chrs, nSites, snvEmit->connect);
   if (nTimes>0 && nT != nTimes){
-    cout<<"ERROR in cloneHD main(): incompatible no. samples CNA and SNV data.\n";
+    cout<<"ERROR: incompatible no. samples CNA and SNV data.\n";
     exit(1);
   }
   nTimes = nT;
@@ -105,7 +105,7 @@ void get_track(const char * track_fn,
     exit(1);
   }
   if (mean == NULL){
-    printf("ERROR-1 in get_track().\n");
+    printf("ERROR in get_track().\n");
     exit(1);
   }
   int chr = 0, old_chr = -1, l=0, locus;
@@ -120,14 +120,14 @@ void get_track(const char * track_fn,
     line_ss >> chr >> locus; 
     l = (chr == old_chr) ? l+1 : 0;
     if (chr != old_chr && (chr > myEmit->maxchr || myEmit->idx_of[chr] < 0) ){
-      printf("ERROR 1a in get_track(): unexpected chromosome.\n");
+      printf("ERROR: unexpected chromosome.\n");
       cout<<line<<endl;
       exit(1);
     }
     // exit(0);
     old_chr = chr;
     if( (int) myEmit->loci[ myEmit->idx_of[chr] ][l] != locus){
-      printf("ERROR 2 in get_track()\n");
+      printf("ERROR in get_track()\n");
       cout<<line<<endl;
       printf( "%i, %i, %i vs %i\n", myEmit->idx_of[chr], l, myEmit->loci[ myEmit->idx_of[chr] ][l], locus);
       exit(1);
@@ -143,7 +143,7 @@ void get_track(const char * track_fn,
     line_ss >> jp;
     for (int i=0; i < (int) (distribution[ myEmit->idx_of[chr] ])->size2; i++){
       if (line_ss.good() != true){
-        printf("ERROR 3 in get_track()\n");
+        printf("ERROR in get_track()\n");
         exit(1);
       }
       line_ss >> p;
@@ -759,8 +759,12 @@ void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, 
   int nPts = rows / nT; 
   gsl_matrix_view nclones;
   gsl_vector_view nmass;
-  printf("Printing log-likelihood values for %i parameter sets to %s\n", nPts, clonal_out);
-  if (myClone->cnaEmit->is_set && mass != NULL){        
+  printf("Printing log-likelihood values for %i parameter sets to %s.\n", nPts, clonal_out);
+  if (myClone->cnaEmit->is_set){   
+    if (mass == NULL){
+      cout<<"ERROR: mass parameters have to be specified.\n";
+      exit(1);
+    }
     for (int i=0; i<nPts; i++){
       printf("\r%i", i+1);
       cout<<flush;
@@ -776,6 +780,9 @@ void print_llh_for_set(gsl_matrix * clones, gsl_vector * mass, Clone * myClone, 
   }
   else if ( myClone->snvEmit->is_set){   
     fprintf(clonal_fp, "\n");  
+    if ( !myClone->snvEmit->connect ){
+      myClone->initialize_snv_prior_param();
+    }
     for (int i=0; i<nPts; i++){
       printf("\r%i", i+1);
       cout<<flush;
