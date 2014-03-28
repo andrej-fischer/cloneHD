@@ -2,12 +2,15 @@ CC		= g++-mp-4.7
 GSL		= /opt/local/lib/libgsl.a /opt/local/lib/libgslcblas.a
 CC_FLAGS	= -Wall -O3  -static-libgcc -static-libstdc++ -fopenmp -DHAVE_INLINE
 LD_FLAGS	= ${GSL} -fopenmp
+prefobj		= emission.o common-functions.o
 filterHDobj	= emission.o common-functions.o jump-diffusion.o minimization.o
 cloneobj	= clone.o clone-bulk.o clone-prior.o clone-llh.o clone-predict.o clone-update.o clone-fwd-bwd.o
 cloneHDobj	= $(cloneobj) emission.o common-functions.o minimization.o log-space.o cloneHD-functions.o cloneHD-inference.o
 .PHONY: clean all
-all: filterHD cloneHD
+all: preFilter# filterHD cloneHD
 	rm -f ./*.o
+preFilter: $(prefobj) pre-filter.o
+	$(CC) $(CC_FLAGS) $^ -o ../build/pre-filter $(LD_FLAGS)
 filterHD: $(filterHDobj) filterHD.o
 	$(CC) $(CC_FLAGS) $^ -o ../build/filterHD $(LD_FLAGS)
 cloneHD: $(cloneHDobj) cloneHD.o
@@ -15,6 +18,6 @@ cloneHD: $(cloneHDobj) cloneHD.o
 %.o: %.cpp
 	$(CC) $(CC_FLAGS) -c $< -o $@
 $(cloneobj): clone.h# $(cloneobj:.o=.cpp)
-$(filterHDobj) $(cloneHDobj): $(.TARGET:.o=.h)
+$(filterHDobj) $(cloneHDobj) $(prefobj): $(.TARGET:.o=.h)
 clean:
 	rm -f ./*.o
