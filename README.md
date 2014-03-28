@@ -54,10 +54,10 @@ top to bottom:
 prediction (red).
 (ii) The BAF (B-allele frequency), reflected at 0.5 and the cloneHD prediction (red).
 (iii) The total copy number posterior.
-(iii) The real total copy number profile.
-(iii) The minor copy number posterior.
-(iii) The real minor copy number profile.
-(iv) The observed SNV frequencies, corrected for local ploidy, and per genotype (SNVs are assigned ramdomly according to the cloneHD SNV posterior).
+(iv) The real total copy number profile.
+(v) The minor copy number posterior.
+(vi) The real minor copy number profile.
+(vii) The observed SNV frequencies, corrected for local ploidy, and per genotype (SNVs are assigned ramdomly according to the cloneHD SNV posterior).
 (All plots are created with Wolfram [Mathematica](http://www.wolfram.com/mathematica/).)
 
 # filterHD command line arguments
