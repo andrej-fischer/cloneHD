@@ -7,7 +7,7 @@ filterHDobj	= emission.o common-functions.o jump-diffusion.o minimization.o
 cloneobj	= clone.o clone-bulk.o clone-prior.o clone-llh.o clone-predict.o clone-update.o clone-fwd-bwd.o
 cloneHDobj	= $(cloneobj) emission.o common-functions.o minimization.o log-space.o cloneHD-functions.o cloneHD-inference.o
 .PHONY: clean all
-all: preFilter# filterHD cloneHD
+all: preFilter filterHD cloneHD
 	rm -f ./*.o
 preFilter: $(prefobj) pre-filter.o
 	$(CC) $(CC_FLAGS) $^ -o ../build/pre-filter $(LD_FLAGS)
