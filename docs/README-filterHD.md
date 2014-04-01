@@ -1,5 +1,3 @@
-Go back to [top](../README.md).
-
 # filterHD command line arguments
 
 ## Typical usage options
