@@ -1,5 +1,7 @@
 # pre-filter command line arguments
 
+The program `pre-filter` can be used to remove loci based on the observed read depth. It includes two heuristic filtering methods: loci are removed based on (i) their local variability and (ii) their being an outlier (see below). 
+
 ## Typical usage options
 
 *    `--data [file]`  Input data to be pre-filtered. 
@@ -24,12 +26,12 @@
 
 ## Parameter options
 
-*    `window-size [int:100]` Set the window scale for smoothing (centered, +-size).
+*    `--window-size [int:100]` Set the window scale for smoothing (centered, +-size).
 
 *    `--remove-outlier [double:3.0]`  Set the outlier threshold.
 
-     All loci are removed, where the observed read depth is further than this value away from the local window-average (in units of sqrt(window-average), assuming Poisson distributed read depths). 
+     All loci are removed, where the observed read depth is further than this value away from the local window-average (in units of sqrt(window-average), assuming Poisson distributed read depths). If set to `0.0`, filter is not applied. 
 
 *    `--remove-variable [double:2.0]`  Set the variability threshold.
 
-     All loci are removed, where the local window-variability exceeds this multiple of the global variability. Global (local) variability is defined as median (mean) of the absolute distance of observed read depths to the global median read depth.
+     All loci are removed, where the local window-variability exceeds this multiple of the global variability. Global (local) variability is defined as median (mean) of the absolute distance of observed read depths to the global median read depth. If set to `0.0`, filter is not applied. 
