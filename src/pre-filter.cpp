@@ -231,9 +231,13 @@ void pre_filter( Emission& dataEmit, cmdl_opts& opts){
       //get local variablility and mask
       double sum = 0.0;
       int front=-1, size=0, center=-opts.wSize-1, back=-2*opts.wSize-1;
-      while (center < dataEmit.nSites[s]-1){
-	if (size < 2*opts.wSize+1) size++;
-	if (front == dataEmit.nSites[s]) size--;
+      while (center < dataEmit.nSites[s]-1){	
+	if ( front == dataEmit.nSites[s] ){
+	  size--;
+	}
+	else if ( size < 2*opts.wSize+1 ){
+	  size++;
+	}
 	while (front < dataEmit.nSites[s]){
 	  front++;
 	  if (dps[front] > 0) break;
@@ -265,8 +269,12 @@ void pre_filter( Emission& dataEmit, cmdl_opts& opts){
       double sum = 0.0;
       int front=-1, size=0, center=-opts.wSize-1, back=-2*opts.wSize-1;
       while (center < dataEmit.nSites[s]-1){
-	if (size < 2*opts.wSize+1) size++;
-	if (front == dataEmit.nSites[s]) size--;
+	if ( front == dataEmit.nSites[s] ){
+	  size--;
+	}
+	else if ( size < 2*opts.wSize+1 ){
+	  size++;
+	}
 	while (front < dataEmit.nSites[s]){
 	  front++;
 	  if (dps[front] > 0 && mask[front]==1) break;

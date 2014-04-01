@@ -96,7 +96,7 @@ The full documentation can be found in the `/docs/` subfolder. Click below.
 *  Don't put too much weight on the BIC criterion. It was calibrated
    using simulated data. For real data, it should be supplied together with
    common sense and biological knowledge. Use `--force [int]` to use a
-   fixed number of subclones and `max-tcn [int]` to set the maximum possible total
+   fixed number of subclones and `--max-tcn [int]` to set the maximum possible total
    copy number.
 
 *  For exome sequencing data, the read depth bias can be enormous. The filterHD estimate 
