@@ -72,14 +72,19 @@ The full documentation can be found in the `/docs/` subfolder. Click below.
 
 *  Pre-filtering of data can be very important. If filterHD predicts
    many more jumps than you would expect, it might be necessary to
-   filter the data, removing very short segments (with
-   `--filter-shortSeg 10`).
+   pre-filter the data, removing variable regions, outliers or very short 
+   segments (use programs `pre-filter` and `filterHD`).
 
 *  Make sure that the bias field for the tumor CNA data is
    meaningful. If a matched normal sample was sequenced with the same
    pipeline, its read depth profile, as predicted by filterHD, can be used as a
    bias field for the tumor CNA data. Follow the logic of the example
    given here.
+
+*  If the matched-normal was sequenced at lower coverage than the tumor, it might be necessary 
+   to run filterHD with a higher-than-optimal diffusion constant (set with `--sigma [double]`)
+   to obtain a more faithful bias field. Otherwise, the filterHD solution is too stiff and 
+   you loose bias detail.
 
 *  filterHD can sometimes run into local optima. It might be useful to
    fix initial values for the parameters via `--jumpi [double]` etc.
@@ -89,11 +94,13 @@ The full documentation can be found in the `/docs/` subfolder. Click below.
    alternative explanations during the course of the analysis.
 
 *  Don't put too much weight on the BIC criterion. It was calibrated
-   using simulated data. For real data, it should be supplied with
+   using simulated data. For real data, it should be supplied together with
    common sense and biological knowledge. Use `--force [int]` to use a
-   fixed number of subclones.
+   fixed number of subclones and `max-tcn [int]` to set the maximum possible total
+   copy number.
 
-*  For exome sequencing data, the read depth bias can be enormous. Use rather, if
-   available, the jumps seen in the BAF data for both CNA and BAF.
+*  For exome sequencing data, the read depth bias can be enormous. The filterHD estimate 
+   of the bias field might not be useful, especially in segmenting the data.
+   Use rather, if available, the jumps seen in the BAF data for both CNA and BAF.
 
 
