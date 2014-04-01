@@ -10,26 +10,27 @@ using namespace std;
 
 // CNA prior (only used for chr entry or w/o correlations)...
 void Clone::set_cna_prior( gsl_vector * prior, int sample){
-  //double pncn = 0.5; //penalty for being  different from the normal copy number
-  //double pdif = 0.01;//penalty for having different copynumbers in clones
+  // cna_pen_norm: penalty for being  different from the normal copy number
+  // cna_pen_diff: penalty for having different copynumbers across clones
+  // cna_pen_zero: penalty for zero total copies
   if (cnaEmit->is_set == 0) abort();
   if (nClones==0){
     gsl_vector_set_all(prior,1.0);
   }
   else{
-    //std::set<int> cns;
-    //int ncn = normal_copy[ cnaEmit->chr[sample] ];
+    std::set<int> cns;
     int chr = cnaEmit->chr[sample];
+    int ncn = normal_copy[chr];
     for (int i=0; i<nLevels; i++){
-      //cns.clear();
-      double p=1.0;
+      cns.clear();
+      double p = 1.0;
       for (int j=0; j<nClones; j++){
-	if (copynumber[i][j]==0) p *= cna_pen;//penalty for no copies
+	if (copynumber[i][j] == 0) p *= cna_pen_zero;//penalty for no copies
 	if (copynumber[i][j] > maxtcn_per_clone[chr][j]) p = 0.0;
+	cns.insert( copynumber[i][j] );
       }
-      // cns.insert( copynumber[i][j] );
-      //double p = pow( pdif, (int) cns.size());
-      //for (int j=0; j<nClones; j++) p *= pow( pncn, abs(copynumber[i][j] - ncn) );
+      p *= pow( cna_pen_diff, (int) cns.size());
+      for (int j=0; j<nClones; j++) p *= pow( cna_pen_norm, abs(copynumber[i][j] - ncn) );
       gsl_vector_set( prior, i, p);
     } 
     double norm = gsl_blas_dasum(prior);

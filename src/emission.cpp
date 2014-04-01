@@ -198,10 +198,10 @@ void Emission::get_events_via_jumps(){
     }
     total_events += nEvents[s];
     if (idx_of_event[s] != NULL)   delete [] idx_of_event[s];
-    idx_of_event[s]   = new unsigned int [nEvents[s]];
+    idx_of_event[s] = new unsigned int [nEvents[s]];
     int evt=0;
-    event_of_idx[s][0]   = 0;
-    idx_of_event[s][0]   = 0;
+    event_of_idx[s][0] = 0;
+    idx_of_event[s][0] = 0;
     for (int idx=1; idx<nSites[s]; idx++){
       if ( pjump[s][idx] > 0.0){
 	evt++;

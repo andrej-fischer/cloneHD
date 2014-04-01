@@ -84,7 +84,8 @@ class Clone{
   void allocate_tcn();
   void set_tcn();
   // penalties and parameters
-  double cna_pen,baf_pen,snv_pen;
+  double cna_pen_zero, cna_pen_norm, cna_pen_diff;
+  double baf_pen,snv_pen;
   double snv_fpr,snv_fpf;
   // pre computed variables (consider unordered_map<>)
   map< unsigned int, double> logn;

@@ -41,6 +41,9 @@ Clone::Clone(){
   clone_spectrum   = NULL;
   majcn_post  = NULL;
   bulk_fix  = -1.0;
+  cna_pen_norm = 1.0;
+  cna_pen_zero = 1.0;
+  cna_pen_diff = 1.0;
   baf_pen = 1.0;
   snv_pen = 0.01;
   snv_fpr = 1.0e-4;

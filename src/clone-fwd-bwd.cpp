@@ -47,7 +47,6 @@ void Clone::do_cna_Fwd( int sample, double& llh, double*& llhs){
   gsl_vector * prior = gsl_vector_alloc(nLevels);
   gsl_vector * post  = gsl_vector_alloc(nLevels);
   gsl_matrix * Trans = NULL;
-  //int cnaChr = cnaEmit->chr[sample];
   if (nClones>0){//preparations...
     Clone::set_cna_prior( entry, sample);
     if (cnaEmit->connect){
@@ -70,7 +69,8 @@ void Clone::do_cna_Fwd( int sample, double& llh, double*& llhs){
 	Clone::combine_prior( prior, mem, nidx-idx);
       }
       else{
-	gsl_vector_memcpy(prior,entry);
+	gsl_vector_memcpy( prior, entry);
+	if (nidx-idx > 1) Clone::scale_prior(prior,nidx-idx);
       }
     }
     else{//nClones == 0
@@ -125,6 +125,7 @@ void Clone::do_cna_Bwd(int sample, double& ent){
       }
       else{
 	gsl_vector_memcpy(prior,entry);
+	if (nloci > 1) Clone::scale_prior(prior,nloci);
       }
     }
     else{//nClones==0

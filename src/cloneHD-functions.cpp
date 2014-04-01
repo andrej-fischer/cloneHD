@@ -622,6 +622,7 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     }
     else if (opts.cna_jump >= 0.0){//2. or constant jump probability per base
       cnaEmit->set_pjump(opts.cna_jump);
+      cnaEmit->get_events_via_jumps();
     }
     else{
       abort();
@@ -658,6 +659,7 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     }
     else if (opts.baf_jump >= 0.0){//or 3. constant jump probability per base
       bafEmit->set_pjump(opts.baf_jump);
+      bafEmit->get_events_via_jumps();
     }
     else{
       abort();
@@ -685,6 +687,7 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     }
     else if (opts.snv_jump >= 0.0){
       snvEmit->set_pjump(opts.snv_jump);
+      snvEmit->get_events_via_jumps();
     }    
   }
   // allocations, now that all events are fixed...
