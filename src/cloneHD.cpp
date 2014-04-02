@@ -82,13 +82,14 @@ int main (int argc, const char * argv[]){
   // *** ALLOCATE CLONE ***
   Clone myClone;
   myClone.allocate( &cnaEmit, &bafEmit, &snvEmit, opts.chr_fn);
-  myClone.cna_pen_zero  = opts.cna_pen_zero;//CNA penalty for zero total copies
-  myClone.cna_pen_diff  = opts.cna_pen_diff;//CNA penalty for different c.n.
-  myClone.cna_pen_norm  = opts.cna_pen_norm;//CNA penalty for non-normal c.n.
-  myClone.baf_pen  = opts.baf_pen;//BAF penalty for complex chr status
+  myClone.cna_pen_zero = opts.cna_pen_zero;//CNA penalty for zero total copies
+  myClone.cna_pen_diff = opts.cna_pen_diff;//CNA penalty for different c.n.
+  myClone.cna_pen_norm = opts.cna_pen_norm;//CNA penalty for non-normal c.n.
+  myClone.baf_pen_comp = opts.baf_pen_comp;//BAF penalty for complex chr status
+  myClone.snv_pen_high = opts.snv_pen_high;//penalty for high SNV genotypes
+  myClone.snv_pen_mult = opts.snv_pen_mult;//penalty for multiple hit SNV
   myClone.snv_fpr  = opts.snv_fpr;//SNV false-positive rate
   myClone.snv_fpf  = opts.snv_fpf;//SNV frequency of false positives
-  myClone.snv_pen  = opts.snv_pen;//penalty for high SNV genotypes
   myClone.bulk_fix = opts.bulk_fix;
   myClone.cnaGrid  = opts.cnaGrid;
   myClone.bafGrid  = opts.bafGrid;
@@ -183,8 +184,8 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
   string opt_switch;
   while ( opt_idx < argc && (argv[opt_idx][0] == '-')){
     opt_switch = argv[opt_idx];
-    if ( opt_switch.compare("--print-options") == 0){
-      print_opts();
+    if ( opt_switch.compare("--help") == 0){
+      print_usage();
       exit(0);
     }
     opt_idx++;
@@ -273,9 +274,6 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--snv-jump") == 0){
       opts.snv_jump = atof(argv[opt_idx]);
     }
-    else if ( opt_switch.compare("--bulk-sigma") == 0){
-      opts.bulk_sigma = atof(argv[opt_idx]);
-    }
     else if ( opt_switch.compare("--cna-shape") == 0){
       opts.cna_shape = atof(argv[opt_idx]);
     }
@@ -294,11 +292,14 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--cna-pen-norm") == 0){
       opts.cna_pen_norm = atof(argv[opt_idx]);
     }
-    else if ( opt_switch.compare("--baf-pen") == 0){
-      opts.baf_pen = atof(argv[opt_idx]);
+    else if ( opt_switch.compare("--baf-pen-comp") == 0){
+      opts.baf_pen_comp = atof(argv[opt_idx]);
     }
-    else if ( opt_switch.compare("--snv-pen") == 0){
-      opts.snv_pen = atof(argv[opt_idx]);
+    else if ( opt_switch.compare("--snv-pen-high") == 0){
+      opts.snv_pen_high = atof(argv[opt_idx]);
+    }
+    else if ( opt_switch.compare("--snv-pen-mult") == 0){
+      opts.snv_pen_mult = atof(argv[opt_idx]);
     }
     else if ( opt_switch.compare("--purity") == 0){
       opts.purity_fn = argv[opt_idx];
@@ -336,6 +337,9 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--bulk-fix") == 0){
       opts.bulk_fix = atof(argv[opt_idx]);
     }
+    else if ( opt_switch.compare("--bulk-sigma") == 0){
+      opts.bulk_sigma = atof(argv[opt_idx]);
+    }
     else if ( opt_switch.compare("--min-occ") == 0){
       opts.min_occ = atof(argv[opt_idx]);
     }  
@@ -344,12 +348,11 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     } 
     else if ( opt_switch.compare("--learn-priors") == 0){
       opts.learn_priors = atoi(argv[opt_idx]);
-      if (opts.learn_priors>0) opts.learn_priors = 1;
+      if (opts.learn_priors > 0) opts.learn_priors = 1;
     }   
     else{
-      cout<<opt_switch<<" ?"<<endl;
-      cout<<"Usage see:"<<endl;
-      cout<<"cloneHD --print-options"<<endl;
+      cout<<"ERROR: unknown option "<<opt_switch<<" ?"<<endl;
+      print_usage();
       exit(0);
     }
     opt_idx++;
@@ -360,6 +363,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
 }
 
 void default_opts(cmdl_opts& opts){
+  //input files...
   opts.cna_fn    = NULL;
   opts.baf_fn    = NULL;
   opts.snv_fn    = NULL;
@@ -367,50 +371,61 @@ void default_opts(cmdl_opts& opts){
   opts.clones_fn = NULL;
   opts.bias_fn   = NULL;
   opts.mntcn_fn  = NULL;
-  opts.maxtcn_fn  = NULL;
+  opts.maxtcn_fn = NULL;
   opts.avcn_fn   = NULL;
   opts.chr_fn    = NULL;
   opts.purity_fn = NULL;
-  opts.cna_jumps_fn   = NULL;
-  opts.baf_jumps_fn   = NULL;
-  opts.snv_jumps_fn   = NULL;
-  opts.pre      = "./out";
-  opts.cnaGrid     = 300;
-  opts.bafGrid     = 100;
-  opts.snvGrid     = 100;
-  opts.bulkGrid    = 100;
-  opts.cna_jump = -1.0;//negative values mean NO correlations
+  //output options...
+  opts.pre       = "./out";
+  opts.print_all = 0;
+  //jump tracks...
+  opts.cna_jumps_fn = NULL;
+  opts.baf_jumps_fn = NULL;
+  opts.snv_jumps_fn = NULL;  
+  //optimizations switches...
+  opts.trials       = 1;
+  opts.restarts     = 10;
+  opts.learn_priors = 0;
+  opts.mass_gauging = 1;
+  opts.seed = 123456 * (int(time(NULL)) % 10) + (int(time(NULL)) % 1000);
+  //grid sizes...
+  opts.cnaGrid  = 300;
+  opts.bafGrid  = 100;
+  opts.snvGrid  = 100;
+  opts.bulkGrid = 100;
+  //jump rates...
+  opts.cna_jump = -1.0;
   opts.baf_jump = -1.0;
   opts.snv_jump = -1.0;
-  opts.cna_rnd = 0.0;//random error rate
+  //random error rates...
+  opts.cna_rnd = 0.0;
   opts.baf_rnd = 0.0;
   opts.snv_rnd = 0.0;
   opts.snv_fpf = 0.01;
   opts.snv_fpr = 0.001;
-  opts.cna_shape = -1.0;//shape parameters
+  //shape parameters...
+  opts.cna_shape = -1.0;
   opts.baf_shape = -1.0;
   opts.snv_shape = -1.0;
+  //penalty terms...
   opts.cna_pen_zero = 0.9;
   opts.cna_pen_diff = 1.0;
   opts.cna_pen_norm = 1.0;
-  opts.baf_pen   = 1.0;
-  opts.snv_pen   = 0.01;
-  opts.bulk_fix   = -1.0;//constant bulk for SNV
-  opts.bulk_sigma = -1.0;
+  opts.baf_pen_comp = 1.0;
+  opts.snv_pen_mult = 0.01;
+  opts.snv_pen_high = 0.5;
+  //model complexity...
   opts.force    = -1;
-  opts.trials   = 1;
   opts.nmax     = 3;
-  opts.seed     = 123456 * (int(time(NULL)) % 10) + (int(time(NULL)) % 1000);
-  opts.maxtcn    = -1;
+  opts.maxtcn   = -1;
   opts.min_occ  = 0.01;
   opts.min_jump = 0.01;
-  opts.print_all = 0;
+  //bulk options...
+  opts.bulk_fix   = -1.0;
+  opts.bulk_sigma = -1.0;
   opts.bulk_mean    = 0;
   opts.bulk_prior   = 0;
   opts.bulk_updates = 0;
-  opts.restarts = 10;
-  opts.learn_priors = 0;
-  opts.mass_gauging = 1;
 }
 
 void test_opts(cmdl_opts& opts){
@@ -459,7 +474,7 @@ void test_opts(cmdl_opts& opts){
   }
 }
 
-void print_opts(){
+void print_usage(){
   cout<<endl<<"For all command line options, see ./docs/README-cloneHD.md\n";
   cout<<endl;
   exit(0);

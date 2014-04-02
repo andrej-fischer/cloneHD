@@ -179,39 +179,38 @@ Both can be learned with filterHD for data with persistence.
         4  2
         etc.
 
-     The first column is the chromosome, the next columns are the limits to be used for subclone 1, 2 etc.
-     For subclones not specified, the limit in the last column is used. In the example above, subclone 1 has an upper limit of 8 total copies in chr3, for all other subclones and in all other chromosomes, the upper limit is 2. If only SNV data is provided (and `--avail-cn [file]` is not given), this is used to fix the total number of copies. If `--max-tcn` is not given, cloneHD uses the normal copy number for each chr.
+    The first column is the chromosome, the next columns are the limits to be used for subclone 1, 2 etc. For subclones not specified, the limit in the last column is used. In the example above, subclone 1 has an upper limit of 8 total copies in chr3, for all other subclones and in all other chromosomes, the upper limit is 2. If only SNV data is provided (and `--avail-cn [file]` is not given), this is used to fix the total number of copies. If `--max-tcn` is not given, cloneHD uses the normal copy number for each chr.
 
 *    `--learn-priors [0/1:0]` For snv-mode only: if 1, then the parameters
-     for the multiplicative genotype priors are learned.
+     for the multiplicative SNV genotype priors are learned.
 
 *    `--chr [file]`  Set normal copy numbers.
 
-     The normal copy number for every single
-     chromosome can be specified. This is needed only for non-human DNA. If not
-     given, human DNA is assumed and the sex is inferred from the
-     presence or absence of chr 24 (= chr Y) in the input data.
+     The normal copy number for every single chromosome can be specified. This is needed only for non-human DNA. If not given, human DNA is assumed and the sex is inferred from the presence or absence of chr 24 (= chr Y) in the input data.
 
-*    `--snv-fprate [double:1.0e-4]`  The false positive rate for SNVs,
-     i.e. rate of SNV data points of genotype all-0.
+*    `--snv-fprate [double:1.0e-4]`  Set the false positive rate for SNVs.
 
 *    `--snv-fpfreq [double:0.01]`  The typical frequency of false positive SNVs.
 
-*    `--snv-pen [double:0.01]`  The penalty for higher than expected
-     genotypes.
+*    `--snv-pen-mult [double:0.01]`  Set the penalty against multiple SNVs.
 
-*    `--baf-pen [double:1.0]`  The penalty for complex minor allele
-     status.
+*    `--snv-pen-high [doube:0.5]`  Set the penalty against higher genotypes.
+
+*    `--cna-pen-zero [double:0.9]`  Set the penalty against zero total copies.
+
+*    `--cna-pen-norm [double:1.0]`  Set the penalty against non-normal total c.n.
+
+*    `--cna-pen-diff [double:1.0]`  Set the penalty against different total c.n.
+
+*    `--baf-pen-comp [double:1.0]`  The penalty against complex minor allele status.
 
 *    `--cna-jump [double:-1.0]`
+
 *    `--baf-jump [double:-1.0]`
+
 *    `--snv-jump [double:-1.0]`
 
-A constant jump probability per base pair. If -1, then observations are
-uncorrellated along the genome. Can be learned with filterHD. No fuzzy
-data segmentation is performed.  Useful in combination with
-`--clones`, where very high-definition information
-available. Using this option will change the posterior output file format.
+    A constant jump probability per base pair can be set. If set to `-1.0`, then observations are uncorrellated along the genome (not the same as `1.0`). Can be learned with filterHD. No fuzzy data segmentation is performed.  Useful in combination with `--clones`, where very high-definition information available. Using this option will change the posterior output file format.
 
 ## Bulk options
 
@@ -221,16 +220,16 @@ subclones with unknown genotypes and frequencies. Allele frequency
 data is input with `--snv`. Data segmentation can be used with
 `--snv-jumps`.  Read depth data can also be specified with `--cna`. 
 
-*    `--bulk-mean [double]`  The bulk allele frequency profile. 
+*    `--bulk-mean [file]`  The bulk allele frequency profile. 
 
-     Must be a filterHD `*posterior.*.txt` file. Only the posterior mean is used.
+     Must be a filterHD `*posterior-[int].txt` file. Only the posterior mean is used.
 
 *    `--bulk-prior [file]`  The bulk allele frequency profile. 
 
-     Must be a filterHD `*posterior.*.txt` file. The whole posterior
+     Must be a filterHD `*posterior-[int].txt` file. The whole posterior
      distribution is used (run filterHD with `--dist 1` to obtain it).
 
-*    `--bulk-updates [int:0]`  The number of Bayesian updates of the
+*    `--bulk-updates [int:0]`  The number of (Bayesian) updates of the
      bulk allele frequency profile (if `--bulk-prior` was used).
 
 *    `--bulk-fix [double:0.0]`  Use a flat and fixed bulk allele

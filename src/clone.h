@@ -85,7 +85,8 @@ class Clone{
   void set_tcn();
   // penalties and parameters
   double cna_pen_zero, cna_pen_norm, cna_pen_diff;
-  double baf_pen,snv_pen;
+  double baf_pen_comp;
+  double snv_pen_high, snv_pen_mult;
   double snv_fpr,snv_fpf;
   // pre computed variables (consider unordered_map<>)
   map< unsigned int, double> logn;
@@ -125,7 +126,6 @@ class Clone{
   void set_snv_prior( gsl_matrix * prior_param );
   gsl_matrix * initial_snv_prior_param;
   void initialize_snv_prior_param();
-  double pinit;
   // mean total c.n. and available c.n.
   void get_mean_tcn(int sample);//for cna only
   void map_mean_tcn( Emission * fromEmit, int from_sample,  Emission * toEmit);//from cna/baf to baf/snv

@@ -50,7 +50,8 @@ struct cmdl_opts{
   double cna_shape, baf_shape, snv_shape;
   double cna_rnd, baf_rnd, snv_rnd;
   double cna_pen_zero, cna_pen_norm, cna_pen_diff;
-  double baf_pen, snv_pen;
+  double baf_pen_comp;
+  double snv_pen_high, snv_pen_mult;
   double snv_fpr, snv_fpf;
   double bulk_fix, bulk_sigma, bulk_rnd;
   double min_occ,min_jump;
@@ -63,7 +64,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts);
 void read_opts( const char * opts_fn, cmdl_opts& opts);
 void default_opts(cmdl_opts& opts);
 void test_opts(cmdl_opts& opts);
-void print_opts();
+void print_usage();
 
 void print_all_results( Clone * myClone, cmdl_opts& opts);
 void print_posterior_header( FILE * fp,  Clone * myClone, Emission * myEmit, cmdl_opts& opts);

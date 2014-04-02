@@ -372,10 +372,10 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
       string mode;
       while (line_ss.good()) line_ss >> mode;
       if (mode.compare("cna")==0){
-	myClone->pinit = 0.5;
+	myClone->snv_pen_high = 0.5;
       }
       else if (mode.compare("baf")==0){
-	myClone->pinit = 1.0;
+	myClone->snv_pen_high = 1.0;
       }
       else{
 	abort();

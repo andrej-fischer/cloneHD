@@ -70,7 +70,7 @@ then
     echo "*** cloneHD ***"
     echo
     # The CNA and BAF data is analysed for subclonality.
-    # Try varying the --min-jump, --force and --max-tcn value values and try --mass-gauging 0. 
+    # Try varying the --min-jump, --force and --max-tcn values and try --mass-gauging 0. 
     # Try adding the SNV data to the mix.
     cmd="$cloneHD --cna $tumorCNA --baf $tumorBAF --pre ${results}/tumor --bias $bias --seed 123 --trials 2\
  --nmax 3 --force --max-tcn 4 --cna-jumps $tumorCNAjumps --baf-jumps $tumorBAFjumps --min-jump 0.01 --restarts 10 --mass-gauging 1" 
@@ -78,9 +78,10 @@ then
     $cmd
     echo
     cat ${results}/tumor.summary.txt
+    echo
 
     # Using the information from above, the SNV data is analysed. Try what happens removing the --avail-cn and --mean-tcn options.
-    cmd="$cloneHD --snv $tumorSNV --pre ${results}/tumor --seed 123 --trials 2\
+    cmd="$cloneHD --snv $tumorSNV --pre ${results}/tumorSNV --seed 123 --trials 2\
  --nmax 3 --force --max-tcn 4 --restarts 10 --mean-tcn ${results}/tumor.mean-tcn.txt --avail-cn ${results}/tumor.avail-cn.txt"    
     echo $cmd
     $cmd
