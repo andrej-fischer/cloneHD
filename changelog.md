@@ -1,5 +1,13 @@
 # changelog for cloneHD/filterHD
 
+## v1.17.3 / to come
+
+*  new program `pre-filter`
+*  `--snv-pen` to `--snv-pen-high` and `--snv-pen-mult`
+*  `--baf-pen` to `--baf-pen-compl`
+*  `--cna-pen` to `--cna-pen-zero`, `--cna-pen-diff` and `cna-pen-norm`
+*  split README
+
 ## v1.17.2 / 27.03.2014
 
 *  new output: posterior per subclone, goodness of fit (GOF) per

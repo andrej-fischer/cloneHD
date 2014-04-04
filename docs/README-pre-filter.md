@@ -16,11 +16,11 @@ The program `pre-filter` can be used to remove loci based on the observed read d
      
      The windowed tracks are used for pre-filtering. They are printed for all loci to a file named `pre.track.txt`. Use this to inspect and tune the pre-filter thresholds.
 
-*    `pick-from [file]`  Pre-filter data in this file by picking loci present in `match-to`. 
+*    `--pick-from [file]`  Pre-filter data in this file by picking loci present in `match-to`. 
 
      Only loci are selected which fall into a bin also present in `match-to`. If bins in `match-to` are in kb (1000, 2000 etc., i.e. 1-1000, 1001-2000 etc.) then loci in `pick-from` are rounded to the next 1000 above.
 
-*    `match-to [file]`  Use this file as reference to pick loci in `pick-from`. 
+*    `--match-to [file]`  Use this file as reference to pick loci in `pick-from`. 
 
      Loci in this file are assumed to be equidistant (e.g. per 1 kb, not all bins need be present). The bin width is decided automatically by majority.
 
