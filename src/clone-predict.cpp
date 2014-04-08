@@ -89,7 +89,8 @@ void Clone::set_TransMat_snv(gsl_matrix * Trans, int chr){
 	  jumps = 2;
 	  break;
 	}
-	if( copynumber[i][k] != copynumber[j][k]){
+	if( copynumber[i][k]    != copynumber[j][k] 
+	    && copynumber[i][k] <= maxtcn_per_clone[chr][k]){
 	  jumps++;
 	}
       }
@@ -102,7 +103,10 @@ void Clone::set_TransMat_snv(gsl_matrix * Trans, int chr){
     }
     row  = gsl_matrix_row(Trans,i);
     norm = gsl_blas_dasum(&row.vector);
-    if (norm<=0) abort();
+    if (norm <= 0){
+      cout<<"ERROR\n";
+      abort();
+    }
     gsl_vector_scale(&row.vector,1.0/norm);
   }
 }
