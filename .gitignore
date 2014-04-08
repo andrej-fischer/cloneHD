@@ -6,5 +6,5 @@ release/
 release*
 *.bk
 bk/
-*.farm
+*.farm*
 recompile*
