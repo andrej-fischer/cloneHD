@@ -1,10 +1,9 @@
 *.[oa]
-build/
+build/*
 *~
 test/
 release/
 release*
 *.bk
 bk/
-*.farm*
 recompile*

@@ -1,6 +1,8 @@
 # changelog for cloneHD/filterHD
 
-## v1.17.3 / 08.04.2014
+## v1.17.4 / to come
+
+## v1.17.3 / 04.04.2014
 
 *  new program `pre-filter`
 *  `--snv-pen` to `--snv-pen-high` and `--snv-pen-mult`
