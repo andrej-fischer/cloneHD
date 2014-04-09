@@ -100,7 +100,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     best_priors[n] = NULL;
   }
   //exit(0);
-  double bic=0, llh=0, max_llh=0,cna_llh=0,baf_llh=0,snv_llh=0, max_bic=0; 
+  double bic=0, llh=0, max_llh=0, cna_llh=0, baf_llh=0, snv_llh=0, max_bic=0; 
   int steps=0,btrial=0,bestn=0;
   int nT = myClone->nTimes;
   // *** NO CLONE SCENARIO (n==0) ***

@@ -908,7 +908,7 @@ void Emission::coarse_grain_jumps( int sample, double plow, int range){
     while(it != remaining.end()){
       it++;
       p = it->second;
-      if( p>10.0*pmin || it->first != lidx+1 || p<10.0*gmin) break;
+      if ( p>10.0*pmin || it->first != lidx+1 || p<10.0*gmin) break;
       if (it->first < idx+range) ps *= 1.0 - p;
       pmin = min(pmin,p);
       lidx = it->first;

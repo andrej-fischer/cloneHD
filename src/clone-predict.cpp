@@ -65,7 +65,7 @@ void Clone::set_TransMat_cna( gsl_matrix * Trans, int chr){
 
 void Clone::set_TransMat_snv(){
   if (TransMat_snv==NULL){
-    TransMat_snv = new gsl_matrix * [cnaEmit->nSamples];
+    TransMat_snv = new gsl_matrix * [snvEmit->nSamples];
     for (int s=0; s<snvEmit->nSamples;s++) TransMat_snv[s] = NULL;
   }
   for (int s=0; s<snvEmit->nSamples;s++){

@@ -1,9 +1,10 @@
 *.[oa]
 build/*
 *~
-test/
 release/
 release*
 *.bk
 bk/
 recompile*
+.DS_Store
+test/results/*

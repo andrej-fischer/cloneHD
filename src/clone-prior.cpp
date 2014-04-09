@@ -50,7 +50,7 @@ void Clone::initialize_snv_prior_param(){// SNV prior, conditional on max-tcn
   if (initial_snv_prior_param != NULL) gsl_matrix_free(initial_snv_prior_param);
   initial_snv_prior_param = gsl_matrix_calloc( maxtcn+1, maxtcn+1);
   gsl_matrix_set( initial_snv_prior_param, 0, 0, snv_fpr);
-  double p = snv_pen_high;// initial penalty for higher genotypes
+  double p = snv_pen_high;// penalty for higher genotypes
   for (int cn=1; cn <= maxtcn; cn++){
     if ( all_maxtcn.count(cn) == 0 ) continue;
     gsl_vector_view subrow = gsl_matrix_subrow( initial_snv_prior_param, cn, 0, cn+1);
@@ -68,9 +68,10 @@ void Clone::set_snv_prior( gsl_matrix * snv_prior_param){
   double fpr = gsl_matrix_get( snv_prior_param, 0, 0);
   snv_prior.clear();
   std::map<int, vector<int> >::iterator it;
+  gsl_vector * mem = gsl_vector_calloc(nLevels);    
   for (it=maxtcn_per_clone.begin(); it != maxtcn_per_clone.end(); it++){
     int chr = it->first;
-    snv_prior[chr] = gsl_vector_calloc(nLevels);
+    mem->data[0] = 0;
     for (int i=1; i<nLevels; i++){
       double p=1.0;
       for (int j=0; j<nClones; j++){
@@ -83,20 +84,24 @@ void Clone::set_snv_prior( gsl_matrix * snv_prior_param){
 	  break;
 	}
       }
-      gsl_vector_set( snv_prior[chr], i, p);
+      //gsl_vector_set( snv_prior[chr], i, p);
+      mem->data[i] = p;
     }
     //normalize and logify...
-    double norm = gsl_blas_dasum(snv_prior[chr]);
+    double norm = gsl_blas_dasum(mem);
     if (norm<=0) abort();
-    gsl_vector_scale( snv_prior[chr], (1.0-fpr) / norm);
-    gsl_vector_set( snv_prior[chr], 0, fpr);
+    gsl_vector_scale( mem, (1.0-fpr) / norm);
+    gsl_vector_set( mem, 0, fpr);
     if (snvEmit->log_space){
       for (int l=0; l<nLevels; l++){
-	double val = gsl_vector_get( snv_prior[chr], l);
-	gsl_vector_set( snv_prior[chr], l, val>0 ? log(val) : logzero);
+	double val = gsl_vector_get( mem, l);
+	gsl_vector_set( mem, l, val>0 ? log(val) : logzero);
       }
     }
+    snv_prior[chr] = gsl_vector_calloc(nLevels);
+    gsl_vector_memcpy(snv_prior[chr],mem);
   }
+  gsl_vector_free(mem);
 }
 
 //CNA + BAF (+SNV) mode...
