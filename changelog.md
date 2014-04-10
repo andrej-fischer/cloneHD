@@ -1,12 +1,17 @@
 # changelog for cloneHD/filterHD
 
-## v1.17.3 / to come
+## v1.17.4 / 10.04.2014
+
+*  fixed fatal bug in snv-mode with correlations
+
+## v1.17.3 / 04.04.2014
 
 *  new program `pre-filter`
 *  `--snv-pen` to `--snv-pen-high` and `--snv-pen-mult`
 *  `--baf-pen` to `--baf-pen-compl`
 *  `--cna-pen` to `--cna-pen-zero`, `--cna-pen-diff` and `cna-pen-norm`
 *  split README
+*  fixed bug in SNV transition matrix in combination with `--max-tcn [file]`
 
 ## v1.17.2 / 27.03.2014
 
