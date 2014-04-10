@@ -1,6 +1,8 @@
 # changelog for cloneHD/filterHD
 
-## v1.17.4 / to come
+## v1.17.4 / 10.04.2014
+
+*  fixed fatal bug in snv-mode with correlations
 
 ## v1.17.3 / 04.04.2014
 
