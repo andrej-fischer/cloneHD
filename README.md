@@ -1,7 +1,7 @@
 # How to get cloneHD and filterHD?
 
 The current stable release, as well as pre-compiled executable binaries 
-for Mac OS X and GNU Linux (64bit), can be found [here](/releases/). 
+for Mac OS X and GNU Linux (64bit), can be found [here](https://github.com/andrej-fischer/cloneHD/releases). 
 
 # Run a test with simulated data
 
@@ -14,7 +14,7 @@ data with a matched normal. All command line arguments are explained below.
 
 # Compilation  
 
-For Mac OS X and GNU Linux (64bit), pre-compiled binaries are available [here](/releases/). To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to point to your local GSL installation (if non-standard). Then type 
+For Mac OS X and GNU Linux (64bit), pre-compiled binaries are available [here](https://github.com/andrej-fischer/cloneHD/releases). To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to point to your local GSL installation (if non-standard). Then type 
 
 `$ make`
 
