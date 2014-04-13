@@ -165,7 +165,13 @@ int main (int argc, const char * argv[]){
   else{
     // ****** INFERENCE STARTS HERE ******
     bestn = infer_clones( clones, mass, &myClone, opts);
-    printf("cloneHD found support for %i sub-clone(s) in the data.\n", bestn);
+    printf("cloneHD in ");
+    if (cnaEmit.is_set && bafEmit.is_set && snvEmit.is_set) cout<<"cna-baf-snv";
+    if (cnaEmit.is_set && bafEmit.is_set && !snvEmit.is_set) cout<<"cna-baf";
+    if (cnaEmit.is_set && !bafEmit.is_set && snvEmit.is_set) cout<<"cna-snv";
+    if (cnaEmit.is_set && !bafEmit.is_set && !snvEmit.is_set) cout<<"cna";
+    if (!cnaEmit.is_set && !bafEmit.is_set && snvEmit.is_set) cout<<"snv";
+    printf("mode found support for %i sub-clone(s) in the data.\n", bestn);
     // ****** INFERENCE COMPLETED ********
   }
   print_all_results( &myClone, opts);

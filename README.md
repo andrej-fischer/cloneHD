@@ -1,15 +1,11 @@
 # How to get cloneHD and filterHD?
 
-The current stable release, including pre-compiled executable binaries
-of filterHD and cloneHD for Mac OS X (64bit), can be found at:
-
-`ftp://ftp.sanger.ac.uk/pub/teams/153/cloneHD/`  
-
-The source code can also be downloaded here.
+The current stable release, as well as pre-compiled executable binaries 
+for Mac OS X and GNU Linux (64bit), can be found [here](/releases/). 
 
 # Run a test with simulated data
 
-If you download cloneHD from the ftp site above, you can test both filterHD and cloneHD by running
+After downloading cloneHD from the release site, you can test both filterHD and cloneHD by running
 
 `$ sh run-example.sh`
 
@@ -18,12 +14,11 @@ data with a matched normal. All command line arguments are explained below.
 
 # Compilation  
 
-For Mac OS X (64bit), there are pre-compiled binaries available on the ftp server above. To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to your GSL installation location (if non-standard). Then type 
+For Mac OS X and GNU Linux (64bit), pre-compiled binaries are available [here](/releases/). To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to point to your local GSL installation (if non-standard). Then type 
 
 `$ make`
 
-in the source directory. The two executables, `filterHD` and
-`cloneHD`, will be in `./build`. For debugging with gdb, use `make -f Makefile.debug`.
+in the `src` directory. The executables will be in `build`. For debugging with gdb, use `make -f Makefile.debug`.
 
 # What are cloneHD and filterHD for?
 
