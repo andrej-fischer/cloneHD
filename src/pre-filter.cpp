@@ -199,6 +199,7 @@ void pre_filter( Emission& dataEmit, cmdl_opts& opts){
   for (int s=0; s < dataEmit.nSamples; s++){
     unsigned int * rds = dataEmit.reads[0][s];
     unsigned int * dps = dataEmit.depths[0][s];
+    if (dataEmit.nSites[s] == 0) abort();
     double * wMean = new double [dataEmit.nSites[s]];
     double * wVar  = new double [dataEmit.nSites[s]];
     int * mask     = new int    [dataEmit.nSites[s]];
@@ -238,21 +239,21 @@ void pre_filter( Emission& dataEmit, cmdl_opts& opts){
 	else if ( size < 2*opts.wSize+1 ){
 	  size++;
 	}
-	while (front < dataEmit.nSites[s]){
+	while (front < dataEmit.nSites[s]-1){
 	  front++;
 	  if (dps[front] > 0) break;
 	}
 	if (front < dataEmit.nSites[s]){
 	  sum += fabs(median - double(rds[front]) / double(dps[front]));
 	}
-	while (center < dataEmit.nSites[s]){
+	while (center < dataEmit.nSites[s]-1){
 	  center++;
 	  if (center < 0 || dps[center] > 0 ) break;
 	}
 	if (back >= 0){
 	  sum -= fabs(median - double(rds[back]) / double(dps[back]));
 	}
-	while (back < dataEmit.nSites[s]){
+	while (back < dataEmit.nSites[s]-1){
 	  back++;
 	  if ( back < 0 || dps[back] > 0 ) break;
 	}
@@ -275,21 +276,21 @@ void pre_filter( Emission& dataEmit, cmdl_opts& opts){
 	else if ( size < 2*opts.wSize+1 ){
 	  size++;
 	}
-	while (front < dataEmit.nSites[s]){
+	while (front < dataEmit.nSites[s]-1){
 	  front++;
 	  if (dps[front] > 0 && mask[front]==1) break;
 	}
 	if (front < dataEmit.nSites[s]){
 	  sum += double(rds[front]) / double(dps[front]);
 	}
-	while (center < dataEmit.nSites[s]){
+	while (center < dataEmit.nSites[s]-1){
 	  center++;
 	  if (center < 0 || (dps[center] > 0 && mask[center]==1)) break;
 	}
 	if (back >= 0){
 	  sum -= double(rds[back]) / double(dps[back]);
 	}
-	while (back < dataEmit.nSites[s]){
+	while (back < dataEmit.nSites[s]-1){
 	  back++;
 	  if ( back<0 || (dps[back]>0 && mask[back]==1 ) ) break;
 	}

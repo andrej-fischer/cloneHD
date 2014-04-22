@@ -1,15 +1,11 @@
 # How to get cloneHD and filterHD?
 
-The current stable release, including pre-compiled executable binaries
-of filterHD and cloneHD for Mac OS X (64bit), can be found at:
-
-`ftp://ftp.sanger.ac.uk/pub/teams/153/cloneHD/`  
-
-The source code can also be downloaded here.
+The current stable release, as well as pre-compiled executable binaries 
+for Mac OS X and GNU Linux (64bit), can be found [here](https://github.com/andrej-fischer/cloneHD/releases). The cloneHD software is undergoing rapid development. Watch/Star this repo to receive updates.
 
 # Run a test with simulated data
 
-If you download cloneHD from the ftp site above, you can test both filterHD and cloneHD by running
+After downloading cloneHD from the release site, you can test both filterHD and cloneHD by running
 
 `$ sh run-example.sh`
 
@@ -18,12 +14,15 @@ data with a matched normal. All command line arguments are explained below.
 
 # Compilation  
 
-For Mac OS X (64bit), there are pre-compiled binaries available on the ftp server above. To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to your GSL installation location (if non-standard). Then type 
+For Mac OS X and GNU Linux (64bit), pre-compiled binaries are available [here](https://github.com/andrej-fischer/cloneHD/releases). To compile cloneHD yourself, you need the GNU scientific library ([GSL](http://www.gnu.org/software/gsl/)) v1.15 or later. Change the paths in the Makefile to point to your local GSL installation (if non-standard). Then type 
 
 `$ make`
 
-in the source directory. The two executables, `filterHD` and
-`cloneHD`, will be in `./build`. For debugging with gdb, use `make -f Makefile.debug`.
+in the `src` directory. The executables will be in `build`. For debugging with gdb, use `make -f Makefile.debug`.
+
+# Report bugs
+
+To report bugs, use the [issue](https://github.com/andrej-fischer/cloneHD/issues) interface of github.
 
 # What are cloneHD and filterHD for?
 
@@ -81,20 +80,17 @@ The full documentation can be found in the `/docs/` subfolder. Click below.
    bias field for the tumor CNA data. Follow the logic of the example
    given here.
 
-*  If the matched-normal was sequenced at lower coverage than the tumor, it might be necessary 
-   to run filterHD with a higher-than-optimal diffusion constant (set with `--sigma [double]`)
-   to obtain a more faithful bias field. Otherwise, the filterHD solution is too stiff and 
-   you loose bias detail.
+*  If the matched-normal sample was sequenced at lower coverage than the tumor sample, it might be necessary to run filterHD with a higher-than-optimal diffusion constant (set with `--sigma [double]`) to obtain a more faithful bias field. Otherwise, the filterHD solution is too stiff and you loose bias detail.
 
-*  filterHD can sometimes run into local optima. It might be useful to
-   fix initial values for the parameters via `--jumpi [double]` etc.
+*  filterHD can sometimes run into local optima. In this case, it might be useful to
+   set initial values for the parameters via `--jumpi [double]` etc.
 
 *  By default, cloneHD runs with mass gauging enabled. This seems like
    an overkill, but is actually quite useful because you can see some
    alternative explanations during the course of the analysis.
 
 *  Don't put too much weight on the BIC criterion. It was calibrated
-   using simulated data. For real data, it should be supplied together with
+   using simulated data. For real data, it should be supplemented with
    common sense and biological knowledge. Use `--force [int]` to use a
    fixed number of subclones and `--max-tcn [int]` to set the maximum possible total
    copy number.

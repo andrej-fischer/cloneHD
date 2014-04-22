@@ -1,5 +1,10 @@
 # changelog for cloneHD/filterHD
 
+## v1.17.5 / 22.04.2014
+
+*  fixed memory alloc bug in pre-filter
+*  abandon ftp site for releases, used only for backup and beta
+
 ## v1.17.4 / 10.04.2014
 
 *  fixed fatal bug in snv-mode with correlations
