@@ -1,5 +1,9 @@
 # changelog for cloneHD/filterHD
 
+## v1.17.6 / 22.04.2014
+
+*  fixed nan bug in GOF, when N==0 (missing data).
+
 ## v1.17.5 / 22.04.2014
 
 *  fixed memory alloc bug in pre-filter

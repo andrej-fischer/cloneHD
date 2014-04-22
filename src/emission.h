@@ -74,6 +74,8 @@ public:
   unsigned int ** loci;
   unsigned int ** mask;
   unsigned int ** dist;
+  unsigned int *** nObs;
+  void get_nObs();
   int * nSites;
   int * chr;
   std::set<int> chrs;

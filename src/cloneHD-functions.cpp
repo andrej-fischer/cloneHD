@@ -691,6 +691,10 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     }    
   }
   // allocations, now that all events are fixed...
+  if (cnaEmit->is_set) cnaEmit->get_nObs();
+  if (bafEmit->is_set) bafEmit->get_nObs();
+  if (snvEmit->is_set) snvEmit->get_nObs();
+  //
   if (cnaEmit->is_set){
     cnaEmit->allocate_mean_tcn();
     if (bafEmit->is_set){
@@ -916,9 +920,14 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     // CNA llhs/gofs per sample...
     fprintf(clonal_fp, "# cna-gof\n");
     for (int t=0; t<nT; t++){
-      fprintf( clonal_fp, "%.4f\n", 
-	       //myClone->cna_llhs[t], 
-	       myClone->cna_gofs[t] / double(cnaEmit->total_loci));
+      unsigned int total_nObs = 0;
+      for (int s=0;s<cnaEmit->nSamples; s++){
+	for (int evt=0; evt<cnaEmit->nEvents[s]; evt++){
+	  total_nObs += cnaEmit->nObs[t][s][evt];
+	}
+      }
+      if (total_nObs==0 && myClone->cna_gofs[t] > 0) abort();
+      fprintf( clonal_fp, "%.4f\n", myClone->cna_gofs[t] / double(total_nObs));
     }
     if (cnaEmit->coarse_grained) print_gof( myClone, cnaEmit, opts);
     //
@@ -953,9 +962,14 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       //llh and gof per sample
       fprintf(clonal_fp, "# baf-gof\n");
       for (int t=0; t<nT; t++){
-	fprintf(clonal_fp, "%.4f\n", 
-		//myClone->baf_llhs[t], 
-		myClone->baf_gofs[t] / double(bafEmit->total_loci));
+	unsigned int total_nObs = 0;
+	for (int s=0;s<bafEmit->nSamples; s++){
+	  for (int evt=0; evt<bafEmit->nEvents[s]; evt++){
+	    total_nObs += bafEmit->nObs[t][s][evt];
+	  }
+	}
+	if (total_nObs==0 && myClone->baf_gofs[t] > 0) abort();
+	fprintf(clonal_fp, "%.4f\n", myClone->baf_gofs[t] / double(total_nObs));
       }    
       if (bafEmit->coarse_grained) print_gof( myClone, bafEmit, opts);
     }
@@ -991,9 +1005,14 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       delete [] myClone->alpha_snv;
       fprintf(clonal_fp, "# snv-gof\n");
       for (int t=0; t<nT; t++){
-	fprintf( clonal_fp, "%.4f\n", 
-		 //myClone->snv_llhs[t], 
-		 myClone->snv_gofs[t] / double(snvEmit->total_loci));
+	unsigned int total_nObs = 0;
+	for (int s=0;s<snvEmit->nSamples; s++){
+	  for (int evt=0; evt<snvEmit->nEvents[s]; evt++){
+	    total_nObs += snvEmit->nObs[t][s][evt];
+	  }
+	}
+	if (total_nObs==0 && myClone->snv_gofs[t] > 0) abort();
+	fprintf( clonal_fp, "%.4f\n", myClone->snv_gofs[t] / double(total_nObs));
       }
       if (snvEmit->coarse_grained) print_gof( myClone, snvEmit, opts);
     }
@@ -1039,15 +1058,21 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     delete [] myClone->alpha_snv;
     fprintf(clonal_fp, "# snv-gof\n");
     for (int t=0; t<nT; t++){
-      fprintf( clonal_fp, "%.4f\n", 
-	       //myClone->snv_llhs[t], 
-	       myClone->snv_gofs[t] / double(snvEmit->total_loci));
+      unsigned int total_nObs = 0;
+      for (int s=0;s<snvEmit->nSamples; s++){
+	for (int evt=0; evt<snvEmit->nEvents[s]; evt++){
+	  total_nObs += snvEmit->nObs[t][s][evt];
+	}
+      }
+      if (total_nObs==0 && myClone->snv_gofs[t] > 0) abort();
+      fprintf( clonal_fp, "%.4f\n", myClone->snv_gofs[t] / double(total_nObs));
     }
     if (snvEmit->coarse_grained) print_gof( myClone, snvEmit, opts);
   }
   //
-  fprintf(clonal_fp, "# cna-ent baf-ent snv-ent\n");
-  fprintf(clonal_fp, "%.4e %.4e %.4e\n", myClone->cna_total_ent, myClone->baf_total_ent, myClone->snv_total_ent);
+  fprintf( clonal_fp, "# cna-ent baf-ent snv-ent\n");
+  fprintf( clonal_fp, "%.4e %.4e %.4e\n", 
+	   myClone->cna_total_ent, myClone->baf_total_ent, myClone->snv_total_ent);
   fclose(clonal_fp);
   if (snv_utcn_fp != NULL) fclose(snv_utcn_fp);
   if (baf_utcn_fp != NULL) fclose(baf_utcn_fp);
@@ -1316,7 +1341,9 @@ void print_gof( Clone * myClone, Emission * myEmit, cmdl_opts& opts){
 	       myEmit->chr[s], myEmit->loci[s][first], last-first+1, myEmit->loci[s][last]
 	       );
       for (int t=0; t< myClone->nTimes; t++){
-	fprintf( gof_fp, " %12.2f", gofs[t][s][evt]);
+	fprintf( gof_fp, " %.4f", 
+		 gofs[t][s][evt] > 0 ? gofs[t][s][evt] / double(myEmit->nObs[t][s][evt]) : 0.0
+		 );
       }
       fprintf( gof_fp,"\n");
     }
