@@ -1,6 +1,6 @@
 # changelog for cloneHD/filterHD
 
-## v1.17.6 / 22.04.2014
+## v1.17.6 / to come
 
 *  fixed nan bug in GOF, when N==0 (missing data).
 

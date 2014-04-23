@@ -203,7 +203,7 @@ int main (int argc, const char * argv[]){
 	  jumps[s][l] *= exp(myJD.pnojump[s][l]);
 	}
 	//goodness of fit...
-	if (mask==NULL || mask[s][l] == 1){
+	if ((mask==NULL || mask[s][l] == 1) && myEmit.depths[t][s][l] > 0){
 	  xobs = double(myEmit.reads[t][s][l]) / double(myEmit.depths[t][s][l]);
 	  if (opts.reflect) xobs = min(xobs,1.0-xobs);	 
 	  double x=0,g=0,dg=0;
