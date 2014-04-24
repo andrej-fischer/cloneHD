@@ -24,6 +24,14 @@ in the `src` directory. The executables will be in `build`. For debugging with g
 
 To report bugs, use the [issue](https://github.com/andrej-fischer/cloneHD/issues) interface of github.
 
+# Full documentation
+
+The full documentation can be found in the `/docs/` subfolder. Click below.
+
+*  [pre-filter](/docs/README-pre-filter.md)
+*  [filterHD](/docs/README-filterHD.md)
+*  [cloneHD](/docs/README-cloneHD.md)
+
 # What are cloneHD and filterHD for?
 
 cloneHD is a software for reconstructing the subclonal structure of a
@@ -59,20 +67,15 @@ prediction (red).
 (vii) The observed SNV frequencies, corrected for local ploidy, and per genotype (SNVs are assigned ramdomly according to the cloneHD SNV posterior).
 (All plots are created with Wolfram [Mathematica](http://www.wolfram.com/mathematica/).)
 
-# Full documentation
-
-The full documentation can be found in the `/docs/` subfolder. Click below.
-
-*  [pre-filter](/docs/README-pre-filter.md)
-*  [filterHD](/docs/README-filterHD.md)
-*  [cloneHD](/docs/README-cloneHD.md)
-
 # Tips and tricks
+
+*  Note: all input files are assumed to be sorted by genomic coordinate. With Unix, this
+   can be guaranteed with `sort -k1n,1 -k2n,2 file.txt > sorted-file.txt`.
 
 *  Pre-filtering of data can be very important. If filterHD predicts
    many more jumps than you would expect, it might be necessary to
    pre-filter the data, removing variable regions, outliers or very short 
-   segments (use programs `pre-filter` and `filterHD`).
+   segments (use programs the `pre-filter` and `filterHD`).
 
 *  Make sure that the bias field for the tumor CNA data is
    meaningful. If a matched normal sample was sequenced with the same
@@ -80,14 +83,17 @@ The full documentation can be found in the `/docs/` subfolder. Click below.
    bias field for the tumor CNA data. Follow the logic of the example
    given here.
 
-*  If the matched-normal sample was sequenced at lower coverage than the tumor sample, it might be necessary to run filterHD with a higher-than-optimal diffusion constant (set with `--sigma [double]`) to obtain a more faithful bias field. Otherwise, the filterHD solution is too stiff and you loose bias detail.
+*  If the matched-normal sample was sequenced at lower coverage than the tumor sample, 
+   it might be necessary to run filterHD with a higher-than-optimal diffusion constant 
+   (set with `--sigma [double]`) to obtain a more faithful bias field. Otherwise, the 
+   filterHD solution is too stiff and you loose bias detail.
 
 *  filterHD can sometimes run into local optima. In this case, it might be useful to
    set initial values for the parameters via `--jumpi [double]` etc.
 
-*  By default, cloneHD runs with mass gauging enabled. This seems like
-   an overkill, but is actually quite useful because you can see some
-   alternative explanations during the course of the analysis.
+*  By default, cloneHD runs with mass-gauging enabled. This seems wasteful,
+   but is actually quite useful because you can see some alternative explanations
+   during the course of the analysis.
 
 *  Don't put too much weight on the BIC criterion. It was calibrated
    using simulated data. For real data, it should be supplemented with
@@ -95,8 +101,10 @@ The full documentation can be found in the `/docs/` subfolder. Click below.
    fixed number of subclones and `--max-tcn [int]` to set the maximum possible total
    copy number.
 
+*  If high copy numbers are expected only in a few chromosomes, you can increase performance
+   by using the `--max-tcn [file]` option to specify per-chromosome upper limits.
+
 *  For exome sequencing data, the read depth bias can be enormous. The filterHD estimate 
-   of the bias field might not be useful, especially in segmenting the data.
-   Use rather, if available, the jumps seen in the BAF data for both CNA and BAF.
-
-
+   of the bias field might not be very useful, especially in segmenting the tumor data.
+   Use rather, if available, the jumps seen in the BAF data for both CNA and BAF data
+   (give the BAF jumps file to both `--cna-jumps` and `--baf-jumps`).
