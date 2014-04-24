@@ -1,6 +1,8 @@
 # changelog for cloneHD/filterHD
 
-## v1.17.6 / to come
+## v1.17.7 / to come
+
+## v1.17.6 / 24.04.2014
 
 *  fixed nan bug in GOF, when N==0 (missing data).
 *  fixed bugs in `pre-filter`, when `--window-size` is greater than length

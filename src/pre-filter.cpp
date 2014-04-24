@@ -330,7 +330,7 @@ void pick_match( Emission& pickEmit, Emission& matchEmit, cmdl_opts& opts){
   sprintf( buff, "%s.pref.txt", opts.pre);
   FILE * pref_fp  = fopen(buff,"w"); 
   for (int s=0; s < pickEmit.nSamples; s++){
-    int chr=pickEmit.chr[s];
+    int chr = pickEmit.chr[s];
     if ( matchEmit.chrs.count(chr) == 0){
       printf( "ERROR: chr %i in %s could not be found in %s\n",
 	      chr, opts.pick_fn, opts.match_fn
@@ -342,23 +342,31 @@ void pick_match( Emission& pickEmit, Emission& matchEmit, cmdl_opts& opts){
     // !!!NOTE: assumes uniform bin width!!!
     std::map<int,int> diffs;
     unsigned int * mloci = matchEmit.loci[matchSample];
+    int binw=0;
     for (int l=1; l<matchEmit.nSites[matchSample]; l++){
-      diffs[int(mloci[l] - mloci[l-1])]++;
-    }
-    int binw=0, ct=0;
+      binw = int(mloci[l]) - int(mloci[l-1]);
+      if (diffs.count(binw) == 0){
+	diffs.insert(std::pair<int,int>(binw,1));
+      }
+      else{
+	diffs[binw] += 1;
+      }
+    }    
     std::map<int,int>::iterator it;
-    for (it = diffs.begin(); it != diffs.end(); ++it){
+    int ct=0;
+    for (it = diffs.begin(); it != diffs.end(); it++){
       if (it->second > ct){
 	binw = it->first;
 	ct   = it->second;
       }
     }
+    diffs.clear();
     //now pick...
     int midx=0;
     unsigned int * ploci = pickEmit.loci[s];
     for (int idx=0; idx<pickEmit.nSites[s]; idx++){
       while (mloci[midx] < ploci[idx]) midx++; 
-      if (int(ploci[idx]) <= int(mloci[midx]) - binw) continue;
+      if ( int(ploci[idx]) <= int(mloci[midx]) - binw ) continue;
       fprintf( pref_fp, "%-2i %12i", pickEmit.chr[s], pickEmit.loci[s][idx]);
       for (int t=0;t<pickEmit.nTimes; t++){
 	fprintf( pref_fp, " %-3i %-3i", pickEmit.reads[t][s][idx], pickEmit.depths[t][s][idx]);
