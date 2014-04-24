@@ -596,7 +596,8 @@ void Clone::get_cna_gof(gsl_vector * post, int s, int evt){
     for (int t=0; t<nTimes; t++){
       n = cnaEmit->reads[t][s][idx];
       N = cnaEmit->depths[t][s][idx];
-      xobs = double(n)/double(N);
+      if (N==0) continue;
+      xobs = double(n) / double(N);
       g = 0;
       for (int l=0; l<nLevels; l++){
 	x = tcn[cnaChr][t][l] * b * mass->data[t];
@@ -623,6 +624,7 @@ void Clone::get_baf_gof(gsl_vector * post, int s, int evt){
     for (int t=0; t<nTimes; t++){
       n = bafEmit->reads[t][s][idx];
       N = bafEmit->depths[t][s][idx];
+      if (N==0) continue;
       xobs = double(n)/double(N);
       xobs = min(xobs,1.0-xobs);
       g = 0;
@@ -651,6 +653,7 @@ void Clone::get_snv_gof(gsl_vector * post, int s, int evt){
     for (int t=0; t<nTimes; t++){
       n = snvEmit->reads[t][s][idx];
       N = snvEmit->depths[t][s][idx];
+      if (N==0) continue;
       xobs = double(n)/double(N);
       mntcn 
 	= (snvEmit->mean_tcn == NULL) 

@@ -1,5 +1,11 @@
 # changelog for cloneHD/filterHD
 
+## v1.17.6 / to come
+
+*  fixed nan bug in GOF, when N==0 (missing data).
+*  fixed bugs in `pre-filter`, when `--window-size` is greater than length
+*  fixed bug in `pre-filter` in pick-from-match-to mode
+
 ## v1.17.5 / 22.04.2014
 
 *  fixed memory alloc bug in pre-filter

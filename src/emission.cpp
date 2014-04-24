@@ -41,6 +41,7 @@ Emission::Emission(){
   coarse_grained = 0;
   idx_to_Event_mapped=0;
   connect=0;
+  nObs = NULL;
 }
 
 
@@ -259,7 +260,42 @@ void Emission::allocate_av_cn(int maxtcn){//only once!
   }
 }
 
-
+void Emission::get_nObs(){
+  if (nObs!=NULL) abort();
+  nObs = new unsigned int ** [nTimes];
+  for (int t=0; t<nTimes; t++){
+    nObs[t] = new unsigned int * [nSamples];
+    for (int s=0; s<nSamples; s++){
+      if (nEvents[s] == 0){
+	nObs[t][s] = NULL; 
+	continue;
+      }
+      nObs[t][s] = new unsigned int [nEvents[s]];
+    }
+  }
+  for (int s=0; s<nSamples; s++){
+    for (int evt=0; evt<nEvents[s]; evt++){
+      int first = idx_of_event[s][evt];     
+      int last 
+	= (evt < nEvents[s]-1) 
+	? idx_of_event[s][evt+1] - 1 
+	: nSites[s] - 1; 
+      unsigned int n,N;
+      for (int t=0; t<nTimes; t++){
+	nObs[t][s][evt] = 0;
+	for (int idx=first; idx<=last; idx++){
+	  n = reads[t][s][idx];
+	  N = depths[t][s][idx];
+	  if (N==0){
+	    if (n>0) abort();
+	    continue;
+	  }
+	  nObs[t][s][evt]++;
+	}
+      }
+    }
+  }
+}
 
 
 //Destructor
