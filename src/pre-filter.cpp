@@ -197,22 +197,23 @@ void pre_filter( Emission& dataEmit, cmdl_opts& opts){
   }
   //***Pre-filtering of each chromosome in turn***
   for (int s=0; s < dataEmit.nSamples; s++){
+    int L = dataEmit.nSites[s];
     unsigned int * rds = dataEmit.reads[0][s];
     unsigned int * dps = dataEmit.depths[0][s];
     if (dataEmit.nSites[s] == 0) abort();
-    double * wMean = new double [dataEmit.nSites[s]];
-    double * wVar  = new double [dataEmit.nSites[s]];
-    int * mask     = new int    [dataEmit.nSites[s]];
-    for (int l=0; l< dataEmit.nSites[s]; l++){
+    double * wMean = new double [L];
+    double * wVar  = new double [L];
+    int * mask     = new int    [L];
+    for (int l=0; l<L; l++){
       mask[l]  = 1;
       wMean[l] = 0;
       wVar[l]  = 0;
     }
-    double medAbsDev=0,median=0;
+    double medAbsDev=0, median=0;
     if (opts.remVar > 0.0){//***REMOVE LOCI ACCORDING TO VARIABILITY***
       //get median read depth
       vector<double> allx;    
-      for (int l=0; l<dataEmit.nSites[s]; l++){
+      for (int l=0; l<L; l++){
 	if ( dps[l] > 0){
 	  allx.push_back(double(rds[l]) / double(dps[l]));
 	}
@@ -221,7 +222,7 @@ void pre_filter( Emission& dataEmit, cmdl_opts& opts){
       median = gsl_stats_quantile_from_sorted_data ( allx.data(), 1, allx.size(), 0.5);
       allx.clear();
       //get median absolute deviation from median
-      for (int l=0; l<dataEmit.nSites[s]; l++){
+      for (int l=0; l<L; l++){
 	if ( dps[l] > 0){
 	  allx.push_back( fabs(double(rds[l]) / double(dps[l]) - median) );
 	}
@@ -232,83 +233,77 @@ void pre_filter( Emission& dataEmit, cmdl_opts& opts){
       //get local variablility and mask
       double sum = 0.0;
       int front=-1, size=0, center=-opts.wSize-1, back=-2*opts.wSize-1;
-      while (center < dataEmit.nSites[s]-1){	
-	if ( front == dataEmit.nSites[s] ){
-	  size--;
-	}
-	else if ( size < 2*opts.wSize+1 ){
-	  size++;
-	}
-	while (front < dataEmit.nSites[s]-1){
+      while (center < L-1){	
+	while (front < L){
 	  front++;
-	  if (dps[front] > 0) break;
+	  if (front==L || dps[front] > 0) break;
 	}
-	if (front < dataEmit.nSites[s]){
+	if (front < L){
+	  if (size < 2*opts.wSize+1) size++;
 	  sum += fabs(median - double(rds[front]) / double(dps[front]));
-	}
-	while (center < dataEmit.nSites[s]-1){
-	  center++;
-	  if (center < 0 || dps[center] > 0 ) break;
-	}
+	}	
 	if (back >= 0){
 	  sum -= fabs(median - double(rds[back]) / double(dps[back]));
+	  if (front==L && size>1) size--;
 	}
-	while (back < dataEmit.nSites[s]-1){
+	while (back < L){
 	  back++;
-	  if ( back < 0 || dps[back] > 0 ) break;
+	  if ( back<0 || back==L || dps[back] > 0 ) break;
+	}
+	while (center < L-1){
+	  center++;
+	  if (center < 0 || dps[center] > 0 ) break;
 	}
 	if (center >= 0){
 	  wVar[center] = sum / double(size); 	  
 	}
       }
       //apply filter
-      for (int l=0; l<dataEmit.nSites[s]; l++){
+      for (int l=0; l<L; l++){
 	if (wVar[l] > opts.remVar * medAbsDev) mask[l] = 0;
       }
     }
     if (opts.remOut > 0.0){//***REMOVE LOCI ACCORDING TO OUTLIER***    
       double sum = 0.0;
       int front=-1, size=0, center=-opts.wSize-1, back=-2*opts.wSize-1;
-      while (center < dataEmit.nSites[s]-1){
-	if ( front == dataEmit.nSites[s] ){
-	  size--;
-	}
-	else if ( size < 2*opts.wSize+1 ){
-	  size++;
-	}
-	while (front < dataEmit.nSites[s]-1){
+      while (center < L-1){
+	while (front < L){
 	  front++;
-	  if (dps[front] > 0 && mask[front]==1) break;
+	  if (front == L) break;
+	  if (dps[front] > 0 && mask[front]==1)	break;
 	}
-	if (front < dataEmit.nSites[s]){
+	if (front < L){
+	  if (size < 2*opts.wSize+1) size++;
 	  sum += double(rds[front]) / double(dps[front]);
-	}
-	while (center < dataEmit.nSites[s]-1){
-	  center++;
-	  if (center < 0 || (dps[center] > 0 && mask[center]==1)) break;
 	}
 	if (back >= 0){
 	  sum -= double(rds[back]) / double(dps[back]);
+	  if (front==L && size>1) size--;
 	}
-	while (back < dataEmit.nSites[s]-1){
+	while (back < L){
 	  back++;
-	  if ( back<0 || (dps[back]>0 && mask[back]==1 ) ) break;
+	  if (back==L || back<0) break;
+	  if (dps[back]>0 && mask[back]==1) break;
+	}
+	while (center < L-1){
+	  center++;
+	  if (center<0 || (dps[center]>0 && mask[center]==1)) break;
 	}
 	if (center >= 0){
 	  wMean[center] = sum / double(size);
 	}
       }
       //apply filter
-       for (int l=0; l<dataEmit.nSites[s]; l++){
-	 if (mask[l] == 0) continue;
-	 double xobs = double(rds[l]) / double(dps[l]);
-	 if ( fabs(wMean[l] - xobs) > opts.remOut * sqrt(wMean[l]) ){
-	   mask[l] = 0;
-	 }
-       }
+      for (int l=0; l<L; l++){
+	if (mask[l] == 0 || dps[l] == 0) continue;
+	double xobs = double(rds[l]) / double(dps[l]);
+	if ( fabs(wMean[l] - xobs) > opts.remOut * sqrt(wMean[l]) ){
+	  mask[l] = 0;
+	}
+      }
     }
     //print
-    for (int l=0; l<dataEmit.nSites[s]; l++){
+    for (int l=0; l<L; l++){
       if ( mask[l] == 1){
 	fprintf( pref_fp, "%-2i %12i %3i %3i\n", 
 		 dataEmit.chr[s], dataEmit.loci[s][l], rds[l], dps[l]
@@ -316,7 +311,8 @@ void pre_filter( Emission& dataEmit, cmdl_opts& opts){
       }
       if (track_fp == NULL) continue;
       fprintf( track_fp, "%-2i %12i %.3f %.3f\n", 
-	       dataEmit.chr[s], dataEmit.loci[s][l], wMean[l], wVar[l] / medAbsDev
+	       dataEmit.chr[s], dataEmit.loci[s][l], wMean[l], 
+	       (medAbsDev > 0) ? wVar[l] / medAbsDev : 0
 	       );
     }
     //cleanup
@@ -342,16 +338,12 @@ void pick_match( Emission& pickEmit, Emission& matchEmit, cmdl_opts& opts){
       exit(1);
     }
     int matchSample = matchEmit.idx_of[chr];
-    //get all bins and determine bin width...
-    // NOTE: assumes constant width bins
-    std::set<int> bins;
+    // get all bins and determine bin width...
+    // !!!NOTE: assumes uniform bin width!!!
     std::map<int,int> diffs;
-    for (int l=0; l<matchEmit.nSites[matchSample]; l++){
-      bins.insert( (int) matchEmit.loci[matchSample][l] );
-      if (l>0){
-	int diff = (int) (matchEmit.loci[matchSample][l] - matchEmit.loci[matchSample][l-1]);
-	diffs[diff]++;
-      }
+    unsigned int * mloci = matchEmit.loci[matchSample];
+    for (int l=1; l<matchEmit.nSites[matchSample]; l++){
+      diffs[int(mloci[l] - mloci[l-1])]++;
     }
     int binw=0, ct=0;
     std::map<int,int>::iterator it;
@@ -362,12 +354,14 @@ void pick_match( Emission& pickEmit, Emission& matchEmit, cmdl_opts& opts){
       }
     }
     //now pick...
-    for (int l=0; l<pickEmit.nSites[s]; l++){
-      int bin = binw*( int(double(pickEmit.loci[s][l]-1) / double(binw)) + 1 );
-      if ( bins.count(bin) == 0 ) continue;
-      fprintf( pref_fp, "%-2i %12i", pickEmit.chr[s], pickEmit.loci[s][l]);
+    int midx=0;
+    unsigned int * ploci = pickEmit.loci[s];
+    for (int idx=0; idx<pickEmit.nSites[s]; idx++){
+      while (mloci[midx] < ploci[idx]) midx++; 
+      if (int(ploci[idx]) <= int(mloci[midx]) - binw) continue;
+      fprintf( pref_fp, "%-2i %12i", pickEmit.chr[s], pickEmit.loci[s][idx]);
       for (int t=0;t<pickEmit.nTimes; t++){
-	fprintf( pref_fp, " %-3i %-3i", pickEmit.reads[t][s][l], pickEmit.depths[t][s][l]);
+	fprintf( pref_fp, " %-3i %-3i", pickEmit.reads[t][s][idx], pickEmit.depths[t][s][idx]);
       }
       fprintf( pref_fp, "\n");
     }
