@@ -1,6 +1,14 @@
 # changelog for cloneHD/filterHD
 
-## v1.17.7 / to come
+## to come
+
+*  added checks whether files are open for writing
+*  changed to new defaults: `--(cna/baf/snv)-rnd [double:1.0e-6]`
+*  allowed `--cna-jump -1` and `--baf-jump -1` (subject to testing)
+
+## v1.17.7 / 25.04.2014
+
+*  fixed range error in `pre-filter` in pick-from/match-to mode
 
 ## v1.17.6 / 24.04.2014
 

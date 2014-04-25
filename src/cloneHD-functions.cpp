@@ -624,9 +624,6 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
       cnaEmit->set_pjump(opts.cna_jump);
       cnaEmit->get_events_via_jumps();
     }
-    else{
-      abort();
-    }
     //map CNA events to BAF and SNV...
     if(bafEmit->is_set){
       for (int s=0; s<bafEmit->nSamples; s++){
@@ -635,7 +632,7 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     }
     if (snvEmit->is_set){
       for (int s=0; s<snvEmit->nSamples; s++){
-	if ( !bafEmit->is_set ||bafEmit->chrs.count(snvEmit->chr[s]) == 0){
+	if ( !bafEmit->is_set || bafEmit->chrs.count(snvEmit->chr[s]) == 0){
 	  snvEmit->map_idx_to_Event( cnaEmit, s);
 	}
       }
@@ -660,9 +657,6 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     else if (opts.baf_jump >= 0.0){//or 3. constant jump probability per base
       bafEmit->set_pjump(opts.baf_jump);
       bafEmit->get_events_via_jumps();
-    }
-    else{
-      abort();
     }
     // map BAF events to SNV
     if (snvEmit->is_set){

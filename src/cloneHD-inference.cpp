@@ -89,7 +89,11 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
   char clonal_out[1024];
   sprintf( clonal_out, "%s.summary.txt", opts.pre);
   FILE * clonal_fp = fopen(clonal_out,"w");
-  fprintf(clonal_fp, "# n cna-llh baf-llh snv-llh total-llh total-bic\n");
+  if (clonal_fp == NULL){
+    printf("ERROR: file %s could not be opened for writing.\n", clonal_out);
+    exit(1);
+  }
+  fprintf( clonal_fp, "# n cna-llh baf-llh snv-llh total-llh total-bic\n");
   //containers for the best estimates, given n...
   gsl_vector ** best_mass   = new gsl_vector * [opts.nmax+1];
   gsl_matrix ** best_clones = new gsl_matrix * [opts.nmax+1];
