@@ -119,39 +119,87 @@ void get_track(const char * track_fn,
     line_ss.str(line);
     line_ss >> chr >> locus; 
     l = (chr == old_chr) ? l+1 : 0;
-    if (chr != old_chr && (chr > myEmit->maxchr || myEmit->idx_of[chr] < 0) ){
-      printf("ERROR: unexpected chromosome.\n");
+    if (chr != old_chr && myEmit->chrs.count(chr) == 0){
+      printf("ERROR: unexpected chromosome in %s.\n", track_fn);
       cout<<line<<endl;
       exit(1);
     }
     // exit(0);
     old_chr = chr;
-    if( (int) myEmit->loci[ myEmit->idx_of[chr] ][l] != locus){
-      printf("ERROR in get_track()\n");
+    int s = myEmit->idx_of[chr];
+    if( (int) myEmit->loci[s][l] != locus){
+      printf("ERROR in get_track(): unexpected coordinate in %s\n", track_fn);
       cout<<line<<endl;
-      printf( "%i, %i, %i vs %i\n", myEmit->idx_of[chr], l, myEmit->loci[ myEmit->idx_of[chr] ][l], locus);
+      printf("Expected:\n%i, %i, %i vs %i\n", s, l, myEmit->loci[s][l], locus);
       exit(1);
     }
     line_ss >> mn;
-    mean[ myEmit->idx_of[chr] ][l] = mn;
+    mean[s][l] = mn;
     if (var != NULL) {
       line_ss >> sd;
-      var[ myEmit->idx_of[chr] ][l]  = pow(sd,2);
+      var[s][l]  = pow(sd,2);
     }
     if (distribution == NULL) continue;
     double p;
     line_ss >> jp;
-    for (int i=0; i < (int) (distribution[ myEmit->idx_of[chr] ])->size2; i++){
+    for (int i=0; i < (int) (distribution[s])->size2; i++){
       if (line_ss.good() != true){
-        printf("ERROR in get_track()\n");
+        printf("ERROR in get_track(): distribution grid too small in %s\n",track_fn);
         exit(1);
       }
       line_ss >> p;
-      gsl_matrix_set( distribution[ myEmit->idx_of[chr] ], l, i, p);
+      gsl_matrix_set( distribution[s], l, i, p);
     }
   }
   ifs.close();
 }
+
+void match_jumps(const char * jumps_fn, Emission * myEmit){
+  ifstream ifs;
+  string line;
+  stringstream line_ss;
+  ifs.open( jumps_fn, ios::in);
+  if (ifs.fail()){
+    printf("ERROR file %s cannot be opened.\n", jumps_fn);
+    exit(1);
+  }
+  int chr=0, old_chr = -1;
+  int in_locus=0, locus=-1;
+  int s=-1,idx=0;
+  int wait=0;
+  double pj=0;
+  while( ifs.good() ){
+    line.clear();
+    getline( ifs, line);
+    if (line.empty()) break;
+    if (line[0] == '#') continue;
+    line_ss.clear();
+    line_ss.str(line);
+    line_ss >> chr >> in_locus;
+    if (chr != old_chr){
+      wait = (myEmit->chrs.count(chr)) == 0 ? 1 : 0; 
+      idx=1;
+    }
+    old_chr = chr;
+    if (wait) continue;
+    s = myEmit->idx_of[chr];
+    if (idx == myEmit->nSites[s]) continue;//chromosome is complete!
+    locus = (int) myEmit->loci[s][idx];//current target locus
+    if (in_locus < (int) myEmit->loci[s][0]) continue;
+    while(in_locus > locus){  
+      idx++;
+      if (idx == myEmit->nSites[s]) break;
+      locus = (int) myEmit->loci[s][idx];
+    }
+    if (idx == myEmit->nSites[s]) continue;
+    line_ss >> pj;
+    myEmit->pjump[s][idx] = 1.0 - (1.0-pj)*(1.0-myEmit->pjump[s][idx]);
+  }
+  //done
+  ifs.close();
+}
+
+
 
 
 // get the maximum total c.n. per chromosome
@@ -241,7 +289,7 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
 
 
 
-//get total copynumber tracks from file...
+//get mean total copynumber from file...
 void get_mean_tcn( const char * mntcn_fn, Clone * myClone, Emission * myEmit){
   ifstream ifs;
   string line;
@@ -614,7 +662,8 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
   gsl_matrix ** distdummy = NULL;
   if (cnaEmit->is_set){//***CNA JUMPS***
     if(opts.cna_jumps_fn != NULL){//1. either use external jump probability track
-      get_track( opts.cna_jumps_fn, distdummy, cnaEmit->pjump, vardummy, cnaEmit);
+      //get_track( opts.cna_jumps_fn, distdummy, cnaEmit->pjump, vardummy, cnaEmit);
+      match_jumps(opts.cna_jumps_fn, cnaEmit);
       for (int s=0; s< cnaEmit->nSamples; s++){
 	cnaEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
@@ -639,18 +688,33 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     }
   }
   if ( bafEmit->is_set ){//***BAF JUMPS***
+    if (!cnaEmit->is_set) abort();
     if (opts.baf_jumps_fn != NULL){//1. either external jump probability track
-      get_track( opts.baf_jumps_fn, distdummy, bafEmit->pjump, vardummy, bafEmit);
+      // get_track( opts.baf_jumps_fn, distdummy, bafEmit->pjump, vardummy, bafEmit);
+      match_jumps( opts.baf_jumps_fn, bafEmit);
+      if ( opts.cna_jumps_fn != NULL//allow transit at CNA jumps
+	   && opts.cna_jumps_fn != opts.baf_jumps_fn//but not the same jumps
+	   ){
+	//bafEmit->add_break_points_via_jumps( cnaEmit, opts.min_jump);
+	match_jumps( opts.cna_jumps_fn, bafEmit);
+      }
       for (int s=0; s< bafEmit->nSamples; s++){// ignore improbable jump events
 	bafEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
       bafEmit->get_events_via_jumps();
-      if ( cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//allow transit at CNA jumps
-	bafEmit->add_break_points_via_jumps( cnaEmit, opts.min_jump);
+      cout<<"BAF-jumps\n";
+      for (int evt=0;evt<bafEmit->nEvents[0];evt++){
+	int idx = bafEmit->idx_of_event[0][evt];
+	printf("%3i %6i %6i\n", evt, idx, bafEmit->loci[0][idx]);
       }
-      bafEmit->get_events_via_jumps();
+      cout<<"CNA-jumps\n";
+      for (int evt=0;evt<cnaEmit->nEvents[0];evt++){
+	int idx = cnaEmit->idx_of_event[0][evt];
+	printf("%3i %6i %6i\n", evt, idx, cnaEmit->loci[0][idx]);
+      }
+      exit(0);
     }
-    else if ( cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//2. map the CNA jumps to BAF
+    else if (cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//2. map the CNA jumps to BAF
       bafEmit->map_jumps(cnaEmit);
       bafEmit->get_events_via_jumps();
     }

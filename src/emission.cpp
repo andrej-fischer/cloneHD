@@ -119,8 +119,8 @@ void Emission::init_events(){
 //map each observations to an event in another data track...
 void Emission::map_idx_to_Event(Emission * Emit, int sample){
   if (Emit->is_set == 0) abort(); 
-  if ( chr[sample] > Emit->maxchr || Emit->idx_of[ chr[sample] ] < 0 ) abort();
-  int Sample = Emit->idx_of[ chr[sample] ];
+  if (Emit->chrs.count(chr[sample]) == 0) abort();
+  int Sample = Emit->idx_of[chr[sample]];
   int Event = 0;
   int Idx   = Emit->idx_of_event[Sample][Event];
   int Locus = Emit->loci[Sample][Idx];
@@ -144,7 +144,7 @@ void Emission::map_idx_to_Event(Emission * Emit, int sample){
     if (idx == nSites[sample]) break;  
   }
   while( idx < nSites[sample]){//right over-hang
-    Event_of_idx[sample][idx]= Emit->nEvents[Sample] - 1;
+    Event_of_idx[sample][idx] = Emit->nEvents[Sample] - 1;
     idx++;
   }
 }

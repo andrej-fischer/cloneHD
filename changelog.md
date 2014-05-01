@@ -3,8 +3,10 @@
 ## to come
 
 *  added checks whether files are open for writing
-*  changed to new defaults: `--(cna/baf/snv)-rnd [double:1.0e-6]`
+*  changed to new defaults: `--(cna/baf/snv)-rnd [double:1.0e-6]` (nan)
 *  allowed `--cna-jump -1` and `--baf-jump -1` (subject to testing)
+*  `--cna-jumps [baf-jumps-file]` enabled (useful for exome data)
+*  jumps read with new function match_jumps() (not get_track()).
 
 ## v1.17.7 / 25.04.2014
 

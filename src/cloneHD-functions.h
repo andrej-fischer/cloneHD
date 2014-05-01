@@ -80,7 +80,7 @@ void get_baf_data(Emission * bafEmit, cmdl_opts& opts, int& nTimes, int& nT);
 void get_snv_data(Emission * snvEmit, cmdl_opts& opts, int& nTimes, int& nT);
 void get_snv_bulk_prior( Clone * myClone, cmdl_opts& opts);
 void get_track(const char * fn, gsl_matrix **& dist, double **& mn, double **& var, Emission * myEmit);
-
+void match_jumps(const char * jumps_fn, Emission * myEmit);
 void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone);
 void get_mean_tcn( const char * mtcn_fn, Clone * myClone, Emission * myEmit);
 void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit);
