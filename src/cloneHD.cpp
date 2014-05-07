@@ -147,6 +147,7 @@ int main (int argc, const char * argv[]){
     cout<<"done."<<endl;
   }
   cout<<endl;
+  //exit(0);
   // get purities...
   if (opts.purity_fn != NULL){
     get_purity( opts.purity_fn, myClone.min_purity);

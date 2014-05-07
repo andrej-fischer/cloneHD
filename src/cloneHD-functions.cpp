@@ -154,50 +154,6 @@ void get_track(const char * track_fn,
   ifs.close();
 }
 
-void match_jumps(const char * jumps_fn, Emission * myEmit){
-  ifstream ifs;
-  string line;
-  stringstream line_ss;
-  ifs.open( jumps_fn, ios::in);
-  if (ifs.fail()){
-    printf("ERROR file %s cannot be opened.\n", jumps_fn);
-    exit(1);
-  }
-  int chr=0, old_chr = -1;
-  int in_locus=0, locus=-1;
-  int s=-1,idx=0;
-  int wait=0;
-  double pj=0;
-  while( ifs.good() ){
-    line.clear();
-    getline( ifs, line);
-    if (line.empty()) break;
-    if (line[0] == '#') continue;
-    line_ss.clear();
-    line_ss.str(line);
-    line_ss >> chr >> in_locus;
-    if (chr != old_chr){
-      wait = (myEmit->chrs.count(chr)) == 0 ? 1 : 0; 
-      idx=1;
-    }
-    old_chr = chr;
-    if (wait) continue;
-    s = myEmit->idx_of[chr];
-    if (idx == myEmit->nSites[s]) continue;//chromosome is complete!
-    locus = (int) myEmit->loci[s][idx];//current target locus
-    if (in_locus < (int) myEmit->loci[s][0]) continue;
-    while(in_locus > locus){  
-      idx++;
-      if (idx == myEmit->nSites[s]) break;
-      locus = (int) myEmit->loci[s][idx];
-    }
-    if (idx == myEmit->nSites[s]) continue;
-    line_ss >> pj;
-    myEmit->pjump[s][idx] = 1.0 - (1.0-pj)*(1.0-myEmit->pjump[s][idx]);
-  }
-  //done
-  ifs.close();
-}
 
 
 
@@ -653,6 +609,53 @@ void get_fixed_clones(gsl_matrix *& clones, gsl_vector *& mass, const char * clo
 
 
 
+void match_jumps(const char * jumps_fn, Emission * myEmit){
+  ifstream ifs;
+  string line;
+  stringstream line_ss;
+  ifs.open( jumps_fn, ios::in);
+  if (ifs.fail()){
+    printf("ERROR file %s cannot be opened.\n", jumps_fn);
+    exit(1);
+  }
+  int chr=0, old_chr = -1;
+  int in_locus=0, locus=-1;
+  int s=-1,idx=0;
+  int wait=0;
+  double pj=0;
+  while( ifs.good() ){
+    line.clear();
+    getline( ifs, line);
+    if (line.empty()) break;
+    if (line[0] == '#') continue;
+    line_ss.clear();
+    line_ss.str(line);
+    line_ss >> chr >> in_locus;
+    if (chr != old_chr){
+      wait = (myEmit->chrs.count(chr)) == 0 ? 1 : 0; 
+      idx=1;
+    }
+    old_chr = chr;
+    if (wait) continue;
+    s = myEmit->idx_of[chr];
+    if (idx == myEmit->nSites[s]) continue;//chromosome is complete!
+    locus = (int) myEmit->loci[s][idx];//current target locus
+    if (in_locus < (int) myEmit->loci[s][0]) continue;
+    while(in_locus > locus){  
+      idx++;
+      if (idx == myEmit->nSites[s]) break;
+      locus = (int) myEmit->loci[s][idx];
+    }
+    if (idx == myEmit->nSites[s]) continue;
+    line_ss >> pj;
+    myEmit->pjump[s][idx] = 1.0 - (1.0-pj)*(1.0-myEmit->pjump[s][idx]);
+  }
+  //done
+  ifs.close();
+}
+
+
+
 //***posterior jump probability track***
 void get_jump_probability( Clone * myClone, cmdl_opts& opts){
   Emission * cnaEmit = myClone->cnaEmit;
@@ -695,13 +698,14 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
       if ( opts.cna_jumps_fn != NULL//allow transit at CNA jumps
 	   && opts.cna_jumps_fn != opts.baf_jumps_fn//but not the same jumps
 	   ){
-	//bafEmit->add_break_points_via_jumps( cnaEmit, opts.min_jump);
 	match_jumps( opts.cna_jumps_fn, bafEmit);
       }
+      bafEmit->add_break_points_via_jumps( cnaEmit, opts.min_jump);
       for (int s=0; s< bafEmit->nSamples; s++){// ignore improbable jump events
 	bafEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
       bafEmit->get_events_via_jumps();
+      /*
       cout<<"BAF-jumps\n";
       for (int evt=0;evt<bafEmit->nEvents[0];evt++){
 	int idx = bafEmit->idx_of_event[0][evt];
@@ -713,6 +717,7 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
 	printf("%3i %6i %6i\n", evt, idx, cnaEmit->loci[0][idx]);
       }
       exit(0);
+      */
     }
     else if (cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//2. map the CNA jumps to BAF
       bafEmit->map_jumps(cnaEmit);
