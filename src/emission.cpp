@@ -47,7 +47,10 @@ Emission::Emission(){
 
 // real constructor
 void Emission::set(int ntimes, vector<int>& Chrs, vector<int>& nsites, int grid){
-  if ((int) Chrs.size() != (int) nsites.size()) abort();
+  if ((int) Chrs.size() != (int) nsites.size()){
+    cout<<"FATAL ERROR (use gdb to locate).\n";
+    abort();
+  }
   nSamples  = (int) nsites.size();
   nTimes    = ntimes;
   nSites  = new int [nSamples]; 

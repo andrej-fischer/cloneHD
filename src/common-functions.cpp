@@ -21,7 +21,7 @@ void get_dims( const char * data_fn,
   stringstream line_ss;
   data_ifs.open( data_fn, ios::in);
   if (data_ifs.fail()){
-    printf("ERROR in get_data(): file %s cannot be opened.\n", data_fn);
+    printf("ERROR: file %s cannot be opened.\n", data_fn);
     exit(1);
   }
   nSites.clear();
@@ -45,9 +45,11 @@ void get_dims( const char * data_fn,
       line_ss.str(line);      
     }
     line_ss >> chr >> l;
-    if (chr != old ){//new chromosome encounter
-      if (ct>0) nSites.push_back(ct);
-      chrs.push_back(chr);
+    if (chr != old ){//new chromosome encounter     
+      if (ct>0){
+	nSites.push_back(ct);
+	chrs.push_back(old);
+      }
       ct=0;
     }
     old=chr;
@@ -58,7 +60,10 @@ void get_dims( const char * data_fn,
     }
     if (keep || r>0) ct++;
   }
-  nSites.push_back(ct);
+  if (ct>0){
+    nSites.push_back(ct);
+    chrs.push_back(old);
+  }
   nTimes = nT;
   data_ifs.close();
 }
