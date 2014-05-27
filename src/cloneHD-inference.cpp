@@ -254,7 +254,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
   if (best_mass[bestn] != NULL){
     myClone->set_mass(best_mass[bestn]);
   }
-  if (!cnaEmit->is_set && snvEmit->is_set && !snvEmit->connect){
+  if (!cnaEmit->is_set && snvEmit->is_set && !snvEmit->connect && bestn > 0){
     myClone->initialize_snv_prior_param();
   }
   if (best_priors[bestn] != NULL && bestn > 0){

@@ -81,7 +81,7 @@ void get_data( const char * data_fn, Emission * myEmit){
   }
   int ct=0,l;
   int chr=0,old=-1, sample=0;
-  int d,r, keep=0;
+  int d,r, keep=0, wait=0;
   //now collect all data...
   while( data_ifs.good()){
     line.clear();
@@ -93,17 +93,17 @@ void get_data( const char * data_fn, Emission * myEmit){
     line_ss >> chr >> l;//chromosome and locus
     if (chr != old){
       if (myEmit->chrs.count(chr) == 0){
-	cout<<"ERROR in get_data(): chr "<<chr<<" was not expected"<<endl<<line<<endl;
-	for (int s=0; s<myEmit->nSamples; s++){
-	  printf("sample %i = chr %i, idx = %i\n", 
-		 s+1, myEmit->chr[s], myEmit->idx_of[myEmit->chr[s]]);
-	}
-	exit(1);
+	printf("WARNING: chr %2i in file %s will be ignored.\n", chr, data_fn);
+	wait = 1;
       }
-      sample = myEmit->idx_of[chr];
-      ct  = 0;
+      else{
+	sample = myEmit->idx_of[chr];
+	ct  = 0;
+	wait = 0;
+      }
       old = chr;
     }
+    if (wait) continue;
     if (ct >= myEmit->nSites[sample]) continue;
     keep = 0;
     for (int t=0; t<myEmit->nTimes; t++){
