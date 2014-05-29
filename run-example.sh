@@ -8,8 +8,6 @@ part=$1
 # input data
 data="./test/data/"
 results="./test/results/"
-#data="/Users/af7/Projects/cloneHD/Test/data/"
-#results="/Users/af7/Projects/cloneHD/Test/results/"
 filterHD="./build/filterHD"
 cloneHD="./build/cloneHD"
 
