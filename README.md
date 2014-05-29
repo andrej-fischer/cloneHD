@@ -108,3 +108,10 @@ prediction (red).
    of the bias field might not be very useful, especially in segmenting the tumor data.
    Use rather, if available, the jumps seen in the BAF data for both CNA and BAF data
    (give the BAF jumps file to both `--cna-jumps` and `--baf-jumps`).
+
+#How to cite
+
+The cloneHD and filterHD software is free under the GNU General Public License v3.
+If you use this software in your work, please cite the accompanying publication:
+
+Andrej Fischer, Ignacio Vazquez-Garcia, Christopher J.R. Illingworth and Ville Mustonen. High-definition reconstruction of subclonal composition in cancer. Cell Reports (2014), http://dx.doi.org/ 10.1016/j.celrep.2014.04.055

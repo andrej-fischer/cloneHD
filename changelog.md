@@ -1,16 +1,17 @@
 # changelog for cloneHD/filterHD
 
-## to come
+## v1.17.8 / 29.05.2014
 
 *  added checks whether files are open for writing
 *  changed to new defaults: `--(cna/baf/snv)-rnd [double:1.0e-6]` (nan)
-*  allowed `--cna-jump -1` and `--baf-jump -1` (subject to testing)
+*  allowed `--cna-jump -1` and `--baf-jump -1` (no jumps)
 *  `--cna-jumps [baf-jumps-file]` and vice versa enabled (useful for exome data)
-*  jumps read with new function match_jumps() (not get_track()).
+*  jumps read and integrated with new function match_jumps() (not get_track()).
+* fixed bug when chromosomes have no non-zero observations.
 
 ## v1.17.7 / 25.04.2014
 
-*  fixed range error in `pre-filter` in pick-from/match-to mode
+*  fixed range error in `pre-filter` in pick-from/match-to mode.
 
 ## v1.17.6 / 24.04.2014
 
