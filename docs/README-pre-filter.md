@@ -2,6 +2,11 @@
 
 The program `pre-filter` can be used to remove loci based on the observed read depth. It includes two heuristic filtering methods: loci are removed based on (i) their local variability and (ii) their being an outlier (see below). 
 
+![pref](/images/prefilter-1.png "Pre-filtering of read depth via matched normal.")
+
+The effect of `pre-filter` on read depth data: (A) Centromeric regions of real chromosomes often show huge large scale variability in their read depth. But there are also many small regions with very low read depth throughout. (B) After pre-filtering, the problematic regions are masked out. (C) Removing the same regions in the tumor data improves quality visibly while retaining biologically relevant features.
+
+
 ## Typical usage options
 
 *  `--data [file]`  Input data to be pre-filtered. 

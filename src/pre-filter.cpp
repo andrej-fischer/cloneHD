@@ -356,6 +356,7 @@ void pick_match( Emission * pickEmit, Emission * matchEmit, cmdl_opts& opts){
 	ct   = it->second;
       }
     }
+    diffs.clear();
     //now pick...
     int midx = 0;
     int mlocus = (int) mloci[0];

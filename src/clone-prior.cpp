@@ -48,6 +48,8 @@ void Clone::set_cna_prior( gsl_vector * prior, int sample){
 //used in SNV-only mode, w/o correlation and w/o cn-info...
 void Clone::initialize_snv_prior_param(){// SNV prior, conditional on max-tcn
   if (initial_snv_prior_param != NULL) gsl_matrix_free(initial_snv_prior_param);
+  initial_snv_prior_param = NULL;
+  if (nClones == 0) return;
   initial_snv_prior_param = gsl_matrix_calloc( maxtcn+1, maxtcn+1);
   gsl_matrix_set( initial_snv_prior_param, 0, 0, snv_fpr);
   double p = snv_pen_high;// penalty for higher genotypes

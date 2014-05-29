@@ -21,7 +21,7 @@ void get_dims( const char * data_fn,
   stringstream line_ss;
   data_ifs.open( data_fn, ios::in);
   if (data_ifs.fail()){
-    printf("ERROR in get_data(): file %s cannot be opened.\n", data_fn);
+    printf("ERROR: file %s cannot be opened.\n", data_fn);
     exit(1);
   }
   nSites.clear();
@@ -45,9 +45,11 @@ void get_dims( const char * data_fn,
       line_ss.str(line);      
     }
     line_ss >> chr >> l;
-    if (chr != old ){//new chromosome encounter
-      if (ct>0) nSites.push_back(ct);
-      chrs.push_back(chr);
+    if (chr != old ){//new chromosome encounter     
+      if (ct>0){
+	nSites.push_back(ct);
+	chrs.push_back(old);
+      }
       ct=0;
     }
     old=chr;
@@ -58,7 +60,10 @@ void get_dims( const char * data_fn,
     }
     if (keep || r>0) ct++;
   }
-  nSites.push_back(ct);
+  if (ct>0){
+    nSites.push_back(ct);
+    chrs.push_back(old);
+  }
   nTimes = nT;
   data_ifs.close();
 }
@@ -76,7 +81,7 @@ void get_data( const char * data_fn, Emission * myEmit){
   }
   int ct=0,l;
   int chr=0,old=-1, sample=0;
-  int d,r, keep=0;
+  int d,r, keep=0, wait=0;
   //now collect all data...
   while( data_ifs.good()){
     line.clear();
@@ -88,17 +93,17 @@ void get_data( const char * data_fn, Emission * myEmit){
     line_ss >> chr >> l;//chromosome and locus
     if (chr != old){
       if (myEmit->chrs.count(chr) == 0){
-	cout<<"ERROR in get_data(): chr "<<chr<<" was not expected"<<endl<<line<<endl;
-	for (int s=0; s<myEmit->nSamples; s++){
-	  printf("sample %i = chr %i, idx = %i\n", 
-		 s+1, myEmit->chr[s], myEmit->idx_of[myEmit->chr[s]]);
-	}
-	exit(1);
+	printf("WARNING: chr %2i in file %s will be ignored.\n", chr, data_fn);
+	wait = 1;
       }
-      sample = myEmit->idx_of[chr];
-      ct  = 0;
+      else{
+	sample = myEmit->idx_of[chr];
+	ct  = 0;
+	wait = 0;
+      }
       old = chr;
     }
+    if (wait) continue;
     if (ct >= myEmit->nSites[sample]) continue;
     keep = 0;
     for (int t=0; t<myEmit->nTimes; t++){

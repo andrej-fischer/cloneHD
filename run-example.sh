@@ -68,6 +68,7 @@ if [ -z $part ] || [ $part -eq 2 ]
 then
 ### cloneHD ###
     echo "*** cloneHD ***"
+    echo "True mass and cell fractions:" `cat test/data/clones.txt` 
     echo
     # The CNA and BAF data is analysed for subclonality.
     # Try varying the --min-jump, --force and --max-tcn values and try --mass-gauging 0. 

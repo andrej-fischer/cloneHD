@@ -86,8 +86,8 @@ int main (int argc, const char * argv[]){
   myClone.cna_pen_diff = opts.cna_pen_diff;//CNA penalty for different c.n.
   myClone.cna_pen_norm = opts.cna_pen_norm;//CNA penalty for non-normal c.n.
   myClone.baf_pen_comp = opts.baf_pen_comp;//BAF penalty for complex chr status
-  myClone.snv_pen_high = opts.snv_pen_high;//penalty for high SNV genotypes
-  myClone.snv_pen_mult = opts.snv_pen_mult;//penalty for multiple hit SNV
+  myClone.snv_pen_high = opts.snv_pen_high;//SNV penalty for high SNV genotypes
+  myClone.snv_pen_mult = opts.snv_pen_mult;//SNV penalty for multiple hit SNVs
   myClone.snv_fpr  = opts.snv_fpr;//SNV false-positive rate
   myClone.snv_fpf  = opts.snv_fpf;//SNV frequency of false positives
   myClone.bulk_fix = opts.bulk_fix;
@@ -147,6 +147,7 @@ int main (int argc, const char * argv[]){
     cout<<"done."<<endl;
   }
   cout<<endl;
+  //exit(0);
   // get purities...
   if (opts.purity_fn != NULL){
     get_purity( opts.purity_fn, myClone.min_purity);
@@ -404,9 +405,9 @@ void default_opts(cmdl_opts& opts){
   opts.baf_jump = -1.0;
   opts.snv_jump = -1.0;
   //random error rates...
-  opts.cna_rnd = 0.0;
-  opts.baf_rnd = 0.0;
-  opts.snv_rnd = 0.0;
+  opts.cna_rnd = 1.0e-6;
+  opts.baf_rnd = 1.0e-6;
+  opts.snv_rnd = 1.0e-6;
   opts.snv_fpf = 0.01;
   opts.snv_fpr = 0.001;
   //shape parameters...

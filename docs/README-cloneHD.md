@@ -116,9 +116,9 @@ models are used (Poisson or Binomial).
 
 The rate for indiviual random emissions per data set. 
 
-*    `--cna-rnd [double:0.0]`
-*    `--baf-rnd [double:0.0]`
-*    `--snv-rnd [double:0.0]`
+*    `--cna-rnd [double:1.0e-6]`
+*    `--baf-rnd [double:1.0e-6]`
+*    `--snv-rnd [double:1.0e-6]`
 
 Both can be learned with filterHD for data with persistence.
 

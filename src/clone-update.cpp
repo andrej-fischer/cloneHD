@@ -68,7 +68,10 @@ double Clone::update( gsl_vector * prior, gsl_vector * post, Emission * myEmit, 
       }
       gsl_vector_mul( post, prior);
       norm = gsl_blas_dasum(post);
-      if ( norm != norm || norm <= 0.0) abort();
+      if ( norm != norm || norm <= 0.0){
+	cout<<"ERROR\n";
+	abort();
+      }
       gsl_vector_scale( post, 1.0 / norm);
       return( log(norm) );
     }
