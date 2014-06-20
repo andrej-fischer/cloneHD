@@ -143,9 +143,18 @@ void Clone::allocate( Emission * cna, Emission * baf, Emission * snv, const char
   Clone::set_normal_copy(chr_fn);
   //all chr present
   chrs.clear();
-  if (cnaEmit->is_set) for (int s=0;s<cnaEmit->nSamples;s++) chrs.insert(cnaEmit->chr[s]);
-  if (bafEmit->is_set) for (int s=0;s<bafEmit->nSamples;s++) chrs.insert(bafEmit->chr[s]);
-  if (snvEmit->is_set) for (int s=0;s<snvEmit->nSamples;s++) chrs.insert(snvEmit->chr[s]);
+  if (cnaEmit->is_set){
+    for (int s=0;s<cnaEmit->nSamples;s++) 
+      chrs.insert(cnaEmit->chr[s]);
+  }
+  if (bafEmit->is_set){
+    for (int s=0;s<bafEmit->nSamples;s++)
+      chrs.insert(bafEmit->chr[s]);
+  }
+  if (snvEmit->is_set){
+    for (int s=0;s<snvEmit->nSamples;s++) 
+      chrs.insert(snvEmit->chr[s]);
+  }
   if (cnaEmit->is_set){
     mass     = gsl_vector_alloc(nTimes);
     log_mass = gsl_vector_alloc(nTimes);
