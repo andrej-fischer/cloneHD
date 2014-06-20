@@ -136,6 +136,7 @@ void Emission::map_idx_to_Event(Emission * Emit, int sample){
     locus = loci[sample][idx];
   }
   for ( Event = 1; Event < Emit->nEvents[Sample]; Event++){
+    if (idx == nSites[sample]) break; 
     Idx   = Emit->idx_of_event[Sample][Event];
     Locus = Emit->loci[Sample][Idx];
     while(locus < Locus){
@@ -143,8 +144,7 @@ void Emission::map_idx_to_Event(Emission * Emit, int sample){
       idx++;
       if (idx == nSites[sample]) break;  
       locus = loci[sample][idx];
-    }
-    if (idx == nSites[sample]) break;  
+    }     
   }
   while( idx < nSites[sample]){//right over-hang
     Event_of_idx[sample][idx] = Emit->nEvents[Sample] - 1;
