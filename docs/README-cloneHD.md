@@ -242,3 +242,23 @@ The grid sizes for the pre-computed emission probabilities if fuzzy data segment
 *    `--cna-grid [int:300]`  
 *    `--baf-grid [int:100]` 
 *    `--snv-grid [int:100]`
+
+# Program output  
+
+cloneHD generates a number of output files automatically. Here, we provide annotate screenshots for the most important of them for the simulated example data set.
+
+## STDOUT
+
+![stdout1](/images/screenshots/cloneHD-stdout-1.png "cloneHD stdout 1")
+![stdout2](/images/screenshots/cloneHD-stdout-2.png "cloneHD stdout 2")
+
+## Output files
+
+![summary](/images/screenshots/cloneHD-summary.png "cloneHD summary")
+![posterior](/images/screenshots/cloneHD-posterior.png "cloneHD posterior")
+![subclone](/images/screenshots/cloneHD-subclone.png "cloneHD subclone")
+![meantcn](/images/screenshots/cloneHD-mean.png "cloneHD mean-tcn")
+![avail](/images/screenshots/cloneHD-avail.png "cloneHD avail-tcn")
+
+
+
