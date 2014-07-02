@@ -254,10 +254,19 @@ cloneHD generates a number of output files automatically. Here, we provide annot
 
 ## Output files
 
+### The inference summary
 ![summary](/images/screenshots/cloneHD-summary.png "cloneHD summary")
+
+### The posterior distribution over all copy number/genotype states
 ![posterior](/images/screenshots/cloneHD-posterior.png "cloneHD posterior")
+
+### The posterior distribution for each subclone separately
 ![subclone](/images/screenshots/cloneHD-subclone.png "cloneHD subclone")
+
+### The mean total copy number per segment
 ![meantcn](/images/screenshots/cloneHD-mean.png "cloneHD mean-tcn")
+
+### The available genotype per segment
 ![avail](/images/screenshots/cloneHD-avail.png "cloneHD avail-tcn")
 
 
