@@ -86,11 +86,15 @@ filterHD generates a few output files automatically. Here, we provide annotated 
 
 ## Output file
 
-The posterior mean value of the hidden emission rate and jump probabilities
 ![posterior1](/images/screenshots/filterHD-posterior-1.png "filterHD posterior")
 
-The same as above, but here a bias (normal) was used, so the rate is scaled accordingly. Note: in filterHD, the bias field is not scaled to have mean 1!
+The posterior mean value of the hidden emission rate and jump probabilities
+
 ![posterior2](/images/screenshots/filterHD-posterior-2.png "filterHD posterior")
 
-The same as above, but here the whole posterior distribution was requested with `--dist 1`
+The same as above, but here a bias (normal) was used, so the rate is scaled accordingly. Note: in filterHD, the bias field is not scaled to have mean 1!
+
+
 ![posterior3](/images/screenshots/filterHD-posterior-3.png "filterHD posterior")
+
+The same as above, but here the whole posterior distribution was requested with `--dist 1`
