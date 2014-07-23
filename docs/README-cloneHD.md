@@ -245,7 +245,7 @@ The grid sizes for the pre-computed emission probabilities if fuzzy data segment
 
 # Program output  
 
-cloneHD generates a number of output files automatically. Here, we provide annotate screenshots for the most important of them for the simulated example data set.
+cloneHD generates a number of output files automatically. Here, we provide annotated screenshots for the most important of them for the simulated example data set.
 
 ## STDOUT
 
@@ -267,7 +267,7 @@ cloneHD generates a number of output files automatically. Here, we provide annot
 ![meantcn](/images/screenshots/cloneHD-mean.png "cloneHD mean-tcn")
 
 ### The available genotype per segment
-![avail](/images/screenshots/cloneHD-avail.png "cloneHD avail-tcn")
+![avail](/images/screenshots/cloneHD-avail.png "cloneHD avail-cn")
 
 
 

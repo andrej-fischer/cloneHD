@@ -76,6 +76,22 @@ local optima and want to start in the neighbourhood of a particular one.
      The grid size for the internal representation of continuous distributions. For large ranges in
      mode 3/4, it can make sense to increase this resolution.
 
-## filterHD output files
+# filterHD output  
 
-TBD
+filterHD generates a few output files automatically. Here, we provide annotated screenshots for them for the simulated example data set.
+
+## STDOUT
+
+![stdout](/images/screenshots/filterHD-stdout.png "filterHD stdout")
+
+## Output file
+
+### The posterior mean value of the hidden emission rate and jump probabilities
+![posterior1](/images/screenshots/filterHD-posterior-1.png "filterHD posterior")
+
+### The same as above, but here a bias (normal) was used, so the rate is scaled accordingly. Note: in filterHD, the bias field is not scaled to have mean 1!
+![posterior2](/images/screenshots/filterHD-posterior-2.png "filterHD posterior")
+
+
+### The same as above, but here the whole posterior distribution was requested with `--dist 1`
+![posterior3](/images/screenshots/filterHD-posterior-3.png "filterHD posterior")
