@@ -77,7 +77,7 @@ prediction (red).
         1	10000	11000
         ...
 
-    $ samtools bedcov human-genome.1kb-grid.bed sample.bam > read-depth.sample.txt
+    `$ samtools bedcov human-genome.1kb-grid.bed sample.bam > read-depth.sample.txt`
 
         read-depth.sample.txt :
  
@@ -85,13 +85,15 @@ prediction (red).
         1	10000	11000	213557
         ...
 
-    $ awk '{print $1,$3,int($4/1000.0),1}'  read-depth.sample.txt > read-depth.sample.cloneHD.txt
+    `$ awk '{print $1,$3,int($4/1000.0),1}'  read-depth.sample.txt > read-depth.sample.cloneHD.txt`
 
         read-depth.sample.cloneHD.txt :
 
         1 10000 0 1
         1 11000 213 1
         ...
+
+  For 10 kb windows, you would use `$ awk '{print $1,$3,int($4/10000.0),10}` etc. For windows smaller than 1kb, the observations might not be approximately independent.
 
 *  Note: all input files are assumed to be sorted by genomic coordinate. With Unix, this
    can be guaranteed with `sort -k1n,1 -k2n,2 file.txt > sorted-file.txt`.
