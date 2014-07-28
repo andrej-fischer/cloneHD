@@ -81,32 +81,31 @@ prediction (red).
 
         read-depth.sample.txt :
  
-        1	9000	10000	109
+        1	9000	10000	12009
         1	10000	11000	213557
         ...
 
-    `$ awk '{print $1,$3,int($4/1000.0),1}'  read-depth.sample.txt > read-depth.sample.cloneHD.txt`
+    `$ awk '{print $1,$3,int(0.5+$4/1000.0),1}'  read-depth.sample.txt > read-depth.sample.cloneHD.txt`
 
         read-depth.sample.cloneHD.txt :
 
-        1 10000 0 1
-        1 11000 213 1
+        1 10000 12 1
+        1 11000 214 1
         ...
 
-  For 10 kb windows, you would use `$ awk '{print $1,$3,int($4/10000.0),10}` etc. For windows smaller than 1kb, the observations might not be approximately independent.
+  For 10 kb windows, you would use `$ awk '{print $1,$3,int(0.5+$4/10000.0),10}` etc. For windows smaller than 1kb, the observations might not be approximately independent.
 
-*  Note: all input files are assumed to be sorted by genomic coordinate. With Unix, this
-   can be guaranteed with `sort -k1n,1 -k2n,2 file.txt > sorted-file.txt`.
+*  All input files are assumed to be sorted by chromosome and genomic coordinate. With Unix, this can be achieved with `sort -k1n,1 -k2n,2 file.txt > sorted-file.txt`.
 
-*  Pre-filtering of data can be very important. If filterHD predicts
+*  Pre-filtering of data is very important. If filterHD predicts
    many more jumps than you would expect, it might be necessary to
    pre-filter the data, removing variable regions, outliers or very short 
-   segments (use programs the `pre-filter` and `filterHD`).
+   segments (use programs `pre-filter` and `filterHD`).
 
 *  Make sure that the bias field for the tumor CNA data is
    meaningful. If a matched normal sample was sequenced with the same
    pipeline, its read depth profile, as predicted by filterHD, can be used as a
-   bias field for the tumor CNA data. Follow the logic of the example
+   bias field for the tumor CNA data. Follow the logic of the example data
    given here.
 
 *  If the matched-normal sample was sequenced at lower coverage than the tumor sample, 
@@ -130,8 +129,7 @@ prediction (red).
 *  If high copy numbers are expected only in a few chromosomes, you can increase performance
    by using the `--max-tcn [file]` option to specify per-chromosome upper limits.
 
-*  For exome sequencing data, the read depth bias can be enormous. The filterHD estimate 
-   of the bias field might not be very useful, especially in segmenting the tumor data.
+*  For exome sequencing data, the read depth bias can be enormous. The filterHD estimate of the bias field might not be very useful, especially in segmenting the tumor data.
    Use rather, if available, the jumps seen in the BAF data for both CNA and BAF data
    (give the BAF jumps file to both `--cna-jumps` and `--baf-jumps`).
 
