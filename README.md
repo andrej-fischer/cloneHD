@@ -69,6 +69,30 @@ prediction (red).
 
 # Tips and tricks
 
+* The read depth input files for filterHD and cloneHD can be generated from a bam-file with samtools. Given a bed file of non-overlapping 1kb windows, e.g.
+
+        human-genome.1kb-grid.bed :
+
+        1	9000	10000
+        1	10000	11000
+        ...
+
+    $ samtools bedcov human-genome.1kb-grid.bed sample.bam > read-depth.sample.txt
+
+        read-depth.sample.txt :
+ 
+        1	9000	10000	109
+        1	10000	11000	213557
+        ...
+
+    $ awk '{print $1,$3,int($4/1000.0),1}'  read-depth.sample.txt > read-depth.sample.cloneHD.txt
+
+        read-depth.sample.cloneHD.txt :
+
+        1 10000 0 1
+        1 11000 213 1
+        ...
+
 *  Note: all input files are assumed to be sorted by genomic coordinate. With Unix, this
    can be guaranteed with `sort -k1n,1 -k2n,2 file.txt > sorted-file.txt`.
 

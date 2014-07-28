@@ -4,8 +4,8 @@
 
 *    `--data [file]`  Input data. 
 
-     The file format is the same as below for `--cna`, `--baf` or
-     `--snv`. Multiple amples are processed independently, one by one.
+     The file format is the same as in cloneHD for `--cna`, `--baf` or
+     `--snv` (see  [here](./README-cloneHD.md)). Multiple samples are processed independently, one by one.
 
 *    `--mode [1/2/3/4]`  Emission modes.
 
@@ -36,7 +36,7 @@
 
 ## Parameter options
 
-The HMM underlying filterHD is determined by these four global
+The continuous state space HMM underlying filterHD is determined by the following global
 parameters. They can all be fixed, otherwise they are learned from the data.
 
 *    `--jump [double]`   Fix the jump probability per length unit (bp).
