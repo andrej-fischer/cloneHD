@@ -932,7 +932,13 @@ void Emission::coarse_grain_jumps( int sample, double min_jump, int range){
   //get global minimum...
   first_it = remaining.begin();
   last_it  = remaining.end();
-  first_it++;
+  if (first_it==last_it){//no jumps whatsoever!
+    for (int i=0; i<L; i++) pjump[sample][i] = cg_pjump[i];
+    delete [] cg_pjump;
+    remaining.clear();
+    idxOf.clear();
+    return;
+  }
   it = std::min_element( first_it, last_it, value_comparer);
   double gmin = it->second;
   double p=0,p0=0,pmin=0,ps=0;
@@ -950,7 +956,9 @@ void Emission::coarse_grain_jumps( int sample, double min_jump, int range){
     while( it != remaining.end() ){
       it++;
       p = it->second;
-      if ( p>10.0*pmin || it->first != last_it->first+1 || p<10.0*gmin) done=1;
+      if ( p>10.0*pmin || it->first != last_it->first+1 || p<10.0*gmin){
+	done = 1;
+      }
       else if (incl < range){
 	ps *= 1.0 - p;
 	incl++;
