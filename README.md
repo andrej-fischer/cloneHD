@@ -138,4 +138,4 @@ prediction (red).
 The cloneHD and filterHD software is free under the GNU General Public License v3.
 If you use this software in your work, please cite the accompanying publication:
 
-Andrej Fischer, Ignacio Vazquez-Garcia, Christopher J.R. Illingworth and Ville Mustonen. High-definition reconstruction of subclonal composition in cancer. Cell Reports (2014), http://dx.doi.org/10.1016/j.celrep.2014.04.055
+Andrej Fischer, Ignacio Vázquez-García, Christopher J.R. Illingworth and Ville Mustonen. High-definition reconstruction of clonal composition in cancer. Cell Reports **7 (5)**, 1740-1752 (2014). [DOI: 10.1016/j.celrep.2014.04.055](http://dx.doi.org/10.1016/j.celrep.2014.04.055).
