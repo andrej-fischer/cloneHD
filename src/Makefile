@@ -1,4 +1,4 @@
-CC		= g++-mp-4.7
+CC		= g++
 GSL		= /opt/local/lib/libgsl.a /opt/local/lib/libgslcblas.a
 CC_FLAGS	= -Wall -O3  -static-libgcc -static-libstdc++ -fopenmp -DHAVE_INLINE
 LD_FLAGS	= ${GSL} -fopenmp
