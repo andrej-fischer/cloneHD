@@ -1,6 +1,6 @@
-CC		= g++-mp-4.7
+CC		= g++
 GSL		= `gsl-config --cflags --libs`
-CC_FLAGS	= -Wall -O3  -static-libgcc -static-libstdc++ -fopenmp -DHAVE_INLINE
+CC_FLAGS	= -Wall -O3 -static-libgcc -static-libstdc++ -fopenmp -DHAVE_INLINE
 LD_FLAGS	= ${GSL} -fopenmp
 prefobj		= emission.o common-functions.o
 filterHDobj	= emission.o common-functions.o jump-diffusion.o minimization.o
@@ -17,7 +17,7 @@ cloneHD: $(cloneHDobj) cloneHD.o
 	$(CC) $(CC_FLAGS) $^ -o ../build/cloneHD $(LD_FLAGS)	
 %.o: %.cpp
 	$(CC) $(CC_FLAGS) -c $< -o $@
-$(cloneobj): clone.h# $(cloneobj:.o=.cpp)
+$(cloneobj): clone.h $(cloneobj:.o=.cpp)
 $(filterHDobj) $(cloneHDobj) $(prefobj): $(.TARGET:.o=.h)
 clean:
 	rm -f ./*.o
