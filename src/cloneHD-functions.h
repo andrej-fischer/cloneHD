@@ -49,7 +49,9 @@ struct cmdl_opts{
   double cna_jump, baf_jump, snv_jump;
   double cna_shape, baf_shape, snv_shape;
   double cna_rnd, baf_rnd, snv_rnd;
-  double cna_pen, baf_pen, snv_pen;
+  double cna_pen_zero, cna_pen_norm, cna_pen_diff;
+  double baf_pen_comp;
+  double snv_pen_high, snv_pen_mult;
   double snv_fpr, snv_fpf;
   double bulk_fix, bulk_sigma, bulk_rnd;
   double min_occ,min_jump;
@@ -62,7 +64,7 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts);
 void read_opts( const char * opts_fn, cmdl_opts& opts);
 void default_opts(cmdl_opts& opts);
 void test_opts(cmdl_opts& opts);
-void print_opts();
+void print_usage();
 
 void print_all_results( Clone * myClone, cmdl_opts& opts);
 void print_posterior_header( FILE * fp,  Clone * myClone, Emission * myEmit, cmdl_opts& opts);
@@ -78,7 +80,7 @@ void get_baf_data(Emission * bafEmit, cmdl_opts& opts, int& nTimes, int& nT);
 void get_snv_data(Emission * snvEmit, cmdl_opts& opts, int& nTimes, int& nT);
 void get_snv_bulk_prior( Clone * myClone, cmdl_opts& opts);
 void get_track(const char * fn, gsl_matrix **& dist, double **& mn, double **& var, Emission * myEmit);
-
+void match_jumps(const char * jumps_fn, Emission * myEmit);
 void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone);
 void get_mean_tcn( const char * mtcn_fn, Clone * myClone, Emission * myEmit);
 void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit);

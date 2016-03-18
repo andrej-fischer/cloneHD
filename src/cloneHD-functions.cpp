@@ -119,39 +119,43 @@ void get_track(const char * track_fn,
     line_ss.str(line);
     line_ss >> chr >> locus; 
     l = (chr == old_chr) ? l+1 : 0;
-    if (chr != old_chr && (chr > myEmit->maxchr || myEmit->idx_of[chr] < 0) ){
-      printf("ERROR: unexpected chromosome.\n");
+    if (chr != old_chr && myEmit->chrs.count(chr) == 0){
+      printf("ERROR: unexpected chromosome in %s.\n", track_fn);
       cout<<line<<endl;
       exit(1);
     }
     // exit(0);
     old_chr = chr;
-    if( (int) myEmit->loci[ myEmit->idx_of[chr] ][l] != locus){
-      printf("ERROR in get_track()\n");
+    int s = myEmit->idx_of[chr];
+    if( (int) myEmit->loci[s][l] != locus){
+      printf("ERROR in get_track(): unexpected coordinate in %s\n", track_fn);
       cout<<line<<endl;
-      printf( "%i, %i, %i vs %i\n", myEmit->idx_of[chr], l, myEmit->loci[ myEmit->idx_of[chr] ][l], locus);
+      printf("Expected:\n%i, %i, %i vs %i\n", s, l, myEmit->loci[s][l], locus);
       exit(1);
     }
     line_ss >> mn;
-    mean[ myEmit->idx_of[chr] ][l] = mn;
+    mean[s][l] = mn;
     if (var != NULL) {
       line_ss >> sd;
-      var[ myEmit->idx_of[chr] ][l]  = pow(sd,2);
+      var[s][l]  = pow(sd,2);
     }
     if (distribution == NULL) continue;
     double p;
     line_ss >> jp;
-    for (int i=0; i < (int) (distribution[ myEmit->idx_of[chr] ])->size2; i++){
+    for (int i=0; i < (int) (distribution[s])->size2; i++){
       if (line_ss.good() != true){
-        printf("ERROR in get_track()\n");
+        printf("ERROR in get_track(): distribution grid too small in %s\n",track_fn);
         exit(1);
       }
       line_ss >> p;
-      gsl_matrix_set( distribution[ myEmit->idx_of[chr] ], l, i, p);
+      gsl_matrix_set( distribution[s], l, i, p);
     }
   }
   ifs.close();
 }
+
+
+
 
 
 // get the maximum total c.n. per chromosome
@@ -241,7 +245,7 @@ void get_maxtcn_input(const char * maxtcn_fn, int maxtcn_gw, Clone * myClone){
 
 
 
-//get total copynumber tracks from file...
+//get mean total copynumber from file...
 void get_mean_tcn( const char * mntcn_fn, Clone * myClone, Emission * myEmit){
   ifstream ifs;
   string line;
@@ -372,10 +376,10 @@ void get_avail_cn( const char * avcn_fn, Clone * myClone, Emission * myEmit){
       string mode;
       while (line_ss.good()) line_ss >> mode;
       if (mode.compare("cna")==0){
-	myClone->pinit = 0.5;
+	myClone->snv_pen_high = 0.5;
       }
       else if (mode.compare("baf")==0){
-	myClone->pinit = 1.0;
+	myClone->snv_pen_high = 1.0;
       }
       else{
 	abort();
@@ -605,6 +609,53 @@ void get_fixed_clones(gsl_matrix *& clones, gsl_vector *& mass, const char * clo
 
 
 
+void match_jumps(const char * jumps_fn, Emission * myEmit){
+  ifstream ifs;
+  string line;
+  stringstream line_ss;
+  ifs.open( jumps_fn, ios::in);
+  if (ifs.fail()){
+    printf("ERROR file %s cannot be opened.\n", jumps_fn);
+    exit(1);
+  }
+  int chr=0, old_chr = -1;
+  int in_locus=0, locus=-1;
+  int s=-1,idx=0;
+  int wait=0;
+  double pj=0;
+  while( ifs.good() ){
+    line.clear();
+    getline( ifs, line);
+    if (line.empty()) break;
+    if (line[0] == '#') continue;
+    line_ss.clear();
+    line_ss.str(line);
+    line_ss >> chr >> in_locus;
+    if (chr != old_chr){
+      wait = (myEmit->chrs.count(chr)) == 0 ? 1 : 0; 
+      idx=1;
+    }
+    old_chr = chr;
+    if (wait) continue;
+    s = myEmit->idx_of[chr];
+    if (idx == myEmit->nSites[s]) continue;//chromosome is complete!
+    locus = (int) myEmit->loci[s][idx];//current target locus
+    if (in_locus < (int) myEmit->loci[s][0]) continue;
+    while(in_locus > locus){  
+      idx++;
+      if (idx == myEmit->nSites[s]) break;
+      locus = (int) myEmit->loci[s][idx];
+    }
+    if (idx == myEmit->nSites[s]) continue;
+    line_ss >> pj;
+    myEmit->pjump[s][idx] = 1.0 - (1.0-pj)*(1.0-myEmit->pjump[s][idx]);
+  }
+  //done
+  ifs.close();
+}
+
+
+
 //***posterior jump probability track***
 void get_jump_probability( Clone * myClone, cmdl_opts& opts){
   Emission * cnaEmit = myClone->cnaEmit;
@@ -614,7 +665,8 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
   gsl_matrix ** distdummy = NULL;
   if (cnaEmit->is_set){//***CNA JUMPS***
     if(opts.cna_jumps_fn != NULL){//1. either use external jump probability track
-      get_track( opts.cna_jumps_fn, distdummy, cnaEmit->pjump, vardummy, cnaEmit);
+      //get_track( opts.cna_jumps_fn, distdummy, cnaEmit->pjump, vardummy, cnaEmit);
+      match_jumps(opts.cna_jumps_fn, cnaEmit);
       for (int s=0; s< cnaEmit->nSamples; s++){
 	cnaEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
@@ -622,9 +674,7 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     }
     else if (opts.cna_jump >= 0.0){//2. or constant jump probability per base
       cnaEmit->set_pjump(opts.cna_jump);
-    }
-    else{
-      abort();
+      cnaEmit->get_events_via_jumps();
     }
     //map CNA events to BAF and SNV...
     if(bafEmit->is_set){
@@ -634,33 +684,48 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     }
     if (snvEmit->is_set){
       for (int s=0; s<snvEmit->nSamples; s++){
-	if ( !bafEmit->is_set ||bafEmit->chrs.count(snvEmit->chr[s]) == 0){
+	if ( !bafEmit->is_set || bafEmit->chrs.count(snvEmit->chr[s]) == 0){
 	  snvEmit->map_idx_to_Event( cnaEmit, s);
 	}
       }
     }
   }
   if ( bafEmit->is_set ){//***BAF JUMPS***
+    if (!cnaEmit->is_set) abort();
     if (opts.baf_jumps_fn != NULL){//1. either external jump probability track
-      get_track( opts.baf_jumps_fn, distdummy, bafEmit->pjump, vardummy, bafEmit);
+      // get_track( opts.baf_jumps_fn, distdummy, bafEmit->pjump, vardummy, bafEmit);
+      match_jumps( opts.baf_jumps_fn, bafEmit);
+      if ( opts.cna_jumps_fn != NULL//allow transit at CNA jumps
+	   && opts.cna_jumps_fn != opts.baf_jumps_fn//but not the same jumps
+	   ){
+	match_jumps( opts.cna_jumps_fn, bafEmit);
+      }
+      bafEmit->add_break_points_via_jumps( cnaEmit, opts.min_jump);
       for (int s=0; s< bafEmit->nSamples; s++){// ignore improbable jump events
 	bafEmit->coarse_grain_jumps( s, opts.min_jump, 5);
       }
       bafEmit->get_events_via_jumps();
-      if ( cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//allow transit at CNA jumps
-	bafEmit->add_break_points_via_jumps( cnaEmit, opts.min_jump);
+      /*
+      cout<<"BAF-jumps\n";
+      for (int evt=0;evt<bafEmit->nEvents[0];evt++){
+	int idx = bafEmit->idx_of_event[0][evt];
+	printf("%3i %6i %6i\n", evt, idx, bafEmit->loci[0][idx]);
       }
-      bafEmit->get_events_via_jumps();
+      cout<<"CNA-jumps\n";
+      for (int evt=0;evt<cnaEmit->nEvents[0];evt++){
+	int idx = cnaEmit->idx_of_event[0][evt];
+	printf("%3i %6i %6i\n", evt, idx, cnaEmit->loci[0][idx]);
+      }
+      exit(0);
+      */
     }
-    else if ( cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//2. map the CNA jumps to BAF
+    else if (cnaEmit->is_set && opts.cna_jumps_fn != NULL ){//2. map the CNA jumps to BAF
       bafEmit->map_jumps(cnaEmit);
       bafEmit->get_events_via_jumps();
     }
     else if (opts.baf_jump >= 0.0){//or 3. constant jump probability per base
       bafEmit->set_pjump(opts.baf_jump);
-    }
-    else{
-      abort();
+      bafEmit->get_events_via_jumps();
     }
     // map BAF events to SNV
     if (snvEmit->is_set){
@@ -685,9 +750,14 @@ void get_jump_probability( Clone * myClone, cmdl_opts& opts){
     }
     else if (opts.snv_jump >= 0.0){
       snvEmit->set_pjump(opts.snv_jump);
+      snvEmit->get_events_via_jumps();
     }    
   }
   // allocations, now that all events are fixed...
+  if (cnaEmit->is_set) cnaEmit->get_nObs();
+  if (bafEmit->is_set) bafEmit->get_nObs();
+  if (snvEmit->is_set) snvEmit->get_nObs();
+  //
   if (cnaEmit->is_set){
     cnaEmit->allocate_mean_tcn();
     if (bafEmit->is_set){
@@ -913,9 +983,14 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     // CNA llhs/gofs per sample...
     fprintf(clonal_fp, "# cna-gof\n");
     for (int t=0; t<nT; t++){
-      fprintf( clonal_fp, "%.4f\n", 
-	       //myClone->cna_llhs[t], 
-	       myClone->cna_gofs[t] / double(cnaEmit->total_loci));
+      unsigned int total_nObs = 0;
+      for (int s=0;s<cnaEmit->nSamples; s++){
+	for (int evt=0; evt<cnaEmit->nEvents[s]; evt++){
+	  total_nObs += cnaEmit->nObs[t][s][evt];
+	}
+      }
+      if (total_nObs==0 && myClone->cna_gofs[t] > 0) abort();
+      fprintf( clonal_fp, "%.4f\n", myClone->cna_gofs[t] / double(total_nObs));
     }
     if (cnaEmit->coarse_grained) print_gof( myClone, cnaEmit, opts);
     //
@@ -950,9 +1025,14 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       //llh and gof per sample
       fprintf(clonal_fp, "# baf-gof\n");
       for (int t=0; t<nT; t++){
-	fprintf(clonal_fp, "%.4f\n", 
-		//myClone->baf_llhs[t], 
-		myClone->baf_gofs[t] / double(bafEmit->total_loci));
+	unsigned int total_nObs = 0;
+	for (int s=0;s<bafEmit->nSamples; s++){
+	  for (int evt=0; evt<bafEmit->nEvents[s]; evt++){
+	    total_nObs += bafEmit->nObs[t][s][evt];
+	  }
+	}
+	if (total_nObs==0 && myClone->baf_gofs[t] > 0) abort();
+	fprintf(clonal_fp, "%.4f\n", myClone->baf_gofs[t] / double(total_nObs));
       }    
       if (bafEmit->coarse_grained) print_gof( myClone, bafEmit, opts);
     }
@@ -988,9 +1068,14 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
       delete [] myClone->alpha_snv;
       fprintf(clonal_fp, "# snv-gof\n");
       for (int t=0; t<nT; t++){
-	fprintf( clonal_fp, "%.4f\n", 
-		 //myClone->snv_llhs[t], 
-		 myClone->snv_gofs[t] / double(snvEmit->total_loci));
+	unsigned int total_nObs = 0;
+	for (int s=0;s<snvEmit->nSamples; s++){
+	  for (int evt=0; evt<snvEmit->nEvents[s]; evt++){
+	    total_nObs += snvEmit->nObs[t][s][evt];
+	  }
+	}
+	if (total_nObs==0 && myClone->snv_gofs[t] > 0) abort();
+	fprintf( clonal_fp, "%.4f\n", myClone->snv_gofs[t] / double(total_nObs));
       }
       if (snvEmit->coarse_grained) print_gof( myClone, snvEmit, opts);
     }
@@ -1036,15 +1121,21 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
     delete [] myClone->alpha_snv;
     fprintf(clonal_fp, "# snv-gof\n");
     for (int t=0; t<nT; t++){
-      fprintf( clonal_fp, "%.4f\n", 
-	       //myClone->snv_llhs[t], 
-	       myClone->snv_gofs[t] / double(snvEmit->total_loci));
+      unsigned int total_nObs = 0;
+      for (int s=0;s<snvEmit->nSamples; s++){
+	for (int evt=0; evt<snvEmit->nEvents[s]; evt++){
+	  total_nObs += snvEmit->nObs[t][s][evt];
+	}
+      }
+      if (total_nObs==0 && myClone->snv_gofs[t] > 0) abort();
+      fprintf( clonal_fp, "%.4f\n", myClone->snv_gofs[t] / double(total_nObs));
     }
     if (snvEmit->coarse_grained) print_gof( myClone, snvEmit, opts);
   }
   //
-  fprintf(clonal_fp, "# cna-ent baf-ent snv-ent\n");
-  fprintf(clonal_fp, "%.4e %.4e %.4e\n", myClone->cna_total_ent, myClone->baf_total_ent, myClone->snv_total_ent);
+  fprintf( clonal_fp, "# cna-ent baf-ent snv-ent\n");
+  fprintf( clonal_fp, "%.4e %.4e %.4e\n", 
+	   myClone->cna_total_ent, myClone->baf_total_ent, myClone->snv_total_ent);
   fclose(clonal_fp);
   if (snv_utcn_fp != NULL) fclose(snv_utcn_fp);
   if (baf_utcn_fp != NULL) fclose(baf_utcn_fp);
@@ -1313,7 +1404,9 @@ void print_gof( Clone * myClone, Emission * myEmit, cmdl_opts& opts){
 	       myEmit->chr[s], myEmit->loci[s][first], last-first+1, myEmit->loci[s][last]
 	       );
       for (int t=0; t< myClone->nTimes; t++){
-	fprintf( gof_fp, " %12.2f", gofs[t][s][evt]);
+	fprintf( gof_fp, " %.4f", 
+		 gofs[t][s][evt] > 0 ? gofs[t][s][evt] / double(myEmit->nObs[t][s][evt]) : 0.0
+		 );
       }
       fprintf( gof_fp,"\n");
     }

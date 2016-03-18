@@ -1,9 +1,13 @@
+run-bulk*
+run-test*
 *.[oa]
-build/
+build/*
+build-*tar.gz
 *~
 release/
 release*
 *.bk
 bk/
-*.farm
 recompile*
+.DS_Store
+test/

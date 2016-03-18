@@ -15,7 +15,6 @@ Clone::Clone(){
   nTimes    = 0;
   nClones   = 0;
   nLevels   = 0;
-  //
   freqs      = NULL;
   purity     = NULL;
   min_purity = NULL;
@@ -24,7 +23,7 @@ Clone::Clone(){
   baf_prior_map  = NULL;
   snv_prior_from_cna_baf_map  = NULL;
   snv_prior_from_cna_map      = NULL;
-  maxtcn     = 4;
+  maxtcn    = 4;
   logn_set  = 0;
   nFreq     = 0;
   mass      = NULL;
@@ -35,14 +34,17 @@ Clone::Clone(){
   copynumber       = NULL;
   copynumber_post  = NULL;
   initial_snv_prior_param= NULL;
-  pinit = 0.5;
   learn_priors = 0;
   cn_usage = NULL;
   clone_spectrum   = NULL;
   majcn_post  = NULL;
   bulk_fix  = -1.0;
-  baf_pen = 1.0;
-  snv_pen = 0.01;
+  cna_pen_norm = 1.0;
+  cna_pen_zero = 1.0;
+  cna_pen_diff = 1.0;
+  baf_pen_comp = 1.0;
+  snv_pen_mult = 0.01;
+  snv_pen_high = 0.5;
   snv_fpr = 1.0e-4;
   // pre-computed
   bafEmitLog = NULL;
@@ -141,9 +143,18 @@ void Clone::allocate( Emission * cna, Emission * baf, Emission * snv, const char
   Clone::set_normal_copy(chr_fn);
   //all chr present
   chrs.clear();
-  if (cnaEmit->is_set) for (int s=0;s<cnaEmit->nSamples;s++) chrs.insert(cnaEmit->chr[s]);
-  if (bafEmit->is_set) for (int s=0;s<bafEmit->nSamples;s++) chrs.insert(bafEmit->chr[s]);
-  if (snvEmit->is_set) for (int s=0;s<snvEmit->nSamples;s++) chrs.insert(snvEmit->chr[s]);
+  if (cnaEmit->is_set){
+    for (int s=0;s<cnaEmit->nSamples;s++) 
+      chrs.insert(cnaEmit->chr[s]);
+  }
+  if (bafEmit->is_set){
+    for (int s=0;s<bafEmit->nSamples;s++)
+      chrs.insert(bafEmit->chr[s]);
+  }
+  if (snvEmit->is_set){
+    for (int s=0;s<snvEmit->nSamples;s++) 
+      chrs.insert(snvEmit->chr[s]);
+  }
   if (cnaEmit->is_set){
     mass     = gsl_vector_alloc(nTimes);
     log_mass = gsl_vector_alloc(nTimes);

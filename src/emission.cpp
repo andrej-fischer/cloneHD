@@ -41,12 +41,16 @@ Emission::Emission(){
   coarse_grained = 0;
   idx_to_Event_mapped=0;
   connect=0;
+  nObs = NULL;
 }
 
 
 // real constructor
 void Emission::set(int ntimes, vector<int>& Chrs, vector<int>& nsites, int grid){
-  if ((int) Chrs.size() != (int) nsites.size()) abort();
+  if ((int) Chrs.size() != (int) nsites.size()){
+    cout<<"FATAL ERROR (use gdb to locate).\n";
+    abort();
+  }
   nSamples  = (int) nsites.size();
   nTimes    = ntimes;
   nSites  = new int [nSamples]; 
@@ -118,8 +122,8 @@ void Emission::init_events(){
 //map each observations to an event in another data track...
 void Emission::map_idx_to_Event(Emission * Emit, int sample){
   if (Emit->is_set == 0) abort(); 
-  if ( chr[sample] > Emit->maxchr || Emit->idx_of[ chr[sample] ] < 0 ) abort();
-  int Sample = Emit->idx_of[ chr[sample] ];
+  if (Emit->chrs.count(chr[sample]) == 0) abort();
+  int Sample = Emit->idx_of[chr[sample]];
   int Event = 0;
   int Idx   = Emit->idx_of_event[Sample][Event];
   int Locus = Emit->loci[Sample][Idx];
@@ -132,6 +136,7 @@ void Emission::map_idx_to_Event(Emission * Emit, int sample){
     locus = loci[sample][idx];
   }
   for ( Event = 1; Event < Emit->nEvents[Sample]; Event++){
+    if (idx == nSites[sample]) break; 
     Idx   = Emit->idx_of_event[Sample][Event];
     Locus = Emit->loci[Sample][Idx];
     while(locus < Locus){
@@ -139,11 +144,10 @@ void Emission::map_idx_to_Event(Emission * Emit, int sample){
       idx++;
       if (idx == nSites[sample]) break;  
       locus = loci[sample][idx];
-    }
-    if (idx == nSites[sample]) break;  
+    }     
   }
   while( idx < nSites[sample]){//right over-hang
-    Event_of_idx[sample][idx]= Emit->nEvents[Sample] - 1;
+    Event_of_idx[sample][idx] = Emit->nEvents[Sample] - 1;
     idx++;
   }
 }
@@ -198,10 +202,10 @@ void Emission::get_events_via_jumps(){
     }
     total_events += nEvents[s];
     if (idx_of_event[s] != NULL)   delete [] idx_of_event[s];
-    idx_of_event[s]   = new unsigned int [nEvents[s]];
+    idx_of_event[s] = new unsigned int [nEvents[s]];
     int evt=0;
-    event_of_idx[s][0]   = 0;
-    idx_of_event[s][0]   = 0;
+    event_of_idx[s][0] = 0;
+    idx_of_event[s][0] = 0;
     for (int idx=1; idx<nSites[s]; idx++){
       if ( pjump[s][idx] > 0.0){
 	evt++;
@@ -259,7 +263,42 @@ void Emission::allocate_av_cn(int maxtcn){//only once!
   }
 }
 
-
+void Emission::get_nObs(){
+  if (nObs!=NULL) abort();
+  nObs = new unsigned int ** [nTimes];
+  for (int t=0; t<nTimes; t++){
+    nObs[t] = new unsigned int * [nSamples];
+    for (int s=0; s<nSamples; s++){
+      if (nEvents[s] == 0){
+	nObs[t][s] = NULL; 
+	continue;
+      }
+      nObs[t][s] = new unsigned int [nEvents[s]];
+    }
+  }
+  for (int s=0; s<nSamples; s++){
+    for (int evt=0; evt<nEvents[s]; evt++){
+      int first = idx_of_event[s][evt];     
+      int last 
+	= (evt < nEvents[s]-1) 
+	? idx_of_event[s][evt+1] - 1 
+	: nSites[s] - 1; 
+      unsigned int n,N;
+      for (int t=0; t<nTimes; t++){
+	nObs[t][s][evt] = 0;
+	for (int idx=first; idx<=last; idx++){
+	  n = reads[t][s][idx];
+	  N = depths[t][s][idx];
+	  if (N==0){
+	    if (n>0) abort();
+	    continue;
+	  }
+	  nObs[t][s][evt]++;
+	}
+      }
+    }
+  }
+}
 
 
 //Destructor
@@ -875,72 +914,90 @@ void Emission::set_pjump(double jp){
 }
 
 
-void Emission::coarse_grain_jumps( int sample, double plow, int range){
-  std::map<int,double>::iterator it, max_it, first, last;
+void Emission::coarse_grain_jumps( int sample, double min_jump, int range){
+  std::map<int,double>::iterator it, max_it, first_it, last_it;
   int L = nSites[sample];
   double * cg_pjump = new double [L];
   for (int i=0; i<L; i++) cg_pjump[i] = 0.0;
   std::map<int,double> remaining;
-  pjump[sample][0]=0;
-  for (int i=0; i<L; i++) remaining.insert(std::pair<int,double>( i, pjump[sample][i]));
-  //get global minimum...
-  first = remaining.begin();
-  last  = remaining.end();
-  first++;
-  it = std::min_element( first, last, value_comparer);
-  double gmin = 0;
-  gmin = it->second;
-  int ct=0,idx=0,lidx=0;
-  double p=0,p0=0,pmin=0,ps=0;
-  while (ct<1000){
+  std::map<int,int> idxOf;
+  pjump[sample][0] = 0;
+  int ct=0;
+  for (int i=0; i<L; i++){
+    if (pjump[sample][i] <= 0) continue;
+    remaining.insert(std::pair<int,double>( ct, pjump[sample][i]));
+    idxOf.insert(std::pair<int,int>(ct,i));
     ct++;
+  }
+  //get global minimum...
+  first_it = remaining.begin();
+  last_it  = remaining.end();
+  if (first_it==last_it){//no jumps whatsoever!
+    for (int i=0; i<L; i++) pjump[sample][i] = cg_pjump[i];
+    delete [] cg_pjump;
+    remaining.clear();
+    idxOf.clear();
+    return;
+  }
+  it = std::min_element( first_it, last_it, value_comparer);
+  double gmin = it->second;
+  double p=0,p0=0,pmin=0,ps=0;
+  while (remaining.size() > 0){
     max_it = std::max_element( remaining.begin(), remaining.end(), value_comparer);
     p0  = max_it->second;
-    idx = max_it->first;
-    lidx=idx;
-    if (p0 < plow) break;
+    if (p0 < min_jump) break;//pjump at peak is below min_jump
     ps = 1.0 - p0;
-    first = max_it;
-    last  = max_it;
-    pmin = p0;
+    first_it = max_it;
+    last_it  = max_it;
+    pmin  = p0;
     //above...
     it = max_it;
-    while(it != remaining.end()){
+    int incl=0,done=0;
+    while( it != remaining.end() ){
       it++;
       p = it->second;
-      if( p>10.0*pmin || it->first != lidx+1 || p<10.0*gmin) break;
-      if (it->first < idx+range) ps *= 1.0 - p;
+      if ( p>10.0*pmin || it->first != last_it->first+1 || p<10.0*gmin){
+	done = 1;
+      }
+      else if (incl < range){
+	ps *= 1.0 - p;
+	incl++;
+      }
       pmin = min(pmin,p);
-      lidx = it->first;
-      last = it;
+      last_it = it;
+      if (done) break;
     }
-    last++;
     //below...
     it   = max_it;
-    lidx = idx;
     pmin = p0;
+    incl = 0;
+    done = 0;
     while(it != remaining.begin()){
       it--;
       p = it->second;
-      if( p>10.0*pmin || it->first != lidx-1 || p<10.*gmin) break;
-      if (it->first > idx-range) ps *= 1.0 - p;
-      pmin = min(pmin,p);
-      lidx = it->first;
-      first = it;
+      if( p>10.0*pmin || it->first != first_it->first-1 || p<10.*gmin) done=1;
+      else if (incl<range){
+	ps *= 1.0 - p;
+	incl++;
+      }
+      first_it = it;
+      pmin  = min(pmin,p);
+      if(done) break;
     }
-    //remove...
-    remaining.erase( first, last);
     //set effective pjump
-    cg_pjump[idx] = 1.0-ps;
+    cg_pjump[idxOf[max_it->first]] = 1.0-ps;
+    //remove...
+    remaining.erase( first_it, last_it);
   }
   //fill
   for (int i=0; i<L; i++) pjump[sample][i] = cg_pjump[i];
   delete [] cg_pjump;
   remaining.clear();
+  idxOf.clear();
 }
 
 
 bool value_comparer(std::map<int,double>::value_type &i1, std::map<int,double>::value_type &i2){
-  return i1.second<i2.second;
+  return i1.second < i2.second;
 }
 

@@ -1,5 +1,46 @@
 # changelog for cloneHD/filterHD
 
+## v1.17.9 / to come
+
+* bug fix for sparse data with singletons in a chr (bug-001)
+	
+## v1.17.8 / 29.05.2014
+
+*  added checks whether files are open for writing
+*  changed to new defaults: `--(cna/baf/snv)-rnd [double:1.0e-6]` (nan)
+*  allowed `--cna-jump -1` and `--baf-jump -1` (no jumps)
+*  `--cna-jumps [baf-jumps-file]` and vice versa enabled (useful for exome data)
+*  jumps read and integrated with new function match_jumps() (not get_track()).
+* fixed bug when chromosomes have no non-zero observations.
+
+## v1.17.7 / 25.04.2014
+
+*  fixed range error in `pre-filter` in pick-from/match-to mode.
+
+## v1.17.6 / 24.04.2014
+
+*  fixed nan bug in GOF, when N==0 (missing data).
+*  fixed bugs in `pre-filter`, when `--window-size` is greater than length
+*  fixed bug in `pre-filter` in pick-from-match-to mode
+
+## v1.17.5 / 22.04.2014
+
+*  fixed memory alloc bug in pre-filter
+*  abandon ftp site for releases, used only for backup and beta
+
+## v1.17.4 / 10.04.2014
+
+*  fixed fatal bug in snv-mode with correlations
+
+## v1.17.3 / 04.04.2014
+
+*  new program `pre-filter`
+*  `--snv-pen` to `--snv-pen-high` and `--snv-pen-mult`
+*  `--baf-pen` to `--baf-pen-compl`
+*  `--cna-pen` to `--cna-pen-zero`, `--cna-pen-diff` and `cna-pen-norm`
+*  split README
+*  fixed bug in SNV transition matrix in combination with `--max-tcn [file]`
+
 ## v1.17.2 / 27.03.2014
 
 *  new output: posterior per subclone, goodness of fit (GOF) per
