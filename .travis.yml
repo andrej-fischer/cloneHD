@@ -1,16 +1,20 @@
+# see http://about.travis-ci.org/docs/user/languages/cpp/ for more hints
 language: cpp
 
+# list any compiler you want to test against
+compiler:
+  - clang
+  - gcc
+
+# list branches you want to run continuous integration on
 branches:
   only:
-	  - develop
+    - develop
 
-compiler:
-	- clang
-	- gcc
-  
+# create build directory
 before_install:
-	- mkdir -p build
-	- cd src
+  - mkdir -p build
+  - cd src
 
-script:
-	- make
+# run Makefile
+script: make
