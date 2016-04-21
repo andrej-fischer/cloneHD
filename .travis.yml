@@ -9,14 +9,14 @@ os:
   - linux
   - osx
   
-# Install gcc on osx (default is a front-end for LLVM) and gsl on osx and linux
+# Replace gcc on osx (default is a front-end for LLVM) and gsl on osx and linux
 before_install:
   - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then
     sudo apt-get install gsl-bin libgsl0-dev;
     fi
   - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
+    export CC=gcc-4.8; export CXX=g++-4.8;
     brew update;
-    brew install gcc; export CC=gcc-5; export CXX=g++-5;
     brew install gsl;
     fi
 
