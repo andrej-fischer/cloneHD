@@ -1,0 +1,16 @@
+language: cpp
+
+branches:
+  only:
+	  - develop
+
+compiler:
+	- clang
+	- gcc
+  
+before_install:
+	- mkdir -p build
+	- cd src
+
+script:
+	- make
