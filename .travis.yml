@@ -1,0 +1,32 @@
+# Control file for continuous integration testing at http://travis-ci.org/
+language: cpp
+
+# Compiler selection
+compiler: gcc
+
+# VM selection
+os:
+  - linux
+  - osx
+  
+# Install gcc on osx (default is a front-end for LLVM) and gsl on osx and linux
+before_install:
+  - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then
+    sudo apt-get install gsl-bin libgsl0-dev;
+    fi
+  - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
+    brew update;
+    brew install gcc; export CC=gcc-5; export CXX=g++-5;
+    brew install gsl;
+    fi
+
+# Run Makefile
+script:
+  - mkdir -p build
+  - cd src
+  - make
+
+# Only watch the master branch
+branches:
+  only:
+    - master
