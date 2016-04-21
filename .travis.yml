@@ -2,9 +2,7 @@
 language: cpp
 
 # Compiler selection
-compiler:
-  - clang
-  - gcc
+compiler: gcc
 
 os:
   - linux
