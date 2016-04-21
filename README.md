@@ -3,6 +3,8 @@
 The current stable release, as well as pre-compiled executable binaries 
 for Mac OS X and GNU Linux (64bit), can be found [here](https://github.com/andrej-fischer/cloneHD/releases). The cloneHD software is undergoing rapid development. Watch/Star this repo to receive updates.
 
+[![Build Status](https://travis-ci.org/ivazquez/cloneHD.svg?branch=develop)](https://travis-ci.org/ivazquez/cloneHD)
+
 # Run a test with simulated data
 
 After downloading cloneHD from the release site, you can test both filterHD and cloneHD by running
