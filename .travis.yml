@@ -4,6 +4,7 @@ language: cpp
 # Compiler selection
 compiler: gcc
 
+# VM selection
 os:
   - linux
   - osx
@@ -11,11 +12,15 @@ os:
 # Create build directory
 before_install:
   - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then
-      sudo apt-get install libgsl0ldbl ;
+      sudo apt-get install gsl-bin libgsl0-dev;
     fi
   - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
-      brew update ;
-      brew install gsl ;
+      # Since default gcc on osx is just a front-end for LLVM
+      if [[ ${CC} = gcc ]]; then
+        brew install gcc; CC=gcc-5;
+      fi
+      brew update;
+      brew install gsl;
     fi
 
 # Run Makefile
