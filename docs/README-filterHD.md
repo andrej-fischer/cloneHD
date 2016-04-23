@@ -4,8 +4,8 @@
 
 *    `--data [file]`  Input data. 
 
-     The file format is the same as below for `--cna`, `--baf` or
-     `--snv`. Multiple amples are processed independently, one by one.
+     The file format is the same as in cloneHD for `--cna`, `--baf` or
+     `--snv` (see  [here](./README-cloneHD.md)). Multiple samples are processed independently, one by one.
 
 *    `--mode [1/2/3/4]`  Emission modes.
 
@@ -36,7 +36,7 @@
 
 ## Parameter options
 
-The HMM underlying filterHD is determined by these four global
+The continuous state space HMM underlying filterHD is determined by the following global
 parameters. They can all be fixed, otherwise they are learned from the data.
 
 *    `--jump [double]`   Fix the jump probability per length unit (bp).
@@ -76,6 +76,25 @@ local optima and want to start in the neighbourhood of a particular one.
      The grid size for the internal representation of continuous distributions. For large ranges in
      mode 3/4, it can make sense to increase this resolution.
 
-## filterHD output files
+# filterHD output  
 
-TBD
+filterHD generates a few output files automatically. Here, we provide annotated screenshots for them for the simulated example data set.
+
+## STDOUT
+
+![stdout](/images/screenshots/filterHD-stdout.png "filterHD stdout")
+
+## Output file
+
+![posterior1](/images/screenshots/filterHD-posterior-1.png "filterHD posterior")
+
+The posterior mean value of the hidden emission rate and jump probabilities
+
+![posterior2](/images/screenshots/filterHD-posterior-2.png "filterHD posterior")
+
+The same as above, but here a bias (normal) was used, so the rate is scaled accordingly. Note: in filterHD, the bias field is not scaled to have mean 1!
+
+
+![posterior3](/images/screenshots/filterHD-posterior-3.png "filterHD posterior")
+
+The same as above, but here the whole posterior distribution was requested with `--dist 1`

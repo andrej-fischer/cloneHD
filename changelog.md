@@ -1,5 +1,9 @@
 # changelog for cloneHD/filterHD
 
+## v1.17.9 / to come
+
+* bug fix for sparse data with singletons in a chr (bug-001)
+	
 ## v1.17.8 / 29.05.2014
 
 *  added checks whether files are open for writing
