@@ -35,6 +35,13 @@ Clone::Clone(){
   copynumber_post  = NULL;
   initial_snv_prior_param= NULL;
   learn_priors = 0;
+	
+	snv_cluster_w      = NULL;
+	snv_tree_prior = NULL;
+	snv_pen_tree=1.0;
+	
+	
+	
   cn_usage = NULL;
   clone_spectrum   = NULL;
   majcn_post  = NULL;
@@ -120,6 +127,10 @@ Clone::~Clone(){
   if (snv_prior_from_cna_map != NULL){
     gsl_matrix_free(snv_prior_from_cna_map);
   }
+	if (snv_cluster_w != NULL){
+		gsl_vector_free(snv_cluster_w);
+	}
+	
   logn.clear();
   loggma.clear();
   if (initial_snv_prior_param != NULL) gsl_matrix_free(initial_snv_prior_param);

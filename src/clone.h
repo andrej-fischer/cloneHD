@@ -111,9 +111,26 @@ class Clone{
   void set_bafSymMap();
   // *** in clone-prior.cpp **************************************************************************
   int learn_priors;
+	
+  int learn_cluster_w;
+  gsl_vector * snv_cluster_w; // 2^nClones-1
+  gsl_vector * snv_tree_prior; // nLevels
+  double snv_pen_tree;
+	
+	
+  void initialize_snv_cluster_w();
+  void set_snv_cluster_w(gsl_vector * snv_cluster_w_param);
+  void set_snv_tree_prior();
+  //void apply_snv_tree_prior(gsl_vector*& Prior, int snvChr);
+	
+	
   gsl_matrix * baf_prior_map;
   gsl_matrix ** snv_prior_from_cna_baf_map;
   gsl_matrix *  snv_prior_from_cna_map;
+	
+	
+	
+	
   void set_margin_map();
   void set_baf_prior_map();
   void set_snv_prior_map();

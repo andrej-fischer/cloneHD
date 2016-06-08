@@ -8,6 +8,125 @@
 using namespace std;
 
 
+void Clone::set_snv_tree_prior(){
+	
+	gsl_vector_set_all(snv_tree_prior,snv_pen_tree);
+	if(nClones>1 && nClones<=3){
+		// nested clones
+		for (int k=1; k < nLevels; k++){
+			int countM=0;
+			
+			if(nClones==2){
+				if(copynumber[k][0]==0&&copynumber[k][1]>0){
+					//prior->data[k] *=snv_pen_tree;
+					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,0);
+				}  
+				if(copynumber[k][0]>0&&copynumber[k][0]==copynumber[k][1]){
+					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,1);
+				}
+				if(copynumber[k][0]>0&&copynumber[k][1]==0){
+					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,2);
+				}
+				//				if(copynumber[k][0]==0&&copynumber[k][1]>0){
+//					//prior->data[k] *=snv_pen_tree;
+//					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,0);
+//				}
+//				if(copynumber[k][0]>0&&copynumber[k][1]>0){
+//					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,1);
+//				}
+//				if(copynumber[k][0]>0&&copynumber[k][1]==0){
+//					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,2);
+//				}
+			}
+			if(nClones==3){
+				snv_tree_prior->data[k]=snv_pen_tree;
+				if(copynumber[k][0]==copynumber[k][1] && copynumber[k][0]==copynumber[k][2] &&copynumber[k][0]>0 ){
+					//prior->data[k] *=snv_pen_tree;
+					// p111
+					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,0);
+				}
+				if(copynumber[k][0]==0 && copynumber[k][1]>0 && copynumber[k][2]>0 ){
+					//prior->data[k] *=snv_pen_tree;
+					// p011
+					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,1);
+				}
+				if(copynumber[k][0]>0 && copynumber[k][1]==0 && copynumber[k][2]==0){
+					//prior->data[k] *=snv_pen_tree;
+					// p100
+					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,2);
+				}
+				if(copynumber[k][0]==0 && copynumber[k][1]==0 && copynumber[k][2]>0){
+					//prior->data[k] *=snv_pen_tree;
+					// p001
+					snv_tree_prior->data[k] =gsl_vector_get(snv_cluster_w,3);
+				}
+				
+			
+			}
+		}
+		
+		
+		
+		
+	};
+	
+//	if (snvEmit->log_space){
+//		for (int l=0; l<nLevels; l++){
+//			double val = gsl_vector_get(snv_tree_prior, l);
+//			gsl_vector_set( snv_tree_prior, l, val>0 ? log(val) : logzero);
+//		}
+//	}
+
+	
+	
+};
+
+void Clone::initialize_snv_cluster_w(){
+	
+	cout << "initialize_snv_cluster_w and snv_prior_tree" << endl;
+	int nPriors=pow(2.0,(double)nClones)-1;
+	snv_cluster_w=gsl_vector_calloc(nPriors);
+	gsl_vector_set_all(snv_cluster_w, 1.0/nPriors);
+	if(snv_pen_tree<1.0){
+		gsl_vector_set(snv_cluster_w,snv_cluster_w->size-1,snv_pen_tree);
+	}
+	snv_tree_prior=gsl_vector_calloc(nLevels);
+	gsl_vector_set_all(snv_tree_prior,0.0);
+	
+}
+void Clone::set_snv_cluster_w(gsl_vector * snv_cluster_w_param){
+	
+	gsl_vector_set_all(snv_cluster_w,snv_pen_tree);
+	if(snv_cluster_w->size==snv_cluster_w_param->size){
+		gsl_vector_memcpy(snv_cluster_w,snv_cluster_w_param);
+	}else if(snv_cluster_w->size>snv_cluster_w_param->size){
+		double z=0.0;
+		for(int i=0; i< snv_cluster_w_param->size; i++){
+			z+=snv_cluster_w_param->data[i];
+			gsl_vector_set(snv_cluster_w,i,snv_cluster_w_param->data[i]);
+		}
+		if(snv_cluster_w->size==3){
+			snv_cluster_w->data[snv_cluster_w_param->size]=1.0-z;
+		}
+		if(snv_cluster_w->size==7){
+			snv_cluster_w->data[snv_cluster_w_param->size]=1.0-z;
+		}
+		
+	}else{
+		abort();
+	}
+	
+	//	cout << "Set Prior_w: ";
+	//	for(int i=0; i<snv_prior_w->size; i++){
+	//		printf("%.4f ",snv_prior_w->data[i]);
+	//	}
+	//	cout << endl;
+}
+
+
+
+
+
 // CNA prior (only used for chr entry or w/o correlations)...
 void Clone::set_cna_prior( gsl_vector * prior, int sample){
   // cna_pen_norm: penalty for being  different from the normal copy number

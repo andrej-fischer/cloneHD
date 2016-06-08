@@ -98,10 +98,13 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
   gsl_vector ** best_mass   = new gsl_vector * [opts.nmax+1];
   gsl_matrix ** best_clones = new gsl_matrix * [opts.nmax+1];
   gsl_matrix ** best_priors = new gsl_matrix * [opts.nmax+1];
+  gsl_vector ** best_cluster_w = new gsl_vector * [opts.nmax+1];
+	
   for (int n=0; n<=opts.nmax; n++){
     best_mass[n]   = NULL;
     best_clones[n] = NULL;
     best_priors[n] = NULL;
+	best_cluster_w[n] = NULL;
   }
   //exit(0);
   double bic=0, llh=0, max_llh=0, cna_llh=0, baf_llh=0, snv_llh=0, max_bic=0; 
@@ -176,19 +179,33 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     gsl_matrix * clones = gsl_matrix_alloc( nT, n);
     gsl_vector * mass   = NULL;
     gsl_matrix * priors = NULL;
+	gsl_vector * cluster_w  = NULL;
+	  
     if (cnaEmit->is_set){//mass only for CNA data...
       mass         = gsl_vector_calloc(nT);
       best_mass[n] = gsl_vector_calloc(nT);
+		if(myClone->learn_cluster_w>0){
+			int nWeights=pow(2.0,(double)n)-1;
+			cluster_w         = gsl_vector_calloc(nWeights);
+			best_cluster_w[n] = gsl_vector_calloc(nWeights);
+		}
+		
     }
     else if (snvEmit->is_set && myClone->learn_priors){//SNV cn-priors only for SNV data...
       priors         = gsl_matrix_calloc(myClone->maxtcn+1,myClone->maxtcn+1);
       best_priors[n] = gsl_matrix_calloc(myClone->maxtcn+1,myClone->maxtcn+1);
-    }
+	}
+	else if (snvEmit->is_set && myClone->learn_cluster_w>0){//SNV cluster_w
+		int nWeights=pow(2.0,(double)n)-1;
+		cluster_w         = gsl_vector_calloc(nWeights);
+		best_cluster_w[n] = gsl_vector_calloc(nWeights);
+	}
+	  
     for (int trial=0; trial<opts.trials; trial++){//independent trials...
       printf("\nTrial %2i of %2i:...\n", trial+1, opts.trials);
       //get clones/mass and llh value...
       double cl=0.0,bl=0.0,sl=0.0;
-      get_clones( clones, Clones, mass, Mass, priors, myClone, opts, cl, bl, sl);
+      get_clones( clones, Clones, mass, Mass, priors, cluster_w, myClone, opts, cl, bl, sl);
       llh = cl + bl + sl;
       //test llh value...
       if (trial==0 || llh > max_llh){
@@ -198,12 +215,12 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
         snv_llh = sl;
 	btrial  = trial;//trial with the best solution
 	// keep results, sorted by sizw in t==1...	
-        std::vector<int> idx;
+       std::vector<int> idx;
         for (int i = 0; i < n; ++i) idx.push_back(i);
-        SortDesc sd;
-        gsl_vector_view row = gsl_matrix_row(clones,0);
-        sd.arg = (&row.vector)->data;
-        std::sort( idx.begin(), idx.end(), sd);
+       // SortDesc sd;
+        //gsl_vector_view row = gsl_matrix_row(clones,0);
+        //sd.arg = (&row.vector)->data;
+        //std::sort( idx.begin(), idx.end(), sd);
         for (int i = 0; i < nT; ++i){
           for (int j = 0; j < n; ++j){
             gsl_matrix_set(best_clones[n],i,j,gsl_matrix_get(clones,i,idx[j]));
@@ -212,6 +229,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
         // gsl_matrix_memcpy( best_clones[n], clones);
         if (mass != NULL)   gsl_vector_memcpy( best_mass[n],   mass);
         if (priors != NULL) gsl_matrix_memcpy( best_priors[n], priors);
+		if (cluster_w != NULL)   gsl_vector_memcpy( best_cluster_w[n],  cluster_w);
       }
       cout<<endl;
       if (Clones != NULL && Mass != NULL) break;
@@ -231,6 +249,7 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
     gsl_matrix_free(clones);
     if (mass != NULL)   gsl_vector_free(mass);
     if (priors != NULL) gsl_matrix_free(priors);
+	if (cluster_w != NULL)   gsl_vector_free(cluster_w);
   }
   //print all results to file
   for (int n=0; n<=opts.nmax; n++){
@@ -260,15 +279,30 @@ int infer_clones( gsl_matrix * Clones, gsl_vector * Mass, Clone * myClone, cmdl_
   if (best_priors[bestn] != NULL && bestn > 0){
     myClone->set_snv_prior( best_priors[bestn] );
   }
+	if (best_cluster_w[bestn] != NULL && bestn > 0){
+		myClone->set_snv_cluster_w( best_cluster_w[bestn] );
+		myClone->set_snv_tree_prior();
+		cout << "Best priors_w: ";
+		for(int i=0; i< myClone->snv_cluster_w->size; i++){
+			printf("%.3f ",myClone->snv_cluster_w->data[i]);
+		}
+		cout << "\n";
+	}
+	
+	
+	
   //cleanup
   for (int n=0; n<=opts.nmax; n++){
     if (best_mass[n] != NULL)   gsl_vector_free(best_mass[n]);
     if (best_clones[n] != NULL) gsl_matrix_free(best_clones[n]);
     if (best_priors[n] != NULL) gsl_matrix_free(best_priors[n]);
+	if (best_cluster_w[n] != NULL)   gsl_vector_free(best_cluster_w[n]);
+	  
   }
   delete [] best_mass;
   delete [] best_clones;
   delete [] best_priors;
+  delete [] best_cluster_w;
   fclose(clonal_fp);
   //done
   return(bestn);
@@ -279,7 +313,8 @@ double get_clones( gsl_matrix *& clones,
 		   gsl_matrix *& Clones, 
 		   gsl_vector *& mass, 
 		   gsl_vector *& Mass, 
-		   gsl_matrix *& priors, 
+		   gsl_matrix *& priors,
+		   gsl_vector *& cluster_w,
 		   Clone * myClone,
 		   cmdl_opts& opts,
 		   double& cna_llh,
@@ -292,14 +327,14 @@ double get_clones( gsl_matrix *& clones,
   myClone->set( clones );
   double llh=0;
   if (myClone->cnaEmit->is_set){//CNA + (BAF + SNV)
-    llh = get_clones_cna( clones, Clones, mass, Mass, myClone, opts, cna_llh, baf_llh, snv_llh);
+    llh = get_clones_cna( clones, Clones, mass, Mass, cluster_w, myClone, opts, cna_llh, baf_llh, snv_llh);
   }
   else if (myClone->snvEmit->is_set){//SNV-only
     if (myClone->snvEmit->connect){
       llh = get_clones_snv_wcorr( clones, Clones, myClone, opts);
     }
     else{
-      llh = get_clones_snv_ncorr( clones, Clones, priors, myClone, opts); 
+      llh = get_clones_snv_ncorr( clones, Clones, priors, cluster_w, myClone, opts);
     }
     snv_llh = llh;
   }
@@ -310,7 +345,8 @@ double get_clones( gsl_matrix *& clones,
 double get_clones_cna( gsl_matrix *& clones, 
 		       gsl_matrix *& Clones, 
 		       gsl_vector *& mass, 
-		       gsl_vector *& Mass, 
+		       gsl_vector *& Mass,
+			   gsl_vector *& cluster_w,
 		       Clone * myClone,
 		       cmdl_opts& opts,
 		       double& cna_llh,
@@ -326,264 +362,286 @@ double get_clones_cna( gsl_matrix *& clones,
   double cl=0,bl=0,sl=0,llh=0;
   int steps;
   gsl_matrix * nclones = gsl_matrix_alloc(nT,nC);
-  gsl_vector * mem = gsl_vector_alloc(nC);
-  if ( snvEmit->is_set && myClone->bulk_mean != NULL) myClone->set_bulk_to_prior();
-  if (Mass==NULL && Clones == NULL){//nothing is fixed
-    //*** STEP 1: FIND FIRST ESTIMATES OF MASS AND CLONES ***    
-    //random initial values
-    for (int t=0; t<nT; t++){
-      set_random_start_freq( mem, (myClone->min_purity)->data[t]);
-      gsl_matrix_set_row( clones, t, mem);
-      double p = (1.5 - double(rand()) / double(RAND_MAX));
-      mass->data[t] = 0.5*double(myClone->nmean->data[t]) * p;
-    }
-    int restarts = opts.mass_gauging ? 0 : opts.restarts;
-    llh = cna_clones_mass( clones, mass, myClone, restarts, steps, cna_llh, baf_llh, snv_llh);
-    report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
-    gsl_matrix * candidate_masses = gsl_matrix_calloc(nL,nT);
-    gsl_vector * levels = gsl_vector_calloc(nL);
-    gsl_vector * nmass  = gsl_vector_calloc(nT);
-    int repeat = opts.mass_gauging;
-    int iter   = 0;
-    double nllh;
-    while(repeat==1){
-      repeat=0;
-      iter++;
-      //*** STEP 2: FIND/REFINE CANDIDATE MASSES (GIVEN FIXED CLONES/MASS) ***	
-      get_candidate_masses( clones, mass, myClone, candidate_masses, levels, opts.min_occ);
-      //*** STEP 3: FOR EACH CANDIDATE MASS, FIND NEW CLONES ***
-      for (int i=0; i<nL; i++){
-	//get new estimates for clones with fixed mass
-	gsl_vector_view cmass = gsl_matrix_row(candidate_masses,i);
-	if ( gsl_vector_isnull(&cmass.vector)) continue;
-	//report...
-	int level = levels->data[i];
-	printf("\rGauging masses via state ");
-	for (int j=0; j<nC; j++) printf("%i", myClone->copynumber[level][j]);
-	printf(" (%6.3f %%) to: ", myClone->majcn_post->data[level] * 100.0);
-	for (int t=0; t<nT; t++){
-	  printf("%.3e ", gsl_matrix_get(candidate_masses, i, t));
+	gsl_vector * mem = gsl_vector_alloc(nC);
+//	myClone->initialize_snv_prior_param();
+//	myClone->initialize_snv_cluster_w();
+//	myClone->set_snv_tree_prior();
+	
+	
+	if ( snvEmit->is_set && myClone->bulk_mean != NULL) myClone->set_bulk_to_prior();
+	if (Mass==NULL && Clones == NULL){//nothing is fixed
+		//*** STEP 1: FIND FIRST ESTIMATES OF MASS AND CLONES ***
+		//random initial values
+		for (int t=0; t<nT; t++){
+			set_random_start_freq( mem, (myClone->min_purity)->data[t]);
+			gsl_matrix_set_row( clones, t, mem);
+			double p = (1.5 - double(rand()) / double(RAND_MAX));
+			mass->data[t] = 0.5*double(myClone->nmean->data[t]) * p;
+		}
+		int restarts = opts.mass_gauging ? 0 : opts.restarts;
+		
+		if(myClone->learn_cluster_w==0){
+			llh = cna_clones_mass( clones, mass, myClone, restarts, steps, cna_llh, baf_llh, snv_llh);
+		}else{
+			myClone->initialize_snv_prior_param();
+			myClone->initialize_snv_cluster_w();
+			myClone->set_snv_tree_prior();
+			llh = cna_clones_mass_cluster_w( clones, mass, cluster_w, myClone, restarts, steps, cna_llh, baf_llh, snv_llh);
+			printf("Found these cluster_w after optimisation: \n");
+			for (int i=0; i< (int) cluster_w->size; i++){
+				printf("%.3f ", gsl_vector_get(cluster_w, i));
+			}
+			cout << endl;
+
+			
+		}
+		
+		report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
+		gsl_matrix * candidate_masses = gsl_matrix_calloc(nL,nT);
+		gsl_vector * levels = gsl_vector_calloc(nL);
+		gsl_vector * nmass  = gsl_vector_calloc(nT);
+		int repeat = opts.mass_gauging;
+		int iter   = 0;
+		double nllh;
+		while(repeat==1){
+			repeat=0;
+			iter++;
+			//*** STEP 2: FIND/REFINE CANDIDATE MASSES (GIVEN FIXED CLONES/MASS) ***
+			get_candidate_masses( clones, mass, myClone, candidate_masses, levels, opts.min_occ);
+			//*** STEP 3: FOR EACH CANDIDATE MASS, FIND NEW CLONES ***
+			for (int i=0; i<nL; i++){
+				//get new estimates for clones with fixed mass
+				gsl_vector_view cmass = gsl_matrix_row(candidate_masses,i);
+				if ( gsl_vector_isnull(&cmass.vector)) continue;
+				//report...
+				int level = levels->data[i];
+				printf("\rGauging masses via state ");
+				for (int j=0; j<nC; j++) printf("%i", myClone->copynumber[level][j]);
+				printf(" (%6.3f %%) to: ", myClone->majcn_post->data[level] * 100.0);
+				for (int t=0; t<nT; t++){
+					printf("%.3e ", gsl_matrix_get(candidate_masses, i, t));
+				}
+				cout<<endl;
+				//fix candidate masses...
+				myClone->set_mass( &cmass.vector );
+				//find new clones, given this mass...
+				for (int t=0; t<nT; t++){//random initial clones
+					set_random_start_freq( mem, myClone->min_purity->data[t]);
+					gsl_matrix_set_row( nclones, t, mem);
+				}
+				steps=0;
+				nllh = cna_clones_fixed_mass( nclones, myClone, opts.restarts, steps, cl, bl, sl);
+				if (nllh > llh + 1.0 ){
+					llh = nllh;
+					cna_llh = cl;
+					baf_llh = bl;
+					snv_llh = sl;
+					gsl_vector_memcpy( mass, &cmass.vector);
+					gsl_matrix_memcpy( clones, nclones);
+					printf("\r");
+					report_results( cl,bl,sl, steps, mass, clones);
+					repeat=1;
+				}
+				//
+				if (repeat==1){//***STEP 4: REFINE MASSES, then GOTO 2 ***
+					gsl_matrix_memcpy( nclones, clones);
+					gsl_vector_memcpy( nmass, mass);
+					steps=0;
+					nllh = cna_clones_mass( nclones, nmass, myClone, 0, steps, cl, bl, sl);
+					if ( nllh > llh ){
+						llh = nllh;
+						cna_llh = cl;
+						baf_llh = bl;
+						snv_llh = sl;
+						gsl_vector_memcpy( mass, nmass);
+						gsl_matrix_memcpy( clones, nclones);
+						printf("\r");
+						report_results( cl, bl, sl, steps, mass, clones);
+					}
+					break;
+				}
+			}
+		}
+		gsl_matrix_free(candidate_masses);
+		gsl_vector_free(levels);
+		gsl_vector_free(nmass);
+		//SNV bulk update, if required...
+		if (opts.bulk_updates>0){
+			for (int it=0; it<opts.bulk_updates; it++){
+				snv_bulk_update(myClone);
+				myClone->set_bulk_to_post();
+				if (myClone->bulk_prior==NULL) break;
+				if (snvEmit->coarse_grained) myClone->get_snvEmitLog();
+				gsl_matrix_memcpy( nclones, clones);
+				gsl_vector_memcpy( nmass, mass);
+				nllh = cna_clones_mass( nclones, nmass, myClone, 0, steps, cl, bl, sl);
+				if (nllh > llh + 1.0){
+					llh = nllh;
+					cna_llh = cl;
+					baf_llh = bl;
+					snv_llh = sl;
+					gsl_vector_memcpy( mass, nmass);
+					gsl_matrix_memcpy( clones, nclones);
+					report_results( cl,bl,sl, steps, mass, clones);
+				}
+				else{
+					break;
+				}
+			}
+		}
 	}
-	cout<<endl;
-	//fix candidate masses...
-	myClone->set_mass( &cmass.vector );
-	//find new clones, given this mass...
-	for (int t=0; t<nT; t++){//random initial clones
-	  set_random_start_freq( mem, myClone->min_purity->data[t]);
-	  gsl_matrix_set_row( nclones, t, mem);
-	}
-	steps=0;
-	nllh = cna_clones_fixed_mass( nclones, myClone, opts.restarts, steps, cl, bl, sl);
-	if (nllh > llh + 1.0 ){
-	  llh = nllh;
-	  cna_llh = cl;
-	  baf_llh = bl;
-	  snv_llh = sl;
-	  gsl_vector_memcpy( mass, &cmass.vector);
-	  gsl_matrix_memcpy( clones, nclones);
-	  printf("\r");
-	  report_results( cl,bl,sl, steps, mass, clones);
-	  repeat=1; 
-	}
-	//
-	if (repeat==1){//***STEP 4: REFINE MASSES, then GOTO 2 ***
-	  gsl_matrix_memcpy( nclones, clones);
-	  gsl_vector_memcpy( nmass, mass);
-	  steps=0;
-	  nllh = cna_clones_mass( nclones, nmass, myClone, 0, steps, cl, bl, sl);
-	  if ( nllh > llh ){
-	    llh = nllh;
-	    cna_llh = cl;
-	    baf_llh = bl;
-	    snv_llh = sl;
-	    gsl_vector_memcpy( mass, nmass);
-	    gsl_matrix_memcpy( clones, nclones);
-	    printf("\r");
-	    report_results( cl, bl, sl, steps, mass, clones);
-	  }
-	  break;
-	}
-      }
-    }
-    gsl_matrix_free(candidate_masses);
-    gsl_vector_free(levels);
-    gsl_vector_free(nmass);
-    //SNV bulk update, if required...
-    if (opts.bulk_updates>0){
-      for (int it=0; it<opts.bulk_updates; it++){
-	snv_bulk_update(myClone);
-	myClone->set_bulk_to_post();
-	if (myClone->bulk_prior==NULL) break;
-	if (snvEmit->coarse_grained) myClone->get_snvEmitLog();
-	gsl_matrix_memcpy( nclones, clones);
-	gsl_vector_memcpy( nmass, mass);
-	nllh = cna_clones_mass( nclones, nmass, myClone, 0, steps, cl, bl, sl);
-	if (nllh > llh + 1.0){
-	  llh = nllh;
-	  cna_llh = cl;
-	  baf_llh = bl;
-	  snv_llh = sl;
-	  gsl_vector_memcpy( mass, nmass);
-	  gsl_matrix_memcpy( clones, nclones);
-	  report_results( cl,bl,sl, steps, mass, clones);
-	}
-	else{
-	  break;
-	}
-      }
-    }
-  }
-  else if (Mass == NULL && Clones != NULL){// clones are fixed, mass is not
-    gsl_matrix_memcpy( clones, Clones);
-    myClone->set(Clones);
-    gsl_vector * nmass = gsl_vector_alloc(mass->size);
-    for (int run=0; run<opts.restarts; run++){      
-      for (int t=0; t<nT; t++){
-	double p = (1.5 - double(rand()) / double(RAND_MAX));
-	nmass->data[t] = 0.5*double(myClone->nmean->data[t]) * p;
-      }
-      steps=0;
-      double cl,bl,sl;
-      double nllh = cna_mass_fixed_clones( nmass, myClone, 0, steps, cl,bl,sl);
-      if (run==0 || nllh > llh + 1.0){	
-	cna_llh=cl;
-	baf_llh=bl;
-	snv_llh=sl;
-	llh = nllh;
-	gsl_vector_memcpy(mass,nmass);
-	printf("%2i of %3i\n",run+1,opts.restarts);
-	report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
-      }
-    }
-    gsl_vector_free(nmass);
-    myClone->set_mass(mass);
-    //SNV bulk update (just one!), if required...
-    if (opts.bulk_updates>0){
-      snv_bulk_update(myClone);
-      myClone->set_bulk_to_post();
-      if (snvEmit->coarse_grained) myClone->get_snvEmitLog();
-      //get CNA posterior and SNV llh...
-      myClone->alpha_cna = new gsl_matrix * [cnaEmit->nSamples];
-      myClone->gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
-      int s;
-      snv_llh=0; 
-      double*llhs;
+	else if (Mass == NULL && Clones != NULL){// clones are fixed, mass is not
+		gsl_matrix_memcpy( clones, Clones);
+		myClone->set(Clones);
+		gsl_vector * nmass = gsl_vector_alloc(mass->size);
+		for (int run=0; run<opts.restarts; run++){
+			for (int t=0; t<nT; t++){
+				double p = (1.5 - double(rand()) / double(RAND_MAX));
+				nmass->data[t] = 0.5*double(myClone->nmean->data[t]) * p;
+			}
+			steps=0;
+			double cl,bl,sl;
+			double nllh = cna_mass_fixed_clones( nmass, myClone, 0, steps, cl,bl,sl);
+			if (run==0 || nllh > llh + 1.0){
+				cna_llh=cl;
+				baf_llh=bl;
+				snv_llh=sl;
+				llh = nllh;
+				gsl_vector_memcpy(mass,nmass);
+				printf("%2i of %3i\n",run+1,opts.restarts);
+				report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
+			}
+		}
+		gsl_vector_free(nmass);
+		myClone->set_mass(mass);
+		//SNV bulk update (just one!), if required...
+		if (opts.bulk_updates>0){
+			snv_bulk_update(myClone);
+			myClone->set_bulk_to_post();
+			if (snvEmit->coarse_grained) myClone->get_snvEmitLog();
+			//get CNA posterior and SNV llh...
+			myClone->alpha_cna = new gsl_matrix * [cnaEmit->nSamples];
+			myClone->gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
+			int s;
+			snv_llh=0;
+			double*llhs;
 #ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
 #endif
-      for ( s=0; s<snvEmit->nSamples; s++){  
-	int cna_sample = cnaEmit->idx_of[snvEmit->chr[s]];
-	myClone->alpha_cna[cna_sample]=NULL;
-	myClone->gamma_cna[cna_sample]=NULL;
-	myClone->get_cna_posterior(cna_sample);
-	myClone->get_mean_tcn( cna_sample);
-	myClone->map_mean_tcn( cnaEmit, cna_sample, snvEmit);
-	double l;
-	myClone->do_snv_Fwd( s, l, llhs);
+			for ( s=0; s<snvEmit->nSamples; s++){
+				int cna_sample = cnaEmit->idx_of[snvEmit->chr[s]];
+				myClone->alpha_cna[cna_sample]=NULL;
+				myClone->gamma_cna[cna_sample]=NULL;
+				myClone->get_cna_posterior(cna_sample);
+				myClone->get_mean_tcn( cna_sample);
+				myClone->map_mean_tcn( cnaEmit, cna_sample, snvEmit);
+				double l;
+				myClone->do_snv_Fwd( s, l, llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif
-	{
-	  snv_llh += l;
+				{
+				snv_llh += l;
+				}
+				gsl_matrix_free(myClone->gamma_cna[cna_sample]);
+			}
+			delete [] myClone->gamma_cna;
+			delete [] myClone->alpha_cna;
+			report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
+		}
 	}
-	gsl_matrix_free(myClone->gamma_cna[cna_sample]);  
-      }
-      delete [] myClone->gamma_cna;
-      delete [] myClone->alpha_cna;
-      report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);	
-    }
-  }
-  else if (Mass != NULL && Clones == NULL){// mass is fixed, clones are not
-    gsl_vector_memcpy( mass, Mass);
-    myClone->set_mass(Mass);
-    for (int t=0; t<nT; t++){	
-      set_random_start_freq( mem, (myClone->min_purity)->data[t]);
-      gsl_matrix_set_row( clones, t, mem);
-    }
-    steps=0;
-    llh = cna_clones_fixed_mass( clones, myClone, opts.restarts, steps, cna_llh, baf_llh, snv_llh);
-    report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
-    //SNV bulk update, if required...
-    if (opts.bulk_updates>0){
-      for (int it=0; it<opts.bulk_updates; it++){
-	snv_bulk_update(myClone);
-	myClone->set_bulk_to_post();
-	if (myClone->bulk_prior==NULL) break;
-	if (myClone->snvEmit->coarse_grained) myClone->get_snvEmitLog();
-	gsl_matrix_memcpy( nclones, clones);
-	double nllh = cna_clones_fixed_mass( nclones, myClone, 0, steps, cl, bl, sl);
-	if (nllh > llh ){
-	  llh = nllh;
-	  cna_llh = cl;
-	  baf_llh = bl;
-	  snv_llh = sl;
-	  gsl_matrix_memcpy( clones, nclones);
-	  report_results( cl,bl,sl, steps, mass, clones);
+	else if (Mass != NULL && Clones == NULL){// mass is fixed, clones are not
+		gsl_vector_memcpy( mass, Mass);
+		myClone->set_mass(Mass);
+		for (int t=0; t<nT; t++){
+			set_random_start_freq( mem, (myClone->min_purity)->data[t]);
+			gsl_matrix_set_row( clones, t, mem);
+		}
+		steps=0;
+		llh = cna_clones_fixed_mass( clones, myClone, opts.restarts, steps, cna_llh, baf_llh, snv_llh);
+		report_results( cna_llh, baf_llh, snv_llh, steps, mass, clones);
+		//SNV bulk update, if required...
+		if (opts.bulk_updates>0){
+			for (int it=0; it<opts.bulk_updates; it++){
+				snv_bulk_update(myClone);
+				myClone->set_bulk_to_post();
+				if (myClone->bulk_prior==NULL) break;
+				if (myClone->snvEmit->coarse_grained) myClone->get_snvEmitLog();
+				gsl_matrix_memcpy( nclones, clones);
+				double nllh = cna_clones_fixed_mass( nclones, myClone, 0, steps, cl, bl, sl);
+				if (nllh > llh ){
+					llh = nllh;
+					cna_llh = cl;
+					baf_llh = bl;
+					snv_llh = sl;
+					gsl_matrix_memcpy( clones, nclones);
+					report_results( cl,bl,sl, steps, mass, clones);
+				}
+				else{
+					break;
+				}
+			}
+		}
 	}
-	else{
-	  break;
-	}
-      }
-    }
-  }
-  else if (Mass != NULL && Clones != NULL){//all is fixed
-    gsl_matrix_memcpy( clones, Clones);
-    myClone->set(Clones);
-    gsl_vector_memcpy( mass, Mass);
-    myClone->set_mass(Mass);
-    //llh = cna_llh_all_fixed( myClone);
-    llh = myClone->get_all_total_llh();
-    cna_llh = myClone->cna_total_llh;
-    baf_llh = myClone->baf_total_llh;
-    snv_llh = myClone->snv_total_llh;
-    report_results(  cna_llh, baf_llh, snv_llh, 0, mass, clones);
-    //SNV bulk update, if required...
-    if (opts.bulk_updates>0){
-      snv_bulk_update(myClone);
-      myClone->set_bulk_to_post();
-      if (snvEmit->coarse_grained) myClone->get_snvEmitLog();
-      //get CNA posterior and SNV llh...
-      myClone->alpha_cna = new gsl_matrix * [cnaEmit->nSamples];
-      myClone->gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
-      int s;
-      snv_llh = 0.0;
-      double * llhs = NULL;
-      myClone->save_snv_alpha = 0; 
+	else if (Mass != NULL && Clones != NULL){//all is fixed
+		gsl_matrix_memcpy( clones, Clones);
+		myClone->set(Clones);
+		gsl_vector_memcpy( mass, Mass);
+		myClone->set_mass(Mass);
+		//llh = cna_llh_all_fixed( myClone);
+		llh = myClone->get_all_total_llh();
+		cna_llh = myClone->cna_total_llh;
+		baf_llh = myClone->baf_total_llh;
+		snv_llh = myClone->snv_total_llh;
+		report_results(  cna_llh, baf_llh, snv_llh, 0, mass, clones);
+		//SNV bulk update, if required...
+		if (opts.bulk_updates>0){
+			snv_bulk_update(myClone);
+			myClone->set_bulk_to_post();
+			if (snvEmit->coarse_grained) myClone->get_snvEmitLog();
+			//get CNA posterior and SNV llh...
+			myClone->alpha_cna = new gsl_matrix * [cnaEmit->nSamples];
+			myClone->gamma_cna = new gsl_matrix * [cnaEmit->nSamples];
+			int s;
+			snv_llh = 0.0;
+			double * llhs = NULL;
+			myClone->save_snv_alpha = 0;
 #ifdef _OPENMP
 #pragma omp parallel for schedule( dynamic, 1) default(shared)
 #endif
-      for ( s=0; s<snvEmit->nSamples; s++){  
-	int cna_sample = cnaEmit->idx_of[snvEmit->chr[s]];
-	myClone->alpha_cna[cna_sample]=NULL;
-	myClone->gamma_cna[cna_sample]=NULL;
-	myClone->get_cna_posterior(cna_sample);
-	myClone->get_mean_tcn(cna_sample);
-	myClone->map_mean_tcn( cnaEmit, cna_sample, snvEmit);
-	double l=0;
-	myClone->do_snv_Fwd(s,l,llhs);
+			for ( s=0; s<snvEmit->nSamples; s++){
+				int cna_sample = cnaEmit->idx_of[snvEmit->chr[s]];
+				myClone->alpha_cna[cna_sample]=NULL;
+				myClone->gamma_cna[cna_sample]=NULL;
+				myClone->get_cna_posterior(cna_sample);
+				myClone->get_mean_tcn(cna_sample);
+				myClone->map_mean_tcn( cnaEmit, cna_sample, snvEmit);
+				double l=0;
+				myClone->do_snv_Fwd(s,l,llhs);
 #ifdef _OPENMP
 #pragma omp critical
 #endif
-	{
-	  snv_llh += l;
+				{
+				snv_llh += l;
+				}
+				gsl_matrix_free(myClone->gamma_cna[cna_sample]);
+			}
+			delete [] myClone->gamma_cna;
+			delete [] myClone->alpha_cna;
+			report_results( cna_llh, baf_llh, snv_llh, 0, mass, clones);
+		}
 	}
-	gsl_matrix_free(myClone->gamma_cna[cna_sample]);  
-      }
-      delete [] myClone->gamma_cna;
-      delete [] myClone->alpha_cna;
-      report_results( cna_llh, baf_llh, snv_llh, 0, mass, clones);	
-    }
-  }
-  gsl_matrix_free(nclones);
-  gsl_vector_free(mem);
-  return(llh);
+	gsl_matrix_free(nclones);
+	gsl_vector_free(mem);
+	return(llh);
 }
 
 
 //***SNV ONLY INFERENCE***
 double get_clones_snv_ncorr( gsl_matrix *& clones, 
 			     gsl_matrix *& Clones, 
-			     gsl_matrix *& priors, 
+			     gsl_matrix *& priors,
+				 gsl_vector *& cluster_w,
 			     Clone * myClone,
 			     cmdl_opts& opts
 			     ){//no correlations
@@ -594,82 +652,130 @@ double get_clones_snv_ncorr( gsl_matrix *& clones,
   double llh=0;
   gsl_vector * mem = gsl_vector_alloc(nC);
   myClone->initialize_snv_prior_param();
-  //STEP 1: learn clones with fixed priors...
-  if (myClone->learn_priors && snvEmit->av_cn == NULL){
-    //myClone->initialize_snv_prior_param();
-    printf("Using these SNV copynumber prior parameters\n");
-    for (int i=0; i<=myClone->maxtcn; i++){
-      for (int j=0; j<=myClone->maxtcn; j++){
-	printf("%.3f ", gsl_matrix_get( myClone->initial_snv_prior_param, i, j));
-      }
-      cout<<endl;
-    }
-    if (priors==NULL) abort();
-    gsl_matrix_memcpy( priors, myClone->initial_snv_prior_param);
-  }
-  if ( Clones == NULL ){
-    for (int t=0; t<nT; t++){
-      set_random_start_freq( mem, (myClone->min_purity)->data[t]);
-      gsl_matrix_set_row( clones, t, mem);
-    }
-    steps=0;
-    llh = snv_clones_fixed_priors( clones, myClone, opts.restarts, steps);
-    report_results( 0, 0, llh, steps, NULL, clones);
-    myClone->set(clones);
-  }
-  else{
-    gsl_matrix_memcpy( clones, Clones);
-    myClone->set(Clones);
-    llh = myClone->get_snv_total_llh();
-    report_results( 0, 0, llh, 0, NULL, Clones);
-  }     
-  //STEP 2: for uncorrelated SNV data, without availability constraint,
-  // learn clones and SNV prior parameter...
-  if (myClone->learn_priors){
-    if (snvEmit->av_cn != NULL) abort();
-    gsl_matrix * npriors = gsl_matrix_alloc( priors->size1, priors->size2);
-    //irrelevant columns of 'priors' should already be set to zero
-    gsl_matrix_memcpy( npriors, priors);
-    if (Clones == NULL){//STEP 3a: learn clones and priors jointly...
-      gsl_matrix * nclones = gsl_matrix_alloc(nT,nC);
-      gsl_matrix_memcpy( nclones, clones);
-      steps=0;
-      double nllh = snv_clones_priors( nclones, npriors, myClone, opts.restarts, steps);
-      if (nllh>llh){
-	gsl_matrix_memcpy(clones,nclones);
-	gsl_matrix_memcpy(priors,npriors);
-	llh=nllh;
-	report_results( 0, 0, llh, steps, NULL, clones);
-	printf("Found these copynumber priors per clone\n");
-	for (int i=0; i< (int) priors->size1; i++){
-	  for (int j=0; j< (int) priors->size2; j++){
-	    printf("%.3f ", gsl_matrix_get( priors, i, j));
-	  }
-	  cout<<endl;
+  myClone->initialize_snv_cluster_w();
+  myClone->set_snv_tree_prior();
+	
+ //STEP 1: learn clones with fixed priors...
+	if (myClone->learn_priors && snvEmit->av_cn == NULL){
+		//myClone->initialize_snv_prior_param();
+		printf("Using these SNV copynumber prior parameters\n");
+		for (int i=0; i<=myClone->maxtcn; i++){
+			for (int j=0; j<=myClone->maxtcn; j++){
+				printf("%.3f ", gsl_matrix_get( myClone->initial_snv_prior_param, i, j));
+			}
+			cout<<endl;
+		}
+		if (priors==NULL) abort();
+		gsl_matrix_memcpy( priors, myClone->initial_snv_prior_param);
 	}
-      }
-      myClone->set_snv_prior(priors);
-      myClone->set(clones);
-      gsl_matrix_free(nclones);
-    }
-    else{//STEP 4b: learn priors with fixed clones...
-      myClone->set(Clones);
-      gsl_matrix_memcpy( clones, Clones);
-      llh = snv_priors_fixed_clones( priors, myClone, 0, steps);
-      report_results( 0, 0, llh, steps, NULL, clones);
-      printf("Found these copynumber priors per clone\n");
-      for (int i=0; i< (int) priors->size1; i++){
-	for (int j=0; j< (int) priors->size2; j++){
-	  printf("%.3f ", gsl_matrix_get( priors, i, j));
+	if ( Clones == NULL ){
+		for (int t=0; t<nT; t++){
+			set_random_start_freq( mem, (myClone->min_purity)->data[t]);
+			gsl_matrix_set_row( clones, t, mem);
+		}
+		steps=0;
+		llh = snv_clones_fixed_priors( clones, myClone, opts.restarts, steps);
+		report_results( 0, 0, llh, steps, NULL, clones);
+		myClone->set(clones);
 	}
-	cout<<endl;
-      }
-      myClone->set_snv_prior(priors);
-    }
-    gsl_matrix_free(npriors);
-  }
-  gsl_vector_free(mem);
-  return(llh);
+	else{
+		gsl_matrix_memcpy( clones, Clones);
+		myClone->set(Clones);
+		llh = myClone->get_snv_total_llh();
+		report_results( 0, 0, llh, 0, NULL, Clones);
+	}
+	
+	
+	//STEP 2: for uncorrelated SNV data, without availability constraint,
+	// learn clones and SNV prior parameter...
+	if (myClone->learn_priors){
+		if (snvEmit->av_cn != NULL) abort();
+		gsl_matrix * npriors = gsl_matrix_alloc( priors->size1, priors->size2);
+		//irrelevant columns of 'priors' should already be set to zero
+		gsl_matrix_memcpy( npriors, priors);
+		if (Clones == NULL){//STEP 3a: learn clones and priors jointly...
+			gsl_matrix * nclones = gsl_matrix_alloc(nT,nC);
+			gsl_matrix_memcpy( nclones, clones);
+			steps=0;
+			double nllh = snv_clones_priors( nclones, npriors, myClone, opts.restarts, steps);
+			if (nllh>llh){
+				gsl_matrix_memcpy(clones,nclones);
+				gsl_matrix_memcpy(priors,npriors);
+				llh=nllh;
+				report_results( 0, 0, llh, steps, NULL, clones);
+				printf("Found these copynumber priors per clone\n");
+				for (int i=0; i< (int) priors->size1; i++){
+					for (int j=0; j< (int) priors->size2; j++){
+						printf("%.3f ", gsl_matrix_get( priors, i, j));
+					}
+					cout<<endl;
+				}
+			}
+			myClone->set_snv_prior(priors);
+			myClone->set(clones);
+			gsl_matrix_free(nclones);
+		}
+		else{//STEP 4b: learn priors with fixed clones...
+			myClone->set(Clones);
+			gsl_matrix_memcpy( clones, Clones);
+			llh = snv_priors_fixed_clones( priors, myClone, 0, steps);
+			report_results( 0, 0, llh, steps, NULL, clones);
+			printf("Found these copynumber priors per clone\n");
+			for (int i=0; i< (int) priors->size1; i++){
+				for (int j=0; j< (int) priors->size2; j++){
+					printf("%.3f ", gsl_matrix_get( priors, i, j));
+				}
+				cout<<endl;
+			}
+			myClone->set_snv_prior(priors);
+		}
+		gsl_matrix_free(npriors);
+	}
+	
+	/* case learn cluster weights */
+	
+	if (myClone->learn_cluster_w>0 && nC>1){
+	 gsl_vector_memcpy(cluster_w,myClone->snv_cluster_w);
+		gsl_vector * ncluster_w = gsl_vector_alloc(cluster_w->size);
+		gsl_vector_memcpy( ncluster_w, cluster_w);
+		
+		if (Clones == NULL){//STEP learn clones and priors jointly...
+			gsl_matrix * nclones = gsl_matrix_alloc(nT,nC);
+			gsl_matrix_memcpy( nclones, clones);
+			steps=0;
+			
+			double nllh = snv_clones_cluster_w(nclones, ncluster_w, myClone, opts.restarts, steps);
+			if (nllh>llh){
+				gsl_matrix_memcpy(clones,nclones);
+				gsl_vector_memcpy(cluster_w,ncluster_w);
+				llh=nllh;
+				report_results(0, 0, llh, steps, NULL, clones);
+				printf("Found these cluster_w after optimisation: \n");
+				for (int i=0; i< (int) cluster_w->size; i++){
+					printf("%.3f ", gsl_vector_get(cluster_w, i));
+				}
+				cout << endl;
+				for(int i=0; i< nclones[0].size2; i++){
+					printf("%.3f ",gsl_matrix_get(nclones,0,i));
+				};
+				cout << endl;
+				printf("llh %5.3f \n",llh);
+			}
+			myClone->set_snv_cluster_w(cluster_w);
+			myClone->set_snv_tree_prior();
+			myClone->set(clones);
+			
+			
+			gsl_matrix_free(nclones);
+		}
+		else{//STEP learn priors with fixed clones... to be implemented
+			cout << "Learning cluster_w with fixed clones not yet implemented" << endl;
+			abort();
+		}
+		gsl_vector_free(ncluster_w);
+	}
+	gsl_vector_free(mem);
+	return(llh);
 }
 
 
@@ -746,6 +852,7 @@ double cna_only_mass_noclones( gsl_vector *& best_mass, Clone * myClone, int res
   Qpar.clones_fixed = 1;//to NULL
   Qpar.mass_fixed   = 0;
   Qpar.prior_fixed  = 1;//does not apply
+  Qpar.cluster_w_fixed = 1;
   Qpar.cna=1;
   Qpar.baf=0;
   Qpar.snv=0;
@@ -799,6 +906,7 @@ double cna_clones_fixed_mass( gsl_matrix*& clones, Clone * myClone, int restarts
   Qpar.clones_fixed = 0;
   Qpar.mass_fixed   = 1;
   Qpar.prior_fixed  = 1;
+  Qpar.cluster_w_fixed = 1;
   void * param = static_cast<void*>(&Qpar);
   // get mass and clones...
   steps=0;
@@ -853,8 +961,6 @@ double cna_mass_fixed_clones( gsl_vector*& mass, Clone * myClone, int restarts, 
 }
 
 
-
-
 //learn both using all data...
 double cna_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone, int restarts, int& steps,
 			double& cna_llh, double& baf_llh, double& snv_llh){
@@ -881,6 +987,7 @@ double cna_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone,
   Qpar.clones_fixed = 0;
   Qpar.mass_fixed   = 0;
   Qpar.prior_fixed  = 1;//does not apply here
+  Qpar.cluster_w_fixed = 1;
   void * param = static_cast<void*>(&Qpar);
   // get mass and clones...
   steps=0;
@@ -903,6 +1010,86 @@ double cna_clones_mass( gsl_matrix*& clones, gsl_vector*& mass, Clone * myClone,
   return(llh);
 }
 
+//learn all using all data...
+double cna_clones_mass_cluster_w( gsl_matrix*& clones, gsl_vector*& mass, gsl_vector*& cluster_w, Clone * myClone, int restarts, int& steps,double& cna_llh, double& baf_llh, double& snv_llh){
+	int nT = myClone->nTimes;
+	int nC = myClone->nClones;
+	int nP=1;
+	
+	cout << "Optimisation " << endl;
+	
+	Q_par Qpar;
+	Qpar.myClone = myClone;
+	gsl_vector ** simplex = new gsl_vector * [nT+nP];
+	gsl_vector * lower    = gsl_vector_alloc(nT+nP);
+	gsl_vector * other    = gsl_vector_alloc(nT);
+	gsl_vector * range    = gsl_vector_calloc(nT);
+	Qpar.nSimplex = nT+nP;
+	Qpar.simplexD.clear();
+	for (int t=0; t<nT; t++){
+		simplex[t] = gsl_vector_alloc(nC);
+		gsl_matrix_get_row(simplex[t], clones, t);
+		lower->data[t] = (myClone->min_purity)->data[t];
+		Qpar.simplexD.push_back(nC);
+	}
+	
+	int nWeigths=myClone->learn_cluster_w;
+	simplex[nT] = gsl_vector_alloc(nWeigths);
+	set_random_start_freq(simplex[nT],0.0);
+	
+	//	for(int i=0; i<simplex[ct]->size; i++){
+	//		simplex[ct]->data[i]=cluster_w->data[i];
+	//	}
+	lower->data[nT] = 0.0;
+	// these sum up to one so need to lear one less and get the last via normalisation
+	Qpar.simplexD.push_back(simplex[nT]->size);
+	
+	
+	for (int t=0; t<nT; t++) other->data[t] = mass->data[t];
+	Qpar.cna = 1;
+	Qpar.baf = (myClone->bafEmit->is_set) ? 1 : 0;
+	Qpar.snv = (myClone->snvEmit->is_set) ? 1 : 0;
+	Qpar.clones_fixed = 0;
+	Qpar.mass_fixed   = 0;
+	Qpar.prior_fixed  = 1;//does not apply here
+	Qpar.cluster_w_fixed = 0;
+	void * param = static_cast<void*>(&Qpar);
+	// get mass and clones...
+	steps=0;
+	double llh = -find_optimum_wrestarts( nT+nP, simplex, lower, other, range, param, &Q, 1.0e-3, restarts, steps, 0);
+	//copy results...
+	for (int t=0; t<nT; t++) gsl_matrix_set_row( clones, t, simplex[t]);
+	gsl_vector_memcpy( mass, other);
+	//cleanup...
+	
+	
+	
+	myClone->set_snv_cluster_w(simplex[nT]);
+	myClone->set_snv_tree_prior();
+	gsl_vector_memcpy(cluster_w,myClone->snv_cluster_w);
+	
+	
+	for (int t=0; t<nT+nP; t++) gsl_vector_free(simplex[t]);
+	delete [] simplex;
+	gsl_vector_free(other);
+	gsl_vector_free(lower);
+	gsl_vector_free(range);
+	myClone->set(clones);
+	myClone->set_mass(mass);
+	
+	
+	for(int i=0; i< myClone->snv_cluster_w->size; i++){
+		printf("%.4f ",myClone->snv_cluster_w->data[i]);
+	}
+	cout << endl;
+	
+	cout << "Optimisation Done" << endl;
+	llh = myClone->get_all_total_llh();
+	cna_llh = myClone->cna_total_llh;
+	baf_llh = myClone->baf_total_llh;
+	snv_llh = myClone->snv_total_llh;
+	return(llh);
+}
 
 
 // get candidate masses from the heights in the data, one of which is all-normal (cn=2)
@@ -972,6 +1159,7 @@ double snv_clones_fixed_priors( gsl_matrix*& clones, Clone * myClone, int restar
   Qpar.clones_fixed = 0;
   Qpar.mass_fixed   = 1;// does not apply here
   Qpar.prior_fixed  = 1;// priors are fixed!
+  Qpar.cluster_w_fixed = 1;
   void * param = static_cast<void*>(&Qpar);
   // get mass and clones...
   steps=0;
@@ -1019,6 +1207,7 @@ double snv_priors_fixed_clones( gsl_matrix*& priors, Clone * myClone, int restar
   Qpar.clones_fixed = 1;
   Qpar.mass_fixed   = 1;// does not apply here
   Qpar.prior_fixed  = 0;
+  Qpar.cluster_w_fixed = 1;
   void * param = static_cast<void*>(&Qpar);
   // get mass and clones...
   steps=0;
@@ -1078,6 +1267,7 @@ double snv_clones_priors( gsl_matrix*& clones, gsl_matrix*& priors, Clone * myCl
   Qpar.clones_fixed = 0;
   Qpar.mass_fixed   = 1;// does not apply here
   Qpar.prior_fixed  = 0;
+  Qpar.cluster_w_fixed = 1;
   void * param = static_cast<void*>(&Qpar);
   // get mass and clones...
   steps=0;
@@ -1101,6 +1291,95 @@ double snv_clones_priors( gsl_matrix*& clones, gsl_matrix*& priors, Clone * myCl
   return(llh);
 }
 
+double snv_clones_cluster_w( gsl_matrix*& clones, gsl_vector*& cluster_w, Clone * myClone, int restarts, int& steps){
+	int nT = myClone->nTimes;
+	int nC = myClone->nClones;
+	Q_par Qpar;
+	Qpar.myClone = myClone;
+	int nP=0;
+	
+	//cout << "optimisation start nLevels" << myClone->nLevels << endl;
+	nP=1; // we learn the same weights for all time points as the clone identity is fixed only fractions change
+	
+	gsl_vector ** simplex = new gsl_vector * [nT+nP];
+	gsl_vector * lower    = gsl_vector_alloc(nT+nP);
+	gsl_vector * other    = NULL;
+	gsl_vector * range    = NULL;
+	Qpar.nSimplex = nT+nP;
+	Qpar.simplexD.clear();
+	int ct=0;
+	for (int t=0; t<nT; t++){
+		simplex[ct] = gsl_vector_alloc(nC);
+		gsl_matrix_get_row(simplex[t],clones,t);
+		lower->data[ct] = (myClone->min_purity)->data[t];
+		Qpar.simplexD.push_back(nC);
+		ct++;
+	}
+	
+	
+	
+	int nWeigths=myClone->learn_cluster_w;
+	simplex[ct] = gsl_vector_alloc(nWeigths);
+	set_random_start_freq(simplex[ct],0.0);
+
+//	for(int i=0; i<simplex[ct]->size; i++){
+//		simplex[ct]->data[i]=cluster_w->data[i];
+//	}
+	lower->data[ct] = 0.0;
+	// these sum up to one so need to lear one less and get the last via normalisation
+	Qpar.simplexD.push_back(simplex[ct]->size);
+	ct++;
+	
+	Qpar.cna = 0;
+	Qpar.baf = 0;
+	Qpar.snv = 1;
+	Qpar.clones_fixed = 0;
+	Qpar.mass_fixed   = 1;// does not apply here
+	Qpar.prior_fixed  = 1;
+	Qpar.cluster_w_fixed = 0;
+	
+	void * param = static_cast<void*>(&Qpar);
+	// get mass and clones...
+	steps=0;
+	
+	cout << "optimisation start nLevels " << myClone->nLevels << " "<<  nT << " " << nP <<endl;
+	double llh = - find_optimum_wrestarts( nT+nP, simplex, lower, other, range,
+										  param, &Q, 1.0e-3, restarts, steps, 0);
+	for (int t=0; t<nT; t++){
+		gsl_matrix_set_row(clones,t,simplex[t]);
+		ct++;
+	}
+	cout << "optimisation done " << endl;
+	
+	//cout << "optimisation start nLevels" << myClone->nLevels << " "<<  nT << " " << nP <<endl;
+	double z=0.0;
+	
+	for(int i=0; i<simplex[nT]->size; i++){
+		//z+=simplex[nT]->data[i];
+		printf("%.3f ",simplex[nT]->data[i]);
+	}
+	cout << endl;
+	//priors_w->data[simplex[nT]->size]=1.0-z;
+	myClone->set(clones);
+	myClone->set_snv_cluster_w(simplex[nT]);
+	myClone->set_snv_tree_prior();
+	gsl_vector_memcpy(cluster_w,myClone->snv_cluster_w);
+
+	llh = myClone->get_snv_total_llh();
+	//cleanup...
+	
+	
+	cout << llh << "\n";
+	//cout << "optimisation " << endl;
+	
+	for (int i=0; i<nT+nP; i++) gsl_vector_free(simplex[i]);
+	delete [] simplex;
+	gsl_vector_free(lower);
+	return(llh);
+}
+
+
+
 
 double Q( const gsl_vector * x, void * p){
   Q_par * Qpar = static_cast<Q_par*> (p); 
@@ -1114,86 +1393,102 @@ double Q( const gsl_vector * x, void * p){
   gsl_vector * other    = NULL;
   gsl_vector * range    = NULL; 
   //allocate
-  if ( Qpar->nSimplex > 0){
-    if ((int) Qpar->simplexD.size() != Qpar->nSimplex) abort();
-    simplex = new gsl_vector * [Qpar->nSimplex];
-    for (int i=0; i<Qpar->nSimplex; i++){
-      simplex[i] = gsl_vector_alloc( Qpar->simplexD[i] );
-    }
-    lower = gsl_vector_alloc(Qpar->nSimplex);
-  }
-  if ( Qpar->mass_fixed == 0){
-    other = gsl_vector_calloc( nT);
-    range = gsl_vector_calloc( nT);
-  }
-  //set lower
-  int ct=0;
-  if (Qpar->clones_fixed == 0){
-    for (int t=0; t<nT; t++){
-      lower->data[t] = gsl_vector_get(myClone->min_purity,t);
-      ct++;
-    }
-  }
-  if (Qpar->prior_fixed == 0){
-    lower->data[ct] = 0.0;
-    ct++;
-    while (ct < Qpar->nSimplex){
-      lower->data[ct] = 1.0;
-      ct++;
-    }
-  }
-  //unmap 
-  int err = arg_unmap( x, Qpar->nSimplex, simplex, lower, other, range);
-  double LLH = 0.0;
-  if (err==0){//inside range?
-    ct=0;
-    if ( Qpar->clones_fixed == 0 ){//set clones
-      clones = gsl_matrix_alloc(nT,nC);
-      for (int t=0; t<nT; t++){
-	gsl_matrix_set_row( clones, t, simplex[t]);
-	ct++;
-      }
-      myClone->set(clones);
-    }
-    if ( Qpar->prior_fixed == 0 ){//set prior
-      prior = gsl_matrix_calloc(myClone->maxtcn+1, myClone->maxtcn+1);
-      for (int i=ct; i<Qpar->nSimplex; i++){
-	int cn = (int) (simplex[i])->size - 1;
-	for (int j=0; j<=cn; j++) gsl_matrix_set( prior, cn, j, gsl_vector_get(simplex[i],j));
-      }
-      myClone->set_snv_prior(prior);
-    }
-    if (Qpar->mass_fixed == 0){//set mass
-      myClone->set_mass(other);
-    }
-    //get total LLH
-    if ( Qpar->cna == 1 && Qpar->baf == 0 && Qpar->snv == 0 ){
-      //get only the total llh for CNA *without* BAF/SNV
-      LLH = myClone->get_cna_total_llh();
-    }
-    else if (Qpar->cna == 1){//get llh for CNA *with* BAF/SNV
-      //LLH = cna_llh_all_fixed(Qpar->myClone);
-      LLH = myClone->get_all_total_llh();
-    }
-    else if (Qpar->snv == 1){
-      // get the total llh for SNV *only*
-      LLH = myClone->get_snv_total_llh();
-    }
-    else{
-      abort();
-    }
-  }
-  // clean up
-  if (clones != NULL) gsl_matrix_free(clones);
-  if (prior != NULL)  gsl_matrix_free(prior);
-  if (simplex != NULL){
-    for (int t=0; t<Qpar->nSimplex; t++) gsl_vector_free(simplex[t]);
-    delete [] simplex;
-  }
-  if (other != NULL) gsl_vector_free(other);
-  if (range != NULL) gsl_vector_free(range);
-  if (lower != NULL) gsl_vector_free(lower);
-  return( err==1 ? 1.0e20 : - LLH );
+	if ( Qpar->nSimplex > 0){
+		if ((int) Qpar->simplexD.size() != Qpar->nSimplex) abort();
+		simplex = new gsl_vector * [Qpar->nSimplex];
+		for (int i=0; i<Qpar->nSimplex; i++){
+			simplex[i] = gsl_vector_alloc( Qpar->simplexD[i] );
+		}
+		lower = gsl_vector_alloc(Qpar->nSimplex);
+	}
+	if ( Qpar->mass_fixed == 0){
+		other = gsl_vector_calloc( nT);
+		range = gsl_vector_calloc( nT);
+	}
+	//set lower
+	int ct=0;
+	if (Qpar->clones_fixed == 0){
+		for (int t=0; t<nT; t++){
+			lower->data[t] = gsl_vector_get(myClone->min_purity,t);
+			ct++;
+		}
+	}
+	if (Qpar->prior_fixed == 0){
+		lower->data[ct] = 0.0;
+		ct++;
+		while (ct < Qpar->nSimplex){
+			lower->data[ct] = 1.0;
+			ct++;
+		}
+	}
+	if (Qpar->cluster_w_fixed == 0){
+		lower->data[ct] = 0.0;
+		ct++;
+	}
+	
+	
+	//unmap
+	int err = arg_unmap( x, Qpar->nSimplex, simplex, lower, other, range);
+	double LLH = 0.0;
+	if (err==0){//inside range?
+		ct=0;
+		if ( Qpar->clones_fixed == 0 ){//set clones
+			clones = gsl_matrix_alloc(nT,nC);
+			for (int t=0; t<nT; t++){
+				gsl_matrix_set_row( clones, t, simplex[t]);
+				ct++;
+			}
+			myClone->set(clones);
+		}
+		if ( Qpar->prior_fixed == 0 ){//set prior
+			prior = gsl_matrix_calloc(myClone->maxtcn+1, myClone->maxtcn+1);
+			for (int i=ct; i<Qpar->nSimplex; i++){
+				int cn = (int) (simplex[i])->size - 1;
+				for (int j=0; j<=cn; j++) gsl_matrix_set( prior, cn, j, gsl_vector_get(simplex[i],j));
+			}
+			myClone->set_snv_prior(prior);
+		}
+		if ( Qpar->cluster_w_fixed == 0 ){//set cluster_w
+			myClone->set_snv_cluster_w(simplex[nT]);
+			myClone->set_snv_tree_prior();
+//			for(int i=0; i< myClone->snv_cluster_w->size; i++){
+//				printf("%.4f ",myClone->snv_cluster_w->data[i]);
+//			}
+//			cout << endl;
+			
+		}
+		
+		if (Qpar->mass_fixed == 0){//set mass
+			myClone->set_mass(other);
+		}
+		//get total LLH
+		if ( Qpar->cna == 1 && Qpar->baf == 0 && Qpar->snv == 0 ){
+			//get only the total llh for CNA *without* BAF/SNV
+			LLH = myClone->get_cna_total_llh();
+		}
+		else if (Qpar->cna == 1){//get llh for CNA *with* BAF/SNV
+			//LLH = cna_llh_all_fixed(Qpar->myClone);
+			LLH = myClone->get_all_total_llh();
+		}
+		else if (Qpar->snv == 1){
+			// get the total llh for SNV *only*
+			LLH = myClone->get_snv_total_llh();
+		}
+		else{
+			abort();
+		}
+	}
+	// clean up
+	if (clones != NULL) gsl_matrix_free(clones);
+	if (prior != NULL)  gsl_matrix_free(prior);
+	if (simplex != NULL){
+		for (int t=0; t<Qpar->nSimplex; t++) gsl_vector_free(simplex[t]);
+		delete [] simplex;
+	}
+	if (other != NULL) gsl_vector_free(other);
+	if (range != NULL) gsl_vector_free(range);
+	if (lower != NULL) gsl_vector_free(lower);
+	return( err==1 ? 1.0e20 : - LLH );
 }
 
 
