@@ -1,3 +1,5 @@
+run-bulk*
+run-test*
 *.[oa]
 build/*
 build-*tar.gz

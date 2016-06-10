@@ -7,7 +7,7 @@
 
 using namespace std;
 
-
+void apply_snv_tree_prior(gsl_vector*& Prior, gsl_vector*& snv_prior, gsl_vector*& snv_tree_prior, double fpr);
 
 
 double Clone::entropy(gsl_vector * x){
@@ -39,6 +39,93 @@ void Clone::combine_prior( gsl_vector*& prior, gsl_vector*& mem, int n){
     gsl_vector_scale( prior, 1.0/norm);
   }
 }
+
+void apply_snv_tree_prior(gsl_vector*& Prior, gsl_vector*& snv_prior, gsl_vector*& snv_tree_prior, double fpr){
+	double norm;
+	
+	
+	
+	if ( gsl_vector_max(snv_prior) <= 0.0){//log-space
+		for (int k=1; k < Prior->size; k++){
+			if(Prior->data[k]>0.02){
+				///				for (int f=0; f<nClones; f++){
+				//						printf("%i", copynumber[k][f]);
+				//					}
+				//					printf(" ");
+				printf("%4.2f ",Prior->data[k]);
+			}
+		}
+		printf("\n");
+
+		
+		gsl_vector_memcpy(Prior,snv_prior);
+		gsl_vector_add(Prior, snv_tree_prior);
+		norm = log_vector_norm(Prior);
+		gsl_vector_add_constant(Prior,-norm);
+		
+		
+	
+	}
+	else{
+		Prior->data[0]=0.0;
+		for(int i=1; i< snv_prior->size; i++){
+			Prior->data[i]=snv_prior->data[i]*snv_tree_prior->data[i];
+			
+//			for (int f=0; f<nClones; f++){
+//				printf("%i", copynumber[i][f]);
+//			}
+//			printf(" ");
+//			if(snv_prior->data[i]>0.02){
+//			printf("%d %4.2f ",i,snv_prior->data[i]);
+//			}
+//			printf("\n");
+		
+		}
+		double norm = gsl_blas_dasum(Prior);
+		if (norm<0){
+			
+			for (int k=0; k < snv_prior->size; k++){
+				//if(Prior->data[k]>0.02){
+//					for (int f=0; f<nClones; f++){
+//						printf("%i", copynumber[k][f]);
+//					}
+//					printf(" ");
+					printf("%4.2f ",snv_prior->data[k]);
+				//}
+			}
+			printf("\n");
+
+			for (int k=0; k < snv_tree_prior->size; k++){
+				//if(Prior->data[k]>0.02){
+				//					for (int f=0; f<nClones; f++){
+				//						printf("%i", copynumber[k][f]);
+				//					}
+				//					printf(" ");
+				printf("%4.2f ",snv_tree_prior->data[k]);
+				//}
+			}
+			printf("\n");
+
+			
+			
+			abort();
+			
+		}
+		
+		if(norm>0.0){
+			gsl_vector_scale( Prior, (1.0-fpr) / norm);
+			gsl_vector_set( Prior, 0, fpr);
+		}else{
+			gsl_vector_set( Prior, 0, 1.0);
+		}
+	}
+	
+	
+	
+}
+
+
+
 
 //*** CNA FWD/BWD ***************************************************
 void Clone::do_cna_Fwd( int sample, double& llh, double*& llhs){
@@ -329,229 +416,303 @@ void Clone::do_baf_Bwd( int sample, double& ent){
 
 //***SNV FWD-BWD***************************************************
 void Clone::do_snv_Fwd(int sample, double& llh, double*& llhs){
-  int snvChr = snvEmit->chr[sample];
-  int cnaSample=-1, bafSample=-1;
-  if (cnaEmit->is_set){
-    if (cnaEmit->chrs.count(snvChr) == 0) abort();
-    cnaSample = cnaEmit->idx_of[snvChr];
-    if (bafEmit->is_set && bafEmit->chrs.count(snvChr) == 1){
-      bafSample = bafEmit->idx_of[snvChr];
-    }
-  }
-  if ( nClones > 0 && cnaEmit->is_set){//need CNA post
-    if( gamma_cna == NULL || gamma_cna[cnaSample] == NULL) abort();
-    if (bafEmit->is_set && bafSample >=0){//also need BAF post
-      if( gamma_baf == NULL || gamma_baf[bafSample] == NULL) abort();
-    }
-  }
-  gsl_vector * Prior = gsl_vector_alloc(nLevels);
-  gsl_vector * prior = gsl_vector_alloc(nLevels);
-  gsl_vector * post  = gsl_vector_alloc(nLevels);
-  gsl_vector * mem   = gsl_vector_alloc(nLevels);
-  gsl_matrix * Trans = NULL;
-  if ( nClones>0 && snvEmit->connect ){
-    Trans = gsl_matrix_alloc( nLevels, nLevels);
-    gsl_matrix_memcpy(Trans,TransMat_snv[sample]);
-  }
-  if ( nClones > 0 && !cnaEmit->is_set && !snvEmit->connect && snvEmit->av_cn==NULL){
-    gsl_vector_memcpy( Prior, snv_prior[snvChr]);
-  }
-  gsl_vector_set_all(prior,1.0/double(nLevels));
-  if (nClones>0) Clone::apply_maxtcn_mask( prior, snvChr, snvEmit->log_space);
-  gsl_vector_view cna_post, baf_post;
-  double norm = 0.0, pj=0.0;
-  int cna_evt=-1, last_cna_evt=-1;
-  int baf_evt=-1, last_baf_evt=-1, baf_idx=0;
-  int idx=0, nidx=0, nLoci=1, last_evt=(snvEmit->nEvents[sample]-1);
-  llh = 0.0;
-  for (int evt=0; evt <= last_evt; evt++){
-    idx  = snvEmit->idx_of_event[sample][evt];
-    nidx = (evt < last_evt) ? snvEmit->idx_of_event[sample][evt+1] : snvEmit->nSites[sample];
-    nLoci = nidx-idx;
-    //***PREDICT STEP***
-    if (nClones > 0){
-      if (snvEmit->connect && evt > 0){//connect to the left...
-	pj = snvEmit->pjump[sample][idx];
-	Clone::predict( prior, post, snvEmit, pj, Trans);
-      }
-      //***CONSISTENCY WITH CNA AND BAF***
-      if (cnaEmit->is_set){//connect to CNA+BAF
-	if (bafEmit->is_set && bafSample >= 0){//use CNA+BAF post
-	  baf_evt = snvEmit->Event_of_idx[sample][idx];
-	  baf_idx = bafEmit->idx_of_event[bafSample][baf_evt];
-	  cna_evt = bafEmit->Event_of_idx[bafSample][baf_idx];
+	
+	int snvChr = snvEmit->chr[sample];
+	int cnaSample=-1, bafSample=-1;
+	if (cnaEmit->is_set){
+		if (cnaEmit->chrs.count(snvChr) == 0) abort();
+		cnaSample = cnaEmit->idx_of[snvChr];
+		if (bafEmit->is_set && bafEmit->chrs.count(snvChr) == 1){
+			bafSample = bafEmit->idx_of[snvChr];
+		}
 	}
-	else{//use CNA post only
-	  cna_evt = snvEmit->Event_of_idx[sample][idx];
+	if ( nClones > 0 && cnaEmit->is_set){//need CNA post
+		if( gamma_cna == NULL || gamma_cna[cnaSample] == NULL) abort();
+		if (bafEmit->is_set && bafSample >=0){//also need BAF post
+			if( gamma_baf == NULL || gamma_baf[bafSample] == NULL) abort();
+		}
 	}
-	if (cna_evt != last_cna_evt || baf_evt != last_baf_evt){//new segment, new prior
-	  cna_post = gsl_matrix_row( gamma_cna[cnaSample], cna_evt);
-	  if (bafEmit->is_set && bafSample >= 0){
-	    baf_post = gsl_matrix_row( gamma_baf[bafSample], baf_evt);
-	    get_snv_prior_from_cna_baf_post( Prior, &cna_post.vector, &baf_post.vector);
-	  }
-	  else{
-	    get_snv_prior_from_cna_post( Prior, &cna_post.vector);
-	  }
-	  last_cna_evt = cna_evt;
-	  last_baf_evt = baf_evt;
-	}	
-	if (snvEmit->connect){
-	  gsl_vector_memcpy( mem, Prior);
-	  Clone::combine_prior( prior, mem, nLoci);
+	gsl_vector * Prior = gsl_vector_alloc(nLevels);
+	gsl_vector * prior = gsl_vector_alloc(nLevels);
+	gsl_vector * post  = gsl_vector_alloc(nLevels);
+	gsl_vector * mem   = gsl_vector_alloc(nLevels);
+	gsl_matrix * Trans = NULL;
+	if ( nClones>0 && snvEmit->connect ){
+		Trans = gsl_matrix_alloc( nLevels, nLevels);
+		gsl_matrix_memcpy(Trans,TransMat_snv[sample]);
 	}
-	else{
-	  gsl_vector_memcpy( prior, Prior);
-	  if (nidx-idx > 1) Clone::scale_prior( prior, nLoci);
+	if ( nClones > 0 && !cnaEmit->is_set && !snvEmit->connect && snvEmit->av_cn==NULL){
+		if(learn_cluster_w>0){
+			apply_snv_tree_prior(Prior,snv_prior[snvChr],snv_tree_prior,snv_fpr);
+		}
+		else{
+			gsl_vector_memcpy(Prior, snv_prior[snvChr]);
+		}
 	}
-      }
-      else if ( !snvEmit->connect ){
-	if (snvEmit->av_cn != NULL && (evt == 0 || snvEmit->mean_tcn[0][sample][evt-1] != snvEmit->mean_tcn[0][sample][evt])){
-	  Clone::get_snv_prior_from_av_cn( Prior, sample, evt);
+	gsl_vector_set_all(prior,1.0/double(nLevels));
+	if (nClones>0) Clone::apply_maxtcn_mask( prior, snvChr, snvEmit->log_space);
+	gsl_vector_view cna_post, baf_post;
+	double norm = 0.0, pj=0.0;
+	int cna_evt=-1, last_cna_evt=-1;
+	int baf_evt=-1, last_baf_evt=-1, baf_idx=0;
+	int idx=0, nidx=0, nLoci=1, last_evt=(snvEmit->nEvents[sample]-1);
+	llh = 0.0;
+	for (int evt=0; evt <= last_evt; evt++){
+		idx  = snvEmit->idx_of_event[sample][evt];
+		nidx = (evt < last_evt) ? snvEmit->idx_of_event[sample][evt+1] : snvEmit->nSites[sample];
+		nLoci = nidx-idx;
+		//***PREDICT STEP***
+		if (nClones > 0){
+			if (snvEmit->connect && evt > 0){//connect to the left...
+				pj = snvEmit->pjump[sample][idx];
+				Clone::predict( prior, post, snvEmit, pj, Trans);
+			}
+			//***CONSISTENCY WITH CNA AND BAF***
+			if (cnaEmit->is_set){//connect to CNA+BAF
+				if (bafEmit->is_set && bafSample >= 0){//use CNA+BAF post
+					baf_evt = snvEmit->Event_of_idx[sample][idx];
+					baf_idx = bafEmit->idx_of_event[bafSample][baf_evt];
+					cna_evt = bafEmit->Event_of_idx[bafSample][baf_idx];
+				}
+				else{//use CNA post only
+					cna_evt = snvEmit->Event_of_idx[sample][idx];
+				}
+				if (cna_evt != last_cna_evt || baf_evt != last_baf_evt){//new segment, new prior
+					cna_post = gsl_matrix_row( gamma_cna[cnaSample], cna_evt);
+					if (bafEmit->is_set && bafSample >= 0){
+						baf_post = gsl_matrix_row( gamma_baf[bafSample], baf_evt);
+						get_snv_prior_from_cna_baf_post( Prior, &cna_post.vector, &baf_post.vector);
+					}
+					else{
+						get_snv_prior_from_cna_post( Prior, &cna_post.vector);
+					}
+					last_cna_evt = cna_evt;
+					last_baf_evt = baf_evt;
+				}
+				if (snvEmit->connect){
+					gsl_vector_memcpy( mem, Prior);
+					Clone::combine_prior( prior, mem, nLoci);
+				}
+				else{
+					if(learn_cluster_w>0){
+						apply_snv_tree_prior(Prior,Prior,snv_tree_prior,snv_fpr);
+					}
+					//else{
+						gsl_vector_memcpy( prior, Prior);
+					//}
+					//
+					if (nidx-idx > 1) Clone::scale_prior( prior, nLoci);
+				}
+				
+				
+				
+			}
+			else if ( !snvEmit->connect ){
+				if (snvEmit->av_cn != NULL ){//&& (evt == 0 || snvEmit->mean_tcn[0][sample][evt+1] != snvEmit->mean_tcn[0][sample][evt])){
+					
+					//&& (evt == 0 || snvEmit->mean_tcn[0][sample][evt-1] != snvEmit->mean_tcn[0][sample][evt])){
+					Clone::get_snv_prior_from_av_cn( Prior, sample, evt);
+					
+//					int snvChr = snvEmit->chr[sample];
+//					//if(snvChr==5){
+//					cout << snvChr <<" Fwd ";
+//					for (int k=0; k < Prior->size; k++){
+//						if(Prior->data[k]>0.02){
+//							//					for (int f=0; f<nClones; f++){
+//							//						printf("%i", copynumber[k][f]);
+//							//					}
+//							//					printf(" ");
+//							printf("%d %4.2f ",k,Prior->data[k]);
+//						}
+//					}
+//					printf("\n");
+					
+					//}
+
+					
+					
+					if(learn_cluster_w>0){
+						//cout << "Fwd" << endl;
+						apply_snv_tree_prior(Prior,Prior,snv_tree_prior,snv_fpr);
+					}
+				}
+				gsl_vector_memcpy( prior, Prior);
+			}
+		}
+		else{//nClones == 0
+			gsl_vector_set_all( prior, snvEmit->log_space ? 0.0 : 1.0);
+		}
+		//***UPDATE STEP***
+		norm = Clone::update( prior, post, snvEmit, sample, evt, llhs);
+		llh += norm;
+		if (save_snv_alpha == 1) gsl_matrix_set_row( alpha_snv[sample], evt, post);
 	}
-	gsl_vector_memcpy( prior, Prior);
-      }
-    }
-    else{//nClones == 0
-      gsl_vector_set_all( prior, snvEmit->log_space ? 0.0 : 1.0);
-    }
-    //***UPDATE STEP***
-    norm = Clone::update( prior, post, snvEmit, sample, evt, llhs);
-    llh += norm;
-    if (save_snv_alpha == 1) gsl_matrix_set_row( alpha_snv[sample], evt, post);
-  }
-  // cleanup    
-  gsl_vector_free(mem);
-  gsl_vector_free(prior);
-  gsl_vector_free(post);
-  gsl_vector_free(Prior);
-  if (Trans != NULL) gsl_matrix_free(Trans);
+	// cleanup
+	gsl_vector_free(mem);
+	gsl_vector_free(prior);
+	gsl_vector_free(post);
+	gsl_vector_free(Prior);
+	if (Trans != NULL) gsl_matrix_free(Trans);
 }
 
 
 void Clone::do_snv_Bwd( int sample, double& ent){
-  if (alpha_snv[sample] == NULL || gamma_snv[sample] == NULL) abort();
-  int snvChr = snvEmit->chr[sample];
-  int cnaSample = -1,bafSample = -1;
-  if (cnaEmit->is_set){
-    if (cnaEmit->chrs.count(snvChr) == 0) abort();
-    cnaSample = cnaEmit->idx_of[snvChr];
-    if (bafEmit->is_set && bafEmit->chrs.count(snvChr) == 1){
-      bafSample = bafEmit->idx_of[snvChr];
-    }
-  }
-  if ( nClones >0 && cnaEmit->is_set){
-    if( gamma_cna == NULL || gamma_cna[cnaSample] == NULL) abort();
-    if (bafEmit->is_set && bafSample >= 0){
-      if( gamma_baf == NULL || gamma_baf[bafSample] == NULL) abort();
-    }
-  }
-  gsl_vector * Prior = gsl_vector_alloc(nLevels);
-  gsl_vector * prior    = gsl_vector_alloc(nLevels);
-  gsl_vector * post     = gsl_vector_alloc(nLevels);
-  gsl_vector * mem      = gsl_vector_alloc(nLevels);
-  gsl_matrix * Trans = NULL;
-  if ( nClones>0 && snvEmit->connect){
-    Trans = gsl_matrix_alloc( nLevels, nLevels);
-    gsl_matrix_memcpy(Trans,TransMat_snv[sample]);
-  }
-  if ( nClones > 0 && !cnaEmit->is_set && !snvEmit->connect && snvEmit->av_cn==NULL){
-    gsl_vector_memcpy( Prior, snv_prior[snvChr]);
-  }
-  gsl_vector_set_all(prior,1.0/double(nLevels));
-  if (nClones>0) Clone::apply_maxtcn_mask( prior, snvChr, snvEmit->log_space);
-  ent = 0.0;
-  gsl_vector_view alph;
-  gsl_vector_view cna_post,baf_post;
-  double pj = 1.0, norm=0;
-  double * llhs = NULL;
-  int cna_evt=-1, last_cna_evt=-1;
-  int baf_evt=-1, last_baf_evt=-1, baf_idx=0;
-  int idx=0, nidx=0, nLoci=1;
-  int last_evt = snvEmit->nEvents[sample]-1;
-  int last_idx = snvEmit->idx_of_event[sample][last_evt];
-  for (int evt = last_evt; evt >= 0 ; evt--){
-    idx   = snvEmit->idx_of_event[sample][evt];
-    nidx  = (evt < last_evt) ? snvEmit->idx_of_event[sample][evt+1] : snvEmit->nSites[sample];
-    nLoci = nidx-idx;
-    //***PREDICTION STEP***
-    if (nClones > 0){
-      if ( snvEmit->connect && evt < last_evt){//connect to the right...
-	pj = snvEmit->pjump[sample][last_idx];
-	last_idx = idx;
-	Clone::predict( prior, post, snvEmit, pj, Trans);
-      }
-      if (cnaEmit->is_set){//connect to CNA...
-	if (bafEmit->is_set && bafSample >= 0){//use BAF post
-	  baf_evt = snvEmit->Event_of_idx[sample][idx];
-	  baf_idx = bafEmit->idx_of_event[bafSample][baf_evt];
-	  cna_evt = bafEmit->Event_of_idx[bafSample][baf_idx];
+	if (alpha_snv[sample] == NULL || gamma_snv[sample] == NULL) abort();
+	int snvChr = snvEmit->chr[sample];
+	int cnaSample = -1,bafSample = -1;
+	if (cnaEmit->is_set){
+		if (cnaEmit->chrs.count(snvChr) == 0) abort();
+		cnaSample = cnaEmit->idx_of[snvChr];
+		if (bafEmit->is_set && bafEmit->chrs.count(snvChr) == 1){
+			bafSample = bafEmit->idx_of[snvChr];
+		}
 	}
-	else{//use CNA post only
-	  cna_evt = snvEmit->Event_of_idx[sample][idx];
+	if ( nClones >0 && cnaEmit->is_set){
+		if( gamma_cna == NULL || gamma_cna[cnaSample] == NULL) abort();
+		if (bafEmit->is_set && bafSample >= 0){
+			if( gamma_baf == NULL || gamma_baf[bafSample] == NULL) abort();
+		}
 	}
-	if (cna_evt != last_cna_evt || baf_evt != last_baf_evt){
-	  cna_post = gsl_matrix_row( gamma_cna[cnaSample], cna_evt);
-	  if (bafEmit->is_set && bafSample >= 0){
-	    baf_post = gsl_matrix_row( gamma_baf[bafSample], baf_evt);
-	    get_snv_prior_from_cna_baf_post( Prior, &cna_post.vector, &baf_post.vector);
-	  }
-	  else{
-	    get_snv_prior_from_cna_post( Prior, &cna_post.vector);
-	  }
-	  last_cna_evt = cna_evt;
-	  last_baf_evt = baf_evt;
-	}	
-	if (snvEmit->connect){
-	  gsl_vector_memcpy( mem, Prior);
-	  Clone::combine_prior( prior, mem, nLoci);
+	gsl_vector * Prior = gsl_vector_alloc(nLevels);
+	gsl_vector * prior    = gsl_vector_alloc(nLevels);
+	gsl_vector * post     = gsl_vector_alloc(nLevels);
+	gsl_vector * mem      = gsl_vector_alloc(nLevels);
+	gsl_matrix * Trans = NULL;
+	if ( nClones>0 && snvEmit->connect){
+		Trans = gsl_matrix_alloc( nLevels, nLevels);
+		gsl_matrix_memcpy(Trans,TransMat_snv[sample]);
 	}
-	else{
-	  gsl_vector_memcpy( prior, Prior);
-	  if (nidx-idx > 1) Clone::scale_prior( prior, nLoci);
+	if ( nClones > 0 && !cnaEmit->is_set && !snvEmit->connect && snvEmit->av_cn==NULL){
+		if(learn_cluster_w>0){
+			apply_snv_tree_prior(Prior,snv_prior[snvChr],snv_tree_prior,snv_fpr);
+		}
+		else{
+			gsl_vector_memcpy(Prior, snv_prior[snvChr]);
+		}
 	}
-      }
-      else if ( !snvEmit->connect ){
-	if (snvEmit->av_cn != NULL && (evt == last_evt || snvEmit->mean_tcn[0][sample][evt+1] != snvEmit->mean_tcn[0][sample][evt])){
-	  Clone::get_snv_prior_from_av_cn( Prior, sample, evt);
+	gsl_vector_set_all(prior,1.0/double(nLevels));
+	if (nClones>0) Clone::apply_maxtcn_mask( prior, snvChr, snvEmit->log_space);
+	ent = 0.0;
+	gsl_vector_view alph;
+	gsl_vector_view cna_post,baf_post;
+	double pj = 1.0, norm=0;
+	double * llhs = NULL;
+	int cna_evt=-1, last_cna_evt=-1;
+	int baf_evt=-1, last_baf_evt=-1, baf_idx=0;
+	int idx=0, nidx=0, nLoci=1;
+	int last_evt = snvEmit->nEvents[sample]-1;
+	int last_idx = snvEmit->idx_of_event[sample][last_evt];
+	for (int evt = last_evt; evt >= 0 ; evt--){
+		idx   = snvEmit->idx_of_event[sample][evt];
+		nidx  = (evt < last_evt) ? snvEmit->idx_of_event[sample][evt+1] : snvEmit->nSites[sample];
+		nLoci = nidx-idx;
+		//***PREDICTION STEP***
+		if (nClones > 0){
+			if ( snvEmit->connect && evt < last_evt){//connect to the right...
+				pj = snvEmit->pjump[sample][last_idx];
+				last_idx = idx;
+				Clone::predict( prior, post, snvEmit, pj, Trans);
+			}
+			if (cnaEmit->is_set){//connect to CNA...
+				if (bafEmit->is_set && bafSample >= 0){//use BAF post
+					baf_evt = snvEmit->Event_of_idx[sample][idx];
+					baf_idx = bafEmit->idx_of_event[bafSample][baf_evt];
+					cna_evt = bafEmit->Event_of_idx[bafSample][baf_idx];
+				}
+				else{//use CNA post only
+					cna_evt = snvEmit->Event_of_idx[sample][idx];
+				}
+				if (cna_evt != last_cna_evt || baf_evt != last_baf_evt){
+					cna_post = gsl_matrix_row( gamma_cna[cnaSample], cna_evt);
+					if (bafEmit->is_set && bafSample >= 0){
+						baf_post = gsl_matrix_row( gamma_baf[bafSample], baf_evt);
+						get_snv_prior_from_cna_baf_post( Prior, &cna_post.vector, &baf_post.vector);
+					}
+					else{
+						get_snv_prior_from_cna_post( Prior, &cna_post.vector);
+					}
+					last_cna_evt = cna_evt;
+					last_baf_evt = baf_evt;
+				}
+				if (snvEmit->connect){
+					gsl_vector_memcpy( mem, Prior);
+					Clone::combine_prior( prior, mem, nLoci);
+				}
+				else{
+					if(learn_cluster_w>0){
+						apply_snv_tree_prior(Prior,Prior,snv_tree_prior,snv_fpr);
+					}
+					//else{
+						gsl_vector_memcpy( prior, Prior);
+					//}
+					if (nidx-idx > 1) Clone::scale_prior( prior, nLoci);
+				}
+				
+			}
+			else if ( !snvEmit->connect ){
+				if (snvEmit->av_cn != NULL){//  && (evt == last_evt || snvEmit->mean_tcn[0][sample][evt-1] != snvEmit->mean_tcn[0][sample][evt])){
+					
+					//&& (evt == last_evt || snvEmit->mean_tcn[0][sample][evt+1] != snvEmit->mean_tcn[0][sample][evt])){
+					Clone::get_snv_prior_from_av_cn( Prior, sample, evt);
+					
+//					int snvChr = snvEmit->chr[sample];
+//					//if(snvChr==5){
+//						cout << snvChr <<" Bwf ";
+//						for (int k=0; k < Prior->size; k++){
+//							if(Prior->data[k]>0.02){
+//							//					for (int f=0; f<nClones; f++){
+//							//						printf("%i", copynumber[k][f]);
+//							//					}
+//							//					printf(" ");
+//							printf("%d %4.2f ",k,Prior->data[k]);
+//							}
+//						}
+//						printf("\n");
+//						
+//					//}
+					
+					if(learn_cluster_w>0){
+						//cout << "Bwd" << endl;
+						apply_snv_tree_prior(Prior,Prior,snv_tree_prior,snv_fpr);
+					}
+				}
+				gsl_vector_memcpy( prior, Prior);
+			}
+		}
+		else{// nClones == 0
+			gsl_vector_set_all( prior, snvEmit->log_space ? 0.0 : 1.0);
+		}
+		//***GET POSTERIOR***
+		gsl_vector_memcpy( mem, prior);
+		alph = gsl_matrix_row( alpha_snv[sample], evt);
+		if (snvEmit->log_space){
+			gsl_vector_add( mem, &alph.vector);
+			norm = log_vector_norm(mem);
+			if (norm != norm) abort();
+			gsl_vector_add_constant(mem,-norm);
+			for (int l=0; l<nLevels; l++) mem->data[l] = exp(mem->data[l]);
+		}
+		else{
+			gsl_vector_mul( mem, &alph.vector);
+			norm = gsl_blas_dasum(mem);
+			if (norm <= 0.0 || norm != norm) abort();
+			gsl_vector_scale( mem, 1.0/norm);
+		}
+		gsl_matrix_set_row( gamma_snv[sample], evt, mem);
+		if (get_gofs){
+			Clone::get_snv_gof(mem,sample,evt);
+			for (int t=0;t<nTimes;t++) snv_gofs[t] += snv_all_gofs[t][sample][evt];
+		}
+		if (ent==0) ent += double(nLoci)*Clone::entropy(mem);
+		//***UPDATE STEP*** (normalization term not needed here)
+		Clone::update( prior, post, snvEmit, sample, evt, llhs);
 	}
-	gsl_vector_memcpy( prior, Prior);
-      }
-    }  
-    else{// nClones == 0
-      gsl_vector_set_all( prior, snvEmit->log_space ? 0.0 : 1.0);
-    }
-    //***GET POSTERIOR***
-    gsl_vector_memcpy( mem, prior);
-    alph = gsl_matrix_row( alpha_snv[sample], evt);
-    if (snvEmit->log_space){
-      gsl_vector_add( mem, &alph.vector);
-      norm = log_vector_norm(mem);
-      if (norm != norm) abort();
-      gsl_vector_add_constant(mem,-norm);
-      for (int l=0; l<nLevels; l++) mem->data[l] = exp(mem->data[l]);
-    }
-    else{
-      gsl_vector_mul( mem, &alph.vector);
-      norm = gsl_blas_dasum(mem);
-      if (norm <= 0.0 || norm != norm) abort();
-      gsl_vector_scale( mem, 1.0/norm);
-    }
-    gsl_matrix_set_row( gamma_snv[sample], evt, mem);
-    if (get_gofs){
-      Clone::get_snv_gof(mem,sample,evt);
-      for (int t=0;t<nTimes;t++) snv_gofs[t] += snv_all_gofs[t][sample][evt];
-    }
-    if (ent==0) ent += double(nLoci)*Clone::entropy(mem);
-    //***UPDATE STEP*** (normalization term not needed here)
-    Clone::update( prior, post, snvEmit, sample, evt, llhs);
-  }
-  // cleanup    
-  gsl_vector_free(prior);
-  gsl_vector_free(post);
-  gsl_vector_free(mem);
-  gsl_vector_free(Prior);
-  if (Trans!= NULL) gsl_matrix_free(Trans);
+	// cleanup
+	gsl_vector_free(prior);
+	gsl_vector_free(post);
+	gsl_vector_free(mem);
+	gsl_vector_free(Prior);
+	if (Trans!= NULL) gsl_matrix_free(Trans);
 }
 
 

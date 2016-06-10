@@ -29,7 +29,8 @@ double get_clones( gsl_matrix *& clones,
 		   gsl_matrix *& Clones, 
 		   gsl_vector *& mass, 
 		   gsl_vector *& Mass, 
-		   gsl_matrix *& priors, 
+		   gsl_matrix *& priors,
+		   gsl_vector *& cluster_w,
 		   Clone * myClone,
 		   cmdl_opts& opts,
 		   double& cl,
@@ -39,7 +40,8 @@ double get_clones( gsl_matrix *& clones,
 double get_clones_cna( gsl_matrix *& clones, 
 		       gsl_matrix *& Clones, 
 		       gsl_vector *& mass, 
-		       gsl_vector *& Mass, 
+		       gsl_vector *& Mass,
+			   gsl_vector *& cluster_w,
 		       Clone * myClone,
 		       cmdl_opts& opts,
 		       double& cl,
@@ -54,7 +56,8 @@ double get_clones_baf( gsl_matrix *& clones,
 
 double get_clones_snv_ncorr( gsl_matrix *& clones, 
 			     gsl_matrix *& Clones, 
-			     gsl_matrix *& priors, 
+			     gsl_matrix *& priors,
+				 gsl_vector *& cluster_w,
 			     Clone * myClone,
 			     cmdl_opts& opts
 			     );
@@ -94,6 +97,9 @@ double snv_priors_fixed_clones( gsl_matrix*& priors, Clone * myClone, int restar
 double snv_clones_priors( gsl_matrix*& clones, gsl_matrix*& priors, Clone * myClone, int restarts, int& steps);
 void snv_bulk_update(Clone * myClone);
 
+double snv_clones_cluster_w( gsl_matrix*& clones, gsl_vector*& cluster_w, Clone * myClone, int restarts, int& steps);
+double cna_clones_mass_cluster_w( gsl_matrix*& clones, gsl_vector*& mass, gsl_vector*& cluster_w, Clone * myClone, int restarts, int& steps,double& cna_llh, double& baf_llh, double& snv_llh);
+
 void set_random_start_freq(gsl_vector *& freq, double lower);
 void report_results( double cl, double bl, double sl, int steps, gsl_vector * mass, gsl_matrix * freq);
 
@@ -104,6 +110,7 @@ struct Q_par{
   vector<int> simplexD;
   int clones_fixed;
   int mass_fixed;
-  int prior_fixed;
+	int prior_fixed;
+	int cluster_w_fixed;
   int cna,baf,snv;
 };

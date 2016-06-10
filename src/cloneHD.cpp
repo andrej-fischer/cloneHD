@@ -87,7 +87,9 @@ int main (int argc, const char * argv[]){
   myClone.cna_pen_norm = opts.cna_pen_norm;//CNA penalty for non-normal c.n.
   myClone.baf_pen_comp = opts.baf_pen_comp;//BAF penalty for complex chr status
   myClone.snv_pen_high = opts.snv_pen_high;//SNV penalty for high SNV genotypes
-  myClone.snv_pen_mult = opts.snv_pen_mult;//SNV penalty for multiple hit SNVs
+	myClone.snv_pen_mult = opts.snv_pen_mult;//SNV penalty for multiple hit SNVs
+	myClone.snv_pen_tree = opts.snv_pen_tree;//SNV penalty for breaking tree constraint
+	
   myClone.snv_fpr  = opts.snv_fpr;//SNV false-positive rate
   myClone.snv_fpf  = opts.snv_fpf;//SNV frequency of false positives
   myClone.bulk_fix = opts.bulk_fix;
@@ -96,7 +98,9 @@ int main (int argc, const char * argv[]){
   myClone.snvGrid  = opts.snvGrid;
   myClone.bulkGrid = opts.bulkGrid;
   myClone.learn_priors = (cnaEmit.is_set || snvEmit.connect || opts.avcn_fn != NULL) ? 0 : opts.learn_priors;
-  // *** GET MAX-TCN INFO ***
+	myClone.learn_cluster_w =opts.learn_cluster_w;
+	
+	// *** GET MAX-TCN INFO ***
   get_maxtcn_input( opts.maxtcn_fn, opts.maxtcn, &myClone);
   // *** GET SNV BULK PRIOR ***
   if ( snvEmit.is_set && opts.bulk_fn != NULL ){
@@ -311,6 +315,9 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--purity") == 0){
       opts.purity_fn = argv[opt_idx];
     }
+	else if ( opt_switch.compare("--snv-pen-tree") == 0){
+		opts.snv_pen_tree = atof(argv[opt_idx]);
+	}
     else if ( opt_switch.compare("--cna-jumps") == 0){
       opts.cna_jumps_fn = argv[opt_idx];
     }
@@ -356,7 +363,12 @@ void get_opts( int argc, const char ** argv, cmdl_opts& opts){
     else if ( opt_switch.compare("--learn-priors") == 0){
       opts.learn_priors = atoi(argv[opt_idx]);
       if (opts.learn_priors > 0) opts.learn_priors = 1;
-    }   
+	}
+	else if ( opt_switch.compare("--learn-cluster-w") == 0){
+		opts.learn_cluster_w = atoi(argv[opt_idx]);
+		//if (opts.learn_cluster_w > 0) opts.learn_cluster_w = 1;
+		//cout << "--learn-priors-w" << opts.learn_priors_w << "\n";
+	}
     else{
       cout<<"ERROR: unknown option "<<opt_switch<<" ?"<<endl;
       print_usage();
@@ -393,6 +405,7 @@ void default_opts(cmdl_opts& opts){
   opts.trials       = 1;
   opts.restarts     = 10;
   opts.learn_priors = 0;
+  opts.learn_cluster_w = 0;
   opts.mass_gauging = 1;
   opts.seed = 123456 * (int(time(NULL)) % 10) + (int(time(NULL)) % 1000);
   //grid sizes...
@@ -421,6 +434,7 @@ void default_opts(cmdl_opts& opts){
   opts.baf_pen_comp = 1.0;
   opts.snv_pen_mult = 0.01;
   opts.snv_pen_high = 0.5;
+  opts.snv_pen_tree = 0.01;
   //model complexity...
   opts.force    = -1;
   opts.nmax     = 3;

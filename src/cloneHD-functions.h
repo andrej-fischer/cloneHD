@@ -44,14 +44,14 @@ struct cmdl_opts{
   const char * baf_jumps_fn;
   const char * snv_jumps_fn;
   //
-  int force, trials, restarts, nmax, seed, maxtcn, print_all, learn_priors;
+  int force, trials, restarts, nmax, seed, maxtcn, print_all, learn_priors, learn_cluster_w;
   int mass_gauging;
   double cna_jump, baf_jump, snv_jump;
   double cna_shape, baf_shape, snv_shape;
   double cna_rnd, baf_rnd, snv_rnd;
   double cna_pen_zero, cna_pen_norm, cna_pen_diff;
   double baf_pen_comp;
-  double snv_pen_high, snv_pen_mult;
+  double snv_pen_high, snv_pen_mult, snv_pen_tree;
   double snv_fpr, snv_fpf;
   double bulk_fix, bulk_sigma, bulk_rnd;
   double min_occ,min_jump;

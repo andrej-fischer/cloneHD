@@ -35,6 +35,13 @@ Clone::Clone(){
   copynumber_post  = NULL;
   initial_snv_prior_param= NULL;
   learn_priors = 0;
+	
+	snv_cluster_w      = NULL;
+	snv_tree_prior = NULL;
+	snv_pen_tree=1.0;
+	
+	
+	
   cn_usage = NULL;
   clone_spectrum   = NULL;
   majcn_post  = NULL;
@@ -120,6 +127,10 @@ Clone::~Clone(){
   if (snv_prior_from_cna_map != NULL){
     gsl_matrix_free(snv_prior_from_cna_map);
   }
+	if (snv_cluster_w != NULL){
+		gsl_vector_free(snv_cluster_w);
+	}
+	
   logn.clear();
   loggma.clear();
   if (initial_snv_prior_param != NULL) gsl_matrix_free(initial_snv_prior_param);
@@ -143,9 +154,18 @@ void Clone::allocate( Emission * cna, Emission * baf, Emission * snv, const char
   Clone::set_normal_copy(chr_fn);
   //all chr present
   chrs.clear();
-  if (cnaEmit->is_set) for (int s=0;s<cnaEmit->nSamples;s++) chrs.insert(cnaEmit->chr[s]);
-  if (bafEmit->is_set) for (int s=0;s<bafEmit->nSamples;s++) chrs.insert(bafEmit->chr[s]);
-  if (snvEmit->is_set) for (int s=0;s<snvEmit->nSamples;s++) chrs.insert(snvEmit->chr[s]);
+  if (cnaEmit->is_set){
+    for (int s=0;s<cnaEmit->nSamples;s++) 
+      chrs.insert(cnaEmit->chr[s]);
+  }
+  if (bafEmit->is_set){
+    for (int s=0;s<bafEmit->nSamples;s++)
+      chrs.insert(bafEmit->chr[s]);
+  }
+  if (snvEmit->is_set){
+    for (int s=0;s<snvEmit->nSamples;s++) 
+      chrs.insert(snvEmit->chr[s]);
+  }
   if (cnaEmit->is_set){
     mass     = gsl_vector_alloc(nTimes);
     log_mass = gsl_vector_alloc(nTimes);

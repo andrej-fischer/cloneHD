@@ -1,5 +1,5 @@
 CC		= g++
-GSL		= /usr/lib/libgsl.so /usr/lib/libgslcblas.so
+GSL		= `gsl-config --cflags --libs`
 CC_FLAGS	= -Wall -ggdb -static-libgcc -static-libstdc++
 LD_FLAGS	= ${GSL}
 prefobj		= emission.o common-functions.o

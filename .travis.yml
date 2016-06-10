@@ -1,0 +1,28 @@
+# Control file for continuous integration testing at http://travis-ci.org/
+language: cpp
+
+# Compiler selection
+compiler: gcc
+  
+# Replace gcc on osx (default is a front-end for LLVM) and gsl on osx and linux
+before_install:
+  - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y; fi
+  - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then sudo apt-get update -qq; fi
+  - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then sudo apt-get install gsl-bin libgsl0-dev; fi
+  - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then brew update; fi
+  - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then which g++-4.9 || (brew unlink gcc && brew install gcc49); fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then mkdir ./bin; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ln -s `which gcc-4.9` ./bin/gcc; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ln -s `which g++-4.9` ./bin/g++; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install gsl; fi
+
+# Run Makefile
+script:
+  - mkdir -p build
+  - cd src
+  - make
+
+# Only watch the master branch
+branches:
+  only:
+    - master

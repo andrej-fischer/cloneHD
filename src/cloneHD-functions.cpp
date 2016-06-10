@@ -1136,7 +1136,17 @@ void  print_all_results( Clone * myClone, cmdl_opts& opts){
   fprintf( clonal_fp, "# cna-ent baf-ent snv-ent\n");
   fprintf( clonal_fp, "%.4e %.4e %.4e\n", 
 	   myClone->cna_total_ent, myClone->baf_total_ent, myClone->snv_total_ent);
+	
+	
+	if(myClone->learn_cluster_w>0){
+  fprintf( clonal_fp, "# cluster_w \n");
+		for(int i=0; i< myClone->snv_cluster_w->size; i++){
+			fprintf( clonal_fp, "%.4f ",myClone->snv_cluster_w->data[i]);
+		}
+		fprintf( clonal_fp, "\n");
   fclose(clonal_fp);
+	}
+	
   if (snv_utcn_fp != NULL) fclose(snv_utcn_fp);
   if (baf_utcn_fp != NULL) fclose(baf_utcn_fp);
   //SNV BULK
